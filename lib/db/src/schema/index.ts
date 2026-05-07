@@ -284,6 +284,15 @@ export const chatLocksTable = pgTable("chat_locks", {
   expiresAt: integer("expires_at").default(0),
 })
 
+export const pushSubscriptionsTable = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: integer("created_at").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

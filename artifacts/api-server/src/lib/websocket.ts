@@ -130,6 +130,18 @@ async function handleMessage(fromUserId: number, msg: any) {
 
       send(fromUserId, { type: "message_sent", tempId, message: savedMsg })
       send(toUserId, { type: "new_message", message: savedMsg, from: { id: fromUser.id, name: fromUser.name, photo: fromUser.photoThumb || fromUser.photo } })
+
+      // If a real user messaged a fake user, push-notify moderators
+      const [toUser] = await db.select({ fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, toUserId)).limit(1)
+      if (fromUser.fake !== 1 && toUser?.fake === 1) {
+        import("./push").then(({ sendPushToModerators }) => {
+          sendPushToModerators({
+            title: "💬 New message needs reply",
+            body: `${fromUser.name} sent a message — tap to reply as the fake user`,
+            url: "/moderator",
+          }).catch(() => {})
+        }).catch(() => {})
+      }
       break
     }
 

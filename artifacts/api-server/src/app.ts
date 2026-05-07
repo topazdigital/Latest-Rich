@@ -34,6 +34,11 @@ app.use("/api", router);
 // Start background auto-message scheduler
 import("./lib/fake-message-scheduler").then(({ startAutoMessageScheduler }) => {
   startAutoMessageScheduler();
-}).catch((err) => logger.error({ err }, "Failed to start auto-message scheduler"));
+}).catch((err) => logger.error({ err }, "Failed to start auto-message scheduler"))
+
+// Initialize Web Push (VAPID keys)
+import("./lib/push").then(({ initWebPush }) => {
+  initWebPush();
+}).catch((err) => logger.error({ err }, "Failed to init web push"));
 
 export default app;

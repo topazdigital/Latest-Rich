@@ -1,13 +1,46 @@
 {
   "name": "Rich Dating Network",
   "short_name": "RichDating",
-  "description": "Luxury dating platform for affluent singles",
+  "description": "Luxury dating platform for affluent singles worldwide. Find meaningful connections.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#ffffff",
   "theme_color": "#FF192C",
   "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
+    {
+      "src": "/icons/icon-72.svg",
+      "sizes": "72x72",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96.svg",
+      "sizes": "96x96",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152.svg",
+      "sizes": "152x152",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192.svg",
       "sizes": "192x192",
@@ -15,25 +48,45 @@
       "purpose": "any maskable"
     },
     {
+      "src": "/icons/icon-384.svg",
+      "sizes": "384x384",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/icons/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ],
   "screenshots": [
     {
       "src": "/opengraph.jpg",
       "sizes": "1200x630",
-      "type": "image/jpeg"
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Rich Dating Network — Home"
     }
   ],
   "categories": ["social", "lifestyle"],
-  "lang": "en-US"
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Discover",
+      "short_name": "Discover",
+      "description": "Browse profiles",
+      "url": "/discover",
+      "icons": [{ "src": "/icons/icon-96.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Chat",
+      "description": "Open your messages",
+      "url": "/chat",
+      "icons": [{ "src": "/icons/icon-96.svg", "sizes": "96x96" }]
+    }
+  ]
 }

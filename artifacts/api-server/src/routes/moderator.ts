@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, messagesTable, chatLocksTable, activityTable } from "@workspace/db/schema"
+import { usersTable, messagesTable, chatLocksTable, activityTable, pushSubscriptionsTable } from "@workspace/db/schema"
 import { eq, sql, and, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
@@ -247,6 +247,56 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     }).catch(() => {})
 
     res.json({ message: msg, fakeUser: { id: fakeUser.id, name: fakeUser.name, photo: fakeUser.photo } })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/moderator/push/vapid-key
+router.get("/push/vapid-key", requireAuth, requireModerator, async (req, res) => {
+  try {
+    const { getVapidPublicKey } = await import("../lib/push")
+    const key = await getVapidPublicKey()
+    if (!key) { res.status(503).json({ error: "Push not configured" }); return }
+    res.json({ publicKey: key })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/moderator/push/subscribe
+router.post("/push/subscribe", requireAuth, requireModerator, async (req: any, res) => {
+  try {
+    const { endpoint, keys } = req.body
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      res.status(400).json({ error: "Invalid subscription object" }); return
+    }
+    await db.insert(pushSubscriptionsTable).values({
+      userId: req.userId,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+      createdAt: now(),
+    }).onConflictDoUpdate({
+      target: pushSubscriptionsTable.endpoint,
+      set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() },
+    })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/moderator/push/unsubscribe
+router.delete("/push/unsubscribe", requireAuth, requireModerator, async (req: any, res) => {
+  try {
+    const { endpoint } = req.body
+    if (endpoint) {
+      await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.endpoint, endpoint))
+    } else {
+      await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.userId, req.userId))
+    }
+    res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }

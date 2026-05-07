@@ -1,9 +1,104 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'wouter'
-import { MessageSquare, Lock, Unlock, Send, RefreshCw, LogOut, Shield, Users, Clock, Search, ChevronLeft, Loader2, AlertCircle, Check } from 'lucide-react'
+import { MessageSquare, Lock, Unlock, Send, RefreshCw, LogOut, Shield, Users, Clock, Search, ChevronLeft, Loader2, AlertCircle, Check, Bell, BellOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getStoredAuth, clearStoredAuth } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
+
+async function subscribeToPush(token: string): Promise<boolean> {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error('Push notifications not supported in this browser')
+      return false
+    }
+
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') {
+      toast.error('Notification permission denied')
+      return false
+    }
+
+    const vapidRes = await fetch('/api/moderator/push/vapid-key', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!vapidRes.ok) throw new Error('Failed to get VAPID key')
+    const { publicKey } = await vapidRes.json()
+
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    })
+
+    const subJson = sub.toJSON()
+    const res = await fetch('/api/moderator/push/subscribe', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(subJson),
+    })
+    if (!res.ok) throw new Error('Failed to save subscription')
+    return true
+  } catch (err: any) {
+    console.error('Push subscribe error:', err)
+    toast.error(err.message || 'Failed to enable notifications')
+    return false
+  }
+}
+
+async function unsubscribeFromPush(token: string): Promise<boolean> {
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    if (sub) {
+      const endpoint = sub.endpoint
+      await sub.unsubscribe()
+      await fetch('/api/moderator/push/unsubscribe', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      })
+    }
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = atob(base64)
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)))
+}
+
+function usePushState(token: string | null) {
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    navigator.serviceWorker.ready.then(reg =>
+      reg.pushManager.getSubscription()
+    ).then(sub => {
+      setPushEnabled(!!sub && Notification.permission === 'granted')
+    }).catch(() => {})
+  }, [])
+
+  async function togglePush() {
+    if (!token) return
+    setPushLoading(true)
+    if (pushEnabled) {
+      const ok = await unsubscribeFromPush(token)
+      if (ok) { setPushEnabled(false); toast.success('Notifications disabled') }
+    } else {
+      const ok = await subscribeToPush(token)
+      if (ok) { setPushEnabled(true); toast.success('Notifications enabled! You\'ll be alerted when messages arrive.') }
+    }
+    setPushLoading(false)
+  }
+
+  return { pushEnabled, pushLoading, togglePush }
+}
 
 function authFetch(url: string, options: RequestInit = {}) {
   const { token } = getStoredAuth()
@@ -119,7 +214,8 @@ function MessageBubble({ msg, fakeUserId, users }: { msg: Message; fakeUserId: n
 
 export default function ModeratorPage() {
   const [, setLocation] = useLocation()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
+  const { pushEnabled, pushLoading, togglePush } = usePushState(token)
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null)
@@ -300,6 +396,13 @@ export default function ModeratorPage() {
                   <Users size={15} />
                 </a>
               )}
+              <button
+                onClick={togglePush}
+                disabled={pushLoading}
+                title={pushEnabled ? 'Disable push notifications' : 'Enable push notifications'}
+                className={`p-1.5 rounded-lg transition-colors ${pushEnabled ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+                {pushLoading ? <Loader2 size={15} className="animate-spin" /> : pushEnabled ? <Bell size={15} /> : <BellOff size={15} />}
+              </button>
               <button onClick={() => { loadConversations(); loadStats() }}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                 <RefreshCw size={15} />
