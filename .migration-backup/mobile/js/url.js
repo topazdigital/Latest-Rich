@@ -1,1 +1,0 @@
-var site_url = (typeof site_url !== 'undefined' && site_url !== '') ? site_url : '/';
