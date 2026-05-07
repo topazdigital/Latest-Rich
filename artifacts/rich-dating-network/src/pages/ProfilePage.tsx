@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import ProfileView from '../components/profile/ProfileView'
 import { useAuth } from '../hooks/useAuth'
-import { useLocation } from 'wouter'
 
 interface Props { params: { id: string } }
 
@@ -10,6 +9,7 @@ export default function ProfilePage({ params }: Props) {
   const [photos, setPhotos] = useState<any[]>([])
   const [hasLiked, setHasLiked] = useState(false)
   const [isMatch, setIsMatch] = useState(false)
+  const [myInterests, setMyInterests] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const { user, token } = useAuth()
   const profileId = parseInt(params.id)
@@ -20,11 +20,13 @@ export default function ProfilePage({ params }: Props) {
       fetch(`/api/users/${profileId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch(`/api/users/${profileId}/photos`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch(`/api/users/${profileId}/liked-status`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-    ]).then(([u, ph, likeStatus]) => {
+      fetch(`/api/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([u, ph, likeStatus, me]) => {
       setProfileUser(u)
       setPhotos(Array.isArray(ph) ? ph : [])
       setHasLiked(likeStatus?.hasLiked || false)
       setIsMatch(likeStatus?.isMatch || false)
+      try { setMyInterests(JSON.parse(me?.userExtended?.interests || '[]')) } catch { setMyInterests([]) }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [profileId, token])
 
@@ -50,6 +52,7 @@ export default function ProfilePage({ params }: Props) {
       myId={user?.id || 0}
       hasLiked={hasLiked}
       isMatch={isMatch}
+      myInterests={myInterests}
     />
   )
 }

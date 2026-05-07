@@ -1,15 +1,28 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'wouter'
 import { getPhotoUrl, isOnline, truncate } from '../../lib/utils'
-import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap } from 'lucide-react'
+import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
 import { authFetch } from '../../lib/auth'
 
-interface Props { userId: number; myCity?: string; myCountry?: string }
+interface Props {
+  userId: number;
+  myCity?: string;
+  myCountry?: string;
+  myInterests?: string[];
+}
 
-export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
+function calcCompatibility(myInterests: string[], theirInterests: string[]): number {
+  if (!myInterests.length || !theirInterests.length) return 0
+  const their = (() => { try { return JSON.parse(theirInterests as any) } catch { return theirInterests } })()
+  const shared = myInterests.filter(i => their.includes(i)).length
+  const union = new Set([...myInterests, ...their]).size
+  return union === 0 ? 0 : Math.round((shared / union) * 100)
+}
+
+export default function DiscoverPage({ userId, myCity, myCountry, myInterests = [] }: Props) {
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,6 +33,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
   const [filterAgeMax, setFilterAgeMax] = useState(60)
   const [filterOnline, setFilterOnline] = useState(false)
   const [filterPremium, setFilterPremium] = useState(false)
+  const [filterCompatible, setFilterCompatible] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [likedUsers, setLikedUsers] = useState<Set<number>>(new Set())
   const { token } = useAuth()
@@ -50,11 +64,24 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
   const filtered = useMemo(() => {
     return users.filter(u => {
       if (filterPremium && u.premium !== 1) return false
+      if (filterCompatible && myInterests.length > 0) {
+        const their: string[] = (() => { try { return JSON.parse(u.userExtended?.interests || '[]') } catch { return [] } })()
+        const score = calcCompatibility(myInterests, their)
+        if (score < 20) return false
+      }
       return true
+    }).map(u => {
+      const their: string[] = (() => { try { return JSON.parse(u.userExtended?.interests || '[]') } catch { return [] } })()
+      return { ...u, _compat: myInterests.length > 0 ? calcCompatibility(myInterests, their) : 0 }
+    }).sort((a, b) => {
+      // Boosted first, then by compatibility
+      if (a.isBoosted && !b.isBoosted) return -1
+      if (!a.isBoosted && b.isBoosted) return 1
+      return b._compat - a._compat
     })
-  }, [users, filterPremium])
+  }, [users, filterPremium, filterCompatible, myInterests])
 
-  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 60 || filterOnline || filterPremium
+  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 60 || filterOnline || filterPremium || filterCompatible
 
   async function likeUser(targetId: number) {
     const isLiked = likedUsers.has(targetId)
@@ -67,7 +94,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
 
   function clearFilters() {
     setFilterGender('0'); setFilterCity(''); setFilterCountry('')
-    setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setSearch('')
+    setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setFilterCompatible(false); setSearch('')
   }
 
   const nearbyCount = filtered.filter(u => u.city === myCity || u.country === myCountry).length
@@ -146,8 +173,8 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex gap-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex gap-4 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={filterOnline} onChange={e => setFilterOnline(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
                 <span className="text-xs text-gray-600 flex items-center gap-1.5">
@@ -158,6 +185,12 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
                 <input type="checkbox" checked={filterPremium} onChange={e => setFilterPremium(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
                 <span className="text-xs text-gray-600">👑 VIP only</span>
               </label>
+              {myInterests.length > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={filterCompatible} onChange={e => setFilterCompatible(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
+                  <span className="text-xs text-gray-600 flex items-center gap-1">💞 Compatible only</span>
+                </label>
+              )}
             </div>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs text-brand-500 font-medium hover:text-brand-600 transition-colors">
@@ -180,6 +213,11 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
             <Zap size={12} className="fill-orange-500" /> <span><strong>{boostedCount}</strong> boosted profile{boostedCount > 1 ? 's' : ''}</span>
           </div>
         )}
+        {myInterests.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-purple-50 text-purple-600 text-xs font-medium px-3 py-1.5 rounded-full">
+            💞 Sorted by compatibility
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -196,6 +234,8 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
             {filtered.map((u: any) => {
               const isNearby = u.city === myCity || u.country === myCountry
               const isBoosted = !!u.isBoosted
+              const compat = u._compat as number
+              const showCompat = compat > 0 && !isOwnCard(u.id, userId)
               return (
                 <div key={u.id} className={`profile-card group relative ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}>
                   {/* Boost badge */}
@@ -204,8 +244,14 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
                       <Zap size={8} className="fill-white" /> BOOST
                     </div>
                   )}
-                  {/* Nearby badge (only if not boosted to avoid overlap) */}
-                  {isNearby && !filterCity && !isBoosted && (
+                  {/* Compatibility badge */}
+                  {showCompat && !isBoosted && (
+                    <div className={`absolute top-2 left-2 z-10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow ${compat >= 70 ? 'bg-green-500' : compat >= 40 ? 'bg-brand-500' : 'bg-gray-500'}`}>
+                      {compat}% match
+                    </div>
+                  )}
+                  {/* Nearby badge */}
+                  {isNearby && !filterCity && !isBoosted && !showCompat && (
                     <div className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                       <MapPin size={8} /> Near
                     </div>
@@ -218,7 +264,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
                     {isOnline(u.lastAccess) && (
                       <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                     )}
-                    {u.premium === 1 && !isBoosted && !isNearby && (
+                    {u.premium === 1 && !isBoosted && (
                       <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-sm text-white rounded-full p-1">
                         <Crown size={9} />
                       </div>
@@ -269,4 +315,8 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
       )}
     </div>
   )
+}
+
+function isOwnCard(cardUserId: number, myUserId: number) {
+  return cardUserId === myUserId
 }
