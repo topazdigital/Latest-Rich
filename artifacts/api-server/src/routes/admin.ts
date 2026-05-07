@@ -445,6 +445,44 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
   }
 })
 
+// Public config endpoint (no auth required - for frontend to check settings)
+router.get("/config/public", async (req, res) => {
+  try {
+    const rows = await db.select().from(siteConfigTable)
+    const publicKeys = ["require_email_verification", "site_name", "site_tagline"]
+    const config: Record<string, string> = {}
+    for (const row of rows) {
+      if (publicKeys.includes(row.key)) config[row.key] = row.value || ""
+    }
+    res.json(config)
+  } catch { res.json({}) }
+})
+
+// Test email endpoint
+router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { to } = req.body
+    if (!to) { res.status(400).json({ error: "Recipient email required" }); return }
+    const { sendEmail } = await import("../lib/mailer")
+    const siteName = (await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, "site_name")).limit(1))[0]?.value || "Rich Dating Network"
+    const sent = await sendEmail({
+      to,
+      subject: `Test Email from ${siteName}`,
+      html: `
+<div style="font-family:Arial,sans-serif;padding:24px;max-width:500px">
+<h2 style="color:#FF192C">✅ Test Email</h2>
+<p>This is a test email from <strong>${siteName}</strong>.</p>
+<p>If you received this, your SMTP configuration is working correctly!</p>
+<p style="color:#aaa;font-size:12px;margin-top:24px">Sent from Admin Panel · ${new Date().toISOString()}</p>
+</div>`,
+    })
+    if (sent) res.json({ success: true, message: "Test email sent successfully" })
+    else res.status(500).json({ error: "Failed to send. Check your SMTP settings in the Settings panel." })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to send test email" })
+  }
+})
+
 // Get all online users (admin view)
 router.get("/online-users", requireAuth, requireAdmin, async (req, res) => {
   try {

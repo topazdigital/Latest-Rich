@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
 import toast from "react-hot-toast"
+import { Clock, Zap, Info } from "lucide-react"
 
 interface Template { id: number; message: string; active: number }
 
@@ -32,6 +33,7 @@ export default function AdminFakeMessages() {
   const [loading, setLoading] = useState(true)
   const [newMsg, setNewMsg] = useState("")
   const [seeding, setSeeding] = useState(false)
+  const [triggering, setTriggering] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -60,6 +62,14 @@ export default function AdminFakeMessages() {
     load()
   }
 
+  const toggleActive = async (id: number, active: number) => {
+    await authFetch(`/api/admin/fake-messages/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: active === 1 ? 0 : 1 })
+    })
+    load()
+  }
+
   const seedDefaults = async () => {
     setSeeding(true)
     for (const msg of DEFAULT_MESSAGES) {
@@ -73,17 +83,71 @@ export default function AdminFakeMessages() {
     load()
   }
 
+  const triggerNow = async () => {
+    setTriggering(true)
+    try {
+      const res = await authFetch("/api/admin/trigger-auto-messages", { method: "POST" })
+      const data = await res.json()
+      toast.success(`Triggered! ${data.sent || 0} messages sent.`)
+    } catch {
+      toast.error("Failed to trigger")
+    } finally {
+      setTriggering(false)
+    }
+  }
+
+  const activeCount = templates.filter(t => t.active === 1).length
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">{templates.length} Message Templates</h2>
-        <button onClick={seedDefaults} disabled={seeding}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm disabled:opacity-50">
-          {seeding ? "Seeding..." : "🌱 Seed Default Messages"}
-        </button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-white">{templates.length} Message Templates</h2>
+          <p className="text-gray-400 text-xs mt-0.5">{activeCount} active — same message never sent twice to same user</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={triggerNow} disabled={triggering}
+            className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+            <Zap size={13} />
+            {triggering ? "Triggering..." : "Trigger Now"}
+          </button>
+          <button onClick={seedDefaults} disabled={seeding}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm disabled:opacity-50">
+            {seeding ? "Seeding..." : "🌱 Seed Defaults"}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-blue-950/40 border border-blue-800/50 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Info size={16} className="text-blue-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-300 space-y-1">
+            <p><strong>Smart deduplication:</strong> The system tracks which templates have been sent to each real user. The same message template will NEVER be sent to the same user twice — ever.</p>
+            <p><strong>Timing:</strong> New registrations get their first message after the "new user delay" (default 5 seconds). Logged-in users get messages at a random time between the min and max delay. Configure timing in Settings → Auto-Message Timing.</p>
+            <p><strong>User must be active:</strong> If a user logs out before their scheduled message fires, the message is skipped.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+        <div className="grid grid-cols-3 gap-3 text-center text-xs">
+          <div className="bg-gray-900 rounded-lg p-3">
+            <div className="text-purple-400 font-bold text-lg">{templates.length}</div>
+            <div className="text-gray-500">Total Templates</div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-3">
+            <div className="text-green-400 font-bold text-lg">{activeCount}</div>
+            <div className="text-gray-500">Active</div>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-3">
+            <div className="text-red-400 font-bold text-lg">{templates.length - activeCount}</div>
+            <div className="text-gray-500">Paused</div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800">
+        <label className="text-gray-300 text-sm font-medium mb-2 block">Add New Template</label>
         <div className="flex gap-2">
           <textarea
             value={newMsg} onChange={e => setNewMsg(e.target.value)}
@@ -100,9 +164,15 @@ export default function AdminFakeMessages() {
       ) : (
         <div className="space-y-2">
           {templates.map(t => (
-            <div key={t.id} className="bg-gray-900 rounded-xl p-4 border border-gray-800 flex items-start justify-between gap-4">
+            <div key={t.id} className={`rounded-xl p-4 border flex items-start justify-between gap-4 transition-opacity ${t.active === 1 ? 'bg-gray-900 border-gray-800' : 'bg-gray-900/50 border-gray-800/50 opacity-60'}`}>
               <p className="text-gray-200 text-sm flex-1">{t.message}</p>
-              <button onClick={() => deleteMessage(t.id)} className="text-red-400 hover:text-red-300 text-xs shrink-0">Delete</button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => toggleActive(t.id, t.active)}
+                  className={`text-xs px-2 py-1 rounded-md font-medium ${t.active === 1 ? 'bg-green-900/50 text-green-400 hover:bg-red-900/50 hover:text-red-400' : 'bg-gray-800 text-gray-500 hover:bg-green-900/50 hover:text-green-400'}`}>
+                  {t.active === 1 ? 'Active' : 'Paused'}
+                </button>
+                <button onClick={() => deleteMessage(t.id)} className="text-red-400 hover:text-red-300 text-xs">Delete</button>
+              </div>
             </div>
           ))}
           {templates.length === 0 && (

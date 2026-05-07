@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { authFetch } from "../../lib/auth"
 import toast from "react-hot-toast"
-import { Save, Eye, EyeOff, Settings, CreditCard, MessageSquare, Users, Globe, Shield, Crown, Plus, Trash2 } from "lucide-react"
+import { Save, Eye, EyeOff, Settings, CreditCard, MessageSquare, Users, Globe, Shield, Crown, Plus, Trash2, Image, Mail, Bell, Camera } from "lucide-react"
 
 const SECTIONS = [
   {
@@ -26,13 +26,16 @@ const SECTIONS = [
     ]
   },
   {
-    title: "Messaging & Automation",
+    title: "Auto-Message Timing",
     icon: MessageSquare,
     color: "text-purple-400",
     fields: [
       { key: "auto_messages_enabled", label: "Auto Messages Enabled", type: "select", options: [["1","Enabled"],["0","Disabled"]] },
-      { key: "auto_messages_count", label: "Auto Messages Per Login", type: "number", placeholder: "3" },
-      { key: "fake_user_delay_minutes", label: "Delay Between Auto Messages (min)", type: "number", placeholder: "30" },
+      { key: "auto_messages_count", label: "Auto Messages Per Trigger", type: "number", placeholder: "3" },
+      { key: "auto_message_new_user_delay_seconds", label: "New User First Message Delay (seconds)", type: "number", placeholder: "5", help: "How many seconds after registration to send first message. Default: 5" },
+      { key: "auto_message_min_delay_seconds", label: "Min Delay on Login (seconds)", type: "number", placeholder: "60", help: "Minimum seconds after login to trigger messages. Default: 60" },
+      { key: "auto_message_max_delay_seconds", label: "Max Delay on Login (seconds)", type: "number", placeholder: "900", help: "Maximum seconds after login. Default: 900 (15 min). Message fires at random time in range." },
+      { key: "email_notifications_enabled", label: "Email Notifications", type: "select", options: [["1","Enabled"],["0","Disabled"]], help: "Send email alerts for new messages, likes, etc." },
     ]
   },
   {
@@ -42,6 +45,16 @@ const SECTIONS = [
     fields: [
       { key: "superlike_count", label: "Daily Superlikes per User", type: "number", placeholder: "3" },
       { key: "max_photos", label: "Max Photos per User", type: "number", placeholder: "10" },
+    ]
+  },
+  {
+    title: "Registration & Verification",
+    icon: Shield,
+    color: "text-pink-400",
+    fields: [
+      { key: "require_email_verification", label: "Require Email Verification", type: "select", options: [["0","No (users access site instantly)"],["1","Yes (must verify email first)"]], help: "Toggle whether new users must verify their email" },
+      { key: "photo_moderation", label: "Photo Moderation (Manual Review)", type: "select", options: [["0","Auto-approve"],["1","Manual review required"]], help: "Require admin approval for all uploaded photos" },
+      { key: "auto_detect_contacts", label: "Auto-Detect Contact Info in Photos", type: "select", options: [["1","Enabled (reject suspicious photos)"],["0","Disabled"]], help: "Automatically reject photos that appear to contain phone numbers or contact info in the filename" },
     ]
   },
   {
@@ -67,6 +80,16 @@ const SECTIONS = [
   },
 ]
 
+const EMAIL_FIELDS = [
+  { key: "smtp_host", label: "SMTP Host", type: "text", placeholder: "smtp.gmail.com or mail.yourdomain.com" },
+  { key: "smtp_port", label: "SMTP Port", type: "number", placeholder: "587" },
+  { key: "smtp_user", label: "SMTP Username / Email", type: "text", placeholder: "noreply@yourdomain.com" },
+  { key: "smtp_pass", label: "SMTP Password", type: "password", placeholder: "Your email password or app password" },
+  { key: "smtp_from", label: "From Email", type: "text", placeholder: "noreply@yourdomain.com" },
+  { key: "smtp_from_name", label: "From Name", type: "text", placeholder: "Rich Dating Network" },
+  { key: "smtp_secure", label: "Use TLS/SSL", type: "select", options: [["0","No (STARTTLS on port 587)"],["1","Yes (SSL on port 465)"]] },
+]
+
 const DEFAULT_PACKAGES = [
   { name: "1 Month", days: 30, price: 9.99, popular: 0, description: "Flexible monthly plan", active: 1 },
   { name: "3 Months", days: 90, price: 24.99, popular: 1, description: "Save 17%", active: 1 },
@@ -81,9 +104,17 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingPkg, setSavingPkg] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
   const [showPasswords, setShowPasswords] = useState<Set<string>>(new Set())
   const [packages, setPackages] = useState<PremiumPkg[]>(DEFAULT_PACKAGES)
   const [pkgLoading, setPkgLoading] = useState(true)
+  const [logoUrl, setLogoUrl] = useState("")
+  const [faviconUrl, setFaviconUrl] = useState("")
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
+  const [testEmail, setTestEmail] = useState("")
+  const logoRef = useRef<HTMLInputElement>(null)
+  const faviconRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     authFetch("/api/admin/config").then(r => r.json()).then(d => {
@@ -95,6 +126,11 @@ export default function AdminSettings() {
       if (Array.isArray(d) && d.length > 0) setPackages(d)
       setPkgLoading(false)
     }).catch(() => setPkgLoading(false))
+
+    fetch("/api/branding/public").then(r => r.json()).then((d: any) => {
+      if (d.branding_logo) setLogoUrl(d.branding_logo)
+      if (d.branding_favicon) setFaviconUrl(d.branding_favicon)
+    }).catch(() => {})
   }, [])
 
   const save = async () => {
@@ -121,6 +157,35 @@ export default function AdminSettings() {
     } catch { toast.error("Failed to save packages") } finally { setSavingPkg(false) }
   }
 
+  const sendTestEmail = async () => {
+    if (!testEmail) { toast.error("Enter a test email address"); return }
+    setTestingEmail(true)
+    try {
+      const res = await authFetch("/api/admin/test-email", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmail })
+      })
+      const data = await res.json()
+      if (res.ok) toast.success("Test email sent! Check your inbox.")
+      else toast.error(data.error || "Failed to send test email")
+    } catch { toast.error("Failed") } finally { setTestingEmail(false) }
+  }
+
+  async function uploadBranding(type: "logo" | "favicon", file: File) {
+    const setter = type === "logo" ? setUploadingLogo : setUploadingFavicon
+    setter(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await authFetch(`/api/branding/upload/${type}`, { method: "POST", body: formData })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "Upload failed"); return }
+      if (type === "logo") setLogoUrl(data.url)
+      else setFaviconUrl(data.url)
+      toast.success(`${type === "logo" ? "Logo" : "Favicon"} updated!`)
+    } catch { toast.error("Upload failed") } finally { setter(false) }
+  }
+
   function togglePassword(key: string) {
     setShowPasswords(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
   }
@@ -135,6 +200,35 @@ export default function AdminSettings() {
 
   function removePkg(i: number) {
     setPackages(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function renderField(f: any) {
+    if (f.type === 'select') return (
+      <select value={config[f.key] ?? (f.options?.[0]?.[0] || "")}
+        onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
+        className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500">
+        {f.options?.map(([v, l]: string[]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    )
+    if (f.type === 'password') return (
+      <div className="relative">
+        <input type={showPasswords.has(f.key) ? 'text' : 'password'}
+          value={config[f.key] ?? ""}
+          onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
+          placeholder={f.placeholder}
+          className="w-full bg-gray-800 text-white px-3 py-2.5 pr-10 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
+        <button type="button" onClick={() => togglePassword(f.key)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+          {showPasswords.has(f.key) ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </div>
+    )
+    return (
+      <input type={f.type || "text"} value={config[f.key] ?? ""}
+        onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
+        placeholder={f.placeholder}
+        className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
+    )
   }
 
   if (loading) return (
@@ -157,6 +251,49 @@ export default function AdminSettings() {
         </button>
       </div>
 
+      {/* Branding */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800">
+          <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-pink-400">
+            <Image size={16} />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">Branding & Logo</h3>
+            <p className="text-gray-500 text-xs">Upload your site logo and favicon</p>
+          </div>
+        </div>
+        <div className="p-5 grid grid-cols-2 gap-6">
+          <div>
+            <label className="text-gray-300 text-sm font-medium mb-3 block">Site Logo</label>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-24 h-24 bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center overflow-hidden">
+                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <Camera size={24} className="text-gray-600" />}
+              </div>
+              <input ref={logoRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files?.[0] && uploadBranding("logo", e.target.files[0])} />
+              <button onClick={() => logoRef.current?.click()} disabled={uploadingLogo}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
+                {uploadingLogo ? "Uploading..." : "Upload Logo"}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-gray-300 text-sm font-medium mb-3 block">Favicon (browser icon)</label>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-24 h-24 bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center overflow-hidden">
+                {faviconUrl ? <img src={faviconUrl} alt="Favicon" className="w-12 h-12 object-contain" /> : <Camera size={24} className="text-gray-600" />}
+              </div>
+              <input ref={faviconRef} type="file" accept="image/*,.ico" className="hidden"
+                onChange={e => e.target.files?.[0] && uploadBranding("favicon", e.target.files[0])} />
+              <button onClick={() => faviconRef.current?.click()} disabled={uploadingFavicon}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
+                {uploadingFavicon ? "Uploading..." : "Upload Favicon"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {SECTIONS.map((section) => {
         const SectionIcon = section.icon
         return (
@@ -174,36 +311,56 @@ export default function AdminSettings() {
                     <label className="text-gray-300 text-sm font-medium">{f.label}</label>
                     {f.help && <span className="text-gray-500 text-xs max-w-xs text-right">{f.help}</span>}
                   </div>
-                  {f.type === 'select' ? (
-                    <select value={config[f.key] ?? (f.options?.[0]?.[0] || "")}
-                      onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
-                      className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500">
-                      {f.options?.map(([v, l]: string[]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  ) : f.type === 'password' ? (
-                    <div className="relative">
-                      <input type={showPasswords.has(f.key) ? 'text' : 'password'}
-                        value={config[f.key] ?? ""}
-                        onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder}
-                        className="w-full bg-gray-800 text-white px-3 py-2.5 pr-10 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
-                      <button type="button" onClick={() => togglePassword(f.key)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
-                        {showPasswords.has(f.key) ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                  ) : (
-                    <input type={f.type || "text"} value={config[f.key] ?? ""}
-                      onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
-                      placeholder={f.placeholder}
-                      className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
-                  )}
+                  {renderField(f)}
                 </div>
               ))}
             </div>
           </div>
         )
       })}
+
+      {/* Email / SMTP Settings */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800">
+          <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-blue-400">
+            <Mail size={16} />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-sm">Email / SMTP Settings</h3>
+            <p className="text-gray-500 text-xs">Configure outgoing mail for password resets, verification, and notifications</p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-gray-800/50 rounded-xl p-3 mb-2">
+            <p className="text-gray-400 text-xs leading-relaxed">
+              <strong className="text-gray-300">SMTP examples:</strong> Gmail: host=smtp.gmail.com port=587. Your host: mail.yourdomain.com port=587.
+              Use an App Password for Gmail (not your regular password). These settings are used for sending password reset links, email verification, and new message notifications.
+            </p>
+          </div>
+          {EMAIL_FIELDS.map((f: any) => (
+            <div key={f.key}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-gray-300 text-sm font-medium">{f.label}</label>
+              </div>
+              {renderField({ ...f, options: f.options })}
+            </div>
+          ))}
+
+          <div className="border-t border-gray-800 pt-4">
+            <label className="text-gray-300 text-sm font-medium mb-2 block">Test Email</label>
+            <div className="flex gap-2">
+              <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
+                className="flex-1 bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600"
+                placeholder="your@email.com" />
+              <button onClick={sendTestEmail} disabled={testingEmail}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                {testingEmail ? "Sending..." : "Send Test"}
+              </button>
+            </div>
+            <p className="text-gray-500 text-xs mt-1">Send a test email to verify your SMTP settings are correct</p>
+          </div>
+        </div>
+      </div>
 
       {/* Premium Packages Management */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
@@ -240,7 +397,6 @@ export default function AdminSettings() {
               <div className="bg-gray-800/50 rounded-xl p-3 mb-4">
                 <p className="text-gray-400 text-xs leading-relaxed">
                   <strong className="text-gray-300">Premium unlocks:</strong> Sharing contact info (phone, email, social handles, links) in chat, seeing profile visitors, VIP badge, priority placement, and more.
-                  Non-premium members cannot share contact details in chat at all.
                 </p>
               </div>
 

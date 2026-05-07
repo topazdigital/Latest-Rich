@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'wouter'
-import { Heart, Eye, EyeOff, Loader2, ChevronRight, ChevronLeft, Crown, Shield, Users, Check } from 'lucide-react'
+import { Heart, Eye, EyeOff, Loader2, ChevronRight, ChevronLeft, Crown, Shield, Users, Check, Camera, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { getStoredAuth } from '../lib/auth'
 import LocationAutocomplete from '../components/ui/LocationAutocomplete'
 
 declare global {
@@ -19,9 +20,13 @@ export default function RegisterPage() {
   const [, setLocation] = useLocation()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [socialLoading, setSocialLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
+  const [uploadedPhoto, setUploadedPhoto] = useState<{ url: string; filename: string } | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     name: '', email: '', password: '', gender: '1', lookingFor: '2',
     birthday: '', city: '', country: 'United States', countryCode: 'US',
@@ -72,6 +77,42 @@ export default function RegisterPage() {
 
   function update(k: string, v: string) { setForm(p => ({ ...p, [k]: v })) }
 
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) { toast.error('Photo must be under 10MB'); return }
+
+    const preview = URL.createObjectURL(file)
+    setPreviewUrl(preview)
+
+    setPhotoUploading(true)
+    try {
+      const auth = getStoredAuth()
+      if (!auth?.token) { toast.error('Please complete registration first'); setPhotoUploading(false); return }
+
+      const formData = new FormData()
+      formData.append('photo', file)
+      const res = await fetch('/api/photos/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth.token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPreviewUrl(null)
+        toast.error(data.error || 'Upload failed')
+        return
+      }
+      setUploadedPhoto({ url: `/api/uploads/${data.photo.photo}`, filename: data.photo.photo })
+      toast.success('Photo uploaded!')
+    } catch {
+      setPreviewUrl(null)
+      toast.error('Upload failed')
+    } finally { setPhotoUploading(false) }
+  }
+
   async function submit() {
     setLoading(true)
     try {
@@ -82,21 +123,43 @@ export default function RegisterPage() {
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Registration failed'); return }
-      toast.success('Welcome! Setting up your profile...')
-      await login(form.email, form.password)
-      setLocation('/home')
+
+      const { setStoredAuth } = await import('../lib/auth')
+      setStoredAuth({ user: data.user, token: data.token })
+
+      toast.success('Account created! Add your photo...')
+      setStep(4)
     } catch { toast.error('Something went wrong') }
     finally { setLoading(false) }
+  }
+
+  async function finishRegistration() {
+    if (!uploadedPhoto) {
+      toast.error('Please upload a profile photo to continue')
+      return
+    }
+    const auth = getStoredAuth()
+    if (!auth?.user) { setLocation('/login'); return }
+
+    if (auth.user.emailVerified === 0) {
+      const requireVerify = await fetch('/api/admin/config/public').then(r => r.json()).then(d => d.require_email_verification === '1').catch(() => false)
+      if (requireVerify) {
+        setLocation('/verify-email')
+        return
+      }
+    }
+
+    localStorage.setItem('show_welcome', '1')
+    setLocation('/home')
   }
 
   const isStep1Valid = form.name.trim().length >= 2 && form.email.includes('@') && form.password.length >= 6
   const isStep2Valid = !!form.birthday && !!form.gender
 
-  const steps = ['Account', 'About You', 'Location']
+  const steps = ['Account', 'About You', 'Location', 'Photo']
 
   return (
     <div className="min-h-screen flex">
-      {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-[42%] xl:w-[40%] flex-col relative overflow-hidden"
         style={{ background: 'linear-gradient(145deg, #1a0a0e 0%, #3d0d1a 40%, #7a1226 70%, #FF192C 100%)' }}>
         <div className="absolute inset-0 overflow-hidden">
@@ -128,7 +191,6 @@ export default function RegisterPage() {
               Join the most exclusive dating network for successful, ambitious singles worldwide.
             </p>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-8">
               {STATS.map((s, i) => (
                 <div key={i} className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
@@ -138,7 +200,6 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            {/* Features list */}
             <div className="space-y-3">
               {[
                 { icon: <Shield size={14} />, text: 'Verified & safe profiles only' },
@@ -161,10 +222,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL */}
       <div className="flex-1 bg-white overflow-y-auto">
         <div className="min-h-screen flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-14 xl:px-16 max-w-lg mx-auto w-full">
-          {/* Mobile logo */}
           <div className="lg:hidden mb-6">
             <Link href="/" className="inline-flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center">
@@ -174,34 +233,31 @@ export default function RegisterPage() {
             </Link>
           </div>
 
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-black text-gray-900 mb-1.5">Create your account</h1>
             <p className="text-gray-500 text-sm">Find your perfect match — free, fast, and secure</p>
           </div>
 
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-8">
+          <div className="flex items-center gap-1 mb-8 overflow-x-auto">
             {steps.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex items-center gap-1 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     step > i + 1 ? 'bg-brand-500 text-white' :
                     step === i + 1 ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' :
                     'bg-gray-100 text-gray-400'
                   }`}>
-                    {step > i + 1 ? <Check size={14} /> : i + 1}
+                    {step > i + 1 ? <Check size={12} /> : i + 1}
                   </div>
-                  <span className={`text-xs font-medium hidden sm:block ${step === i + 1 ? 'text-gray-900' : 'text-gray-400'}`}>{s}</span>
+                  <span className={`text-xs font-medium hidden sm:block whitespace-nowrap ${step === i + 1 ? 'text-gray-900' : 'text-gray-400'}`}>{s}</span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 w-6 sm:w-8 transition-all ${step > i + 1 ? 'bg-brand-500' : 'bg-gray-200'}`} />
+                  <div className={`h-0.5 w-4 sm:w-6 transition-all ${step > i + 1 ? 'bg-brand-500' : 'bg-gray-200'}`} />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Step 1 */}
           {step === 1 && (
             <div className="space-y-4">
               {socialConfig.googleClientId && (
@@ -256,7 +312,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Step 2 */}
           {step === 2 && (
             <div className="space-y-5">
               <div>
@@ -300,7 +355,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Step 3 */}
           {step === 3 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-500 -mt-2">Help us show you matches near you</p>
@@ -330,9 +384,81 @@ export default function RegisterPage() {
                   className="flex-1 py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20"
                   style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
                   {loading && <Loader2 size={17} className="animate-spin" />}
-                  Create Account 💝
+                  Continue <ChevronRight size={17} />
                 </button>
               </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-black text-gray-900 mb-1">Add Your Profile Photo</h2>
+                <p className="text-sm text-gray-500">Profiles with photos get 10x more matches. This is required to continue.</p>
+              </div>
+
+              <div className="flex flex-col items-center gap-4">
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  className={`w-40 h-40 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
+                    previewUrl ? 'border-brand-500 shadow-lg shadow-brand-500/20' : 'border-gray-300 hover:border-brand-400 bg-gray-50 hover:bg-brand-50'
+                  }`}>
+                  {photoUploading ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+                      <span className="text-xs text-gray-400">Uploading...</span>
+                    </div>
+                  ) : previewUrl ? (
+                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-center">
+                      <Camera className="w-10 h-10 text-gray-300" />
+                      <span className="text-xs text-gray-400">Tap to upload</span>
+                    </div>
+                  )}
+                </div>
+
+                {previewUrl && uploadedPhoto && (
+                  <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">
+                    <Check size={16} />
+                    Photo uploaded!
+                  </div>
+                )}
+
+                <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-2 px-6 py-3 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all">
+                  <Upload size={16} />
+                  {previewUrl ? 'Change Photo' : 'Choose Photo'}
+                </button>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-700 space-y-1">
+                <p className="font-semibold">Photo guidelines:</p>
+                <ul className="space-y-0.5 text-amber-600 text-xs">
+                  <li>• Your face must be clearly visible</li>
+                  <li>• No phone numbers, emails, or social handles</li>
+                  <li>• No explicit or inappropriate content</li>
+                  <li>• Real photos only — no avatars or cartoons</li>
+                </ul>
+              </div>
+
+              <button
+                onClick={finishRegistration}
+                disabled={!uploadedPhoto || photoUploading}
+                className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 disabled:opacity-40"
+                style={{ background: uploadedPhoto ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
+                Find My Matches 💝
+              </button>
+
+              <p className="text-center text-xs text-gray-400">
+                By registering you agree to our{' '}
+                <Link href="/terms" className="text-brand-500">Terms</Link> &{' '}
+                <Link href="/privacy" className="text-brand-500">Privacy Policy</Link>
+              </p>
             </div>
           )}
 

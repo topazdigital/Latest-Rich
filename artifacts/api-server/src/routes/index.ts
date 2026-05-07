@@ -19,6 +19,7 @@ import blockRouter from "./block"
 import locationRouter from "./location"
 import socialAuthRouter from "./social-auth"
 import boostRouter from "./boost"
+import brandingRouter from "./branding"
 
 const router: IRouter = Router()
 
@@ -41,6 +42,7 @@ router.use("/gifts", giftsRouter)
 router.use("/visits", visitsRouter)
 router.use("/location", locationRouter)
 router.use("/boost", boostRouter)
+router.use("/branding", brandingRouter)
 router.use("/", blockRouter)
 
 export default router

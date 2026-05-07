@@ -1,9 +1,9 @@
 import { db } from "@workspace/db"
 import {
   usersTable, messagesTable, notificationsTable,
-  fakeMessageTemplatesTable, autoMessageLogTable, likesTable
+  fakeMessageTemplatesTable, autoMessageLogTable, likesTable, siteConfigTable
 } from "@workspace/db/schema"
-import { eq, and, sql, notInArray, inArray } from "drizzle-orm"
+import { eq, and, inArray, notInArray } from "drizzle-orm"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -11,96 +11,171 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-export async function triggerAutoMessages(realUserId?: number): Promise<number> {
+async function getConfigVal(key: string, fallback: string): Promise<string> {
+  try {
+    const rows = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
+    return rows[0]?.value || fallback
+  } catch { return fallback }
+}
+
+async function isAutoMessagingEnabled(): Promise<boolean> {
+  const val = await getConfigVal("auto_messages_enabled", "1")
+  return val === "1"
+}
+
+async function getMinDelaySeconds(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_min_delay_seconds", "60"))
+}
+
+async function getMaxDelaySeconds(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_max_delay_seconds", "900"))
+}
+
+async function getNewUserDelaySeconds(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_new_user_delay_seconds", "5"))
+}
+
+async function getMessagesPerTrigger(): Promise<number> {
+  return parseInt(await getConfigVal("auto_messages_count", "3"))
+}
+
+function randomDelay(minSec: number, maxSec: number): number {
+  return minSec + Math.floor(Math.random() * (maxSec - minSec + 1))
+}
+
+export async function sendAutoMessagesToUser(realUserId: number): Promise<number> {
+  if (!(await isAutoMessagingEnabled())) return 0
+
   const templates = await db.select().from(fakeMessageTemplatesTable)
     .where(eq(fakeMessageTemplatesTable.active, 1))
   if (!templates.length) return 0
 
-  const realUsers = realUserId
-    ? await db.select().from(usersTable)
-        .where(and(eq(usersTable.id, realUserId), eq(usersTable.fake, 0)))
-        .limit(1)
-    : await db.select().from(usersTable)
-        .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
-        .limit(50)
+  const [realUser] = await db.select().from(usersTable)
+    .where(and(eq(usersTable.id, realUserId), eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
+    .limit(1)
+  if (!realUser) return 0
 
-  if (!realUsers.length) return 0
+  const genderFilter = realUser.looking === 3 ? [1, 2] : [realUser.looking ?? 2]
+
+  const alreadySentLogs = await db
+    .select({ fakeUserId: autoMessageLogTable.fakeUserId, templateId: autoMessageLogTable.templateId })
+    .from(autoMessageLogTable)
+    .where(eq(autoMessageLogTable.realUserId, realUser.id))
+
+  const usedFakeUserIds = [...new Set(alreadySentLogs.map((r: any) => r.fakeUserId).filter((id: any): id is number => id !== null && id !== 0))]
+  const usedTemplateIds = [...new Set(alreadySentLogs.map((r: any) => r.templateId).filter((id: any): id is number => id !== null && id !== 0))]
+
+  const availableTemplates = templates.filter((t: any) => !usedTemplateIds.includes(t.id))
+  if (!availableTemplates.length) return 0
+
+  const fakeUsersQuery = db.select().from(usersTable)
+    .where(and(
+      eq(usersTable.fake, 1),
+      eq(usersTable.banned, 0),
+      inArray(usersTable.gender, genderFilter),
+      ...(usedFakeUserIds.length > 0 ? [notInArray(usersTable.id, usedFakeUserIds)] : [])
+    ))
+    .limit(30)
+
+  const fakeUsers = await fakeUsersQuery
+  if (!fakeUsers.length) return 0
+
+  const numMessages = Math.min(await getMessagesPerTrigger(), availableTemplates.length, fakeUsers.length)
+  const selectedFakers = [...fakeUsers].sort(() => Math.random() - 0.5).slice(0, numMessages)
+  const shuffledTemplates = [...availableTemplates].sort(() => Math.random() - 0.5)
 
   let sentCount = 0
 
-  for (const realUser of realUsers) {
-    // looking: 1 = men, 2 = women, 3 = both  |  gender: 1 = man, 2 = woman
-    const genderFilter = realUser.looking === 3 ? [1, 2] : [realUser.looking ?? 2]
+  for (let i = 0; i < selectedFakers.length; i++) {
+    const faker = selectedFakers[i]
+    const template = shuffledTemplates[i % shuffledTemplates.length]
+    const msgTime = now()
 
-    const recentlyMessaged = await db
-      .select({ fakeUserId: autoMessageLogTable.fakeUserId })
-      .from(autoMessageLogTable)
-      .where(and(
-        eq(autoMessageLogTable.realUserId, realUser.id),
-        sql`${autoMessageLogTable.time} > ${now() - 86400 * 3}`
-      ))
+    await db.insert(messagesTable).values({
+      u1: faker.id,
+      u2: realUser.id,
+      message: template.message,
+      time: msgTime,
+      read: 0,
+    })
 
-    const excludeIds = recentlyMessaged
-      .map(r => r.fakeUserId)
-      .filter((id): id is number => id !== null)
+    await db.insert(notificationsTable).values({
+      userId: realUser.id,
+      fromId: faker.id,
+      type: "message",
+      message: `${faker.name} sent you a message`,
+      link: `/chat/${faker.id}`,
+      read: 0,
+      time: msgTime,
+    })
 
-    const fakeUsers = await db.select().from(usersTable)
-      .where(and(
-        eq(usersTable.fake, 1),
-        eq(usersTable.banned, 0),
-        inArray(usersTable.gender, genderFilter),
-        ...(excludeIds.length > 0 ? [notInArray(usersTable.id, excludeIds)] : [])
-      ))
-      .limit(20)
+    await db.insert(autoMessageLogTable).values({
+      fakeUserId: faker.id,
+      realUserId: realUser.id,
+      templateId: template.id,
+      time: now(),
+    })
 
-    if (!fakeUsers.length) continue
+    await db.insert(likesTable).values({
+      userId: faker.id,
+      targetId: realUser.id,
+      created: msgTime,
+    }).onConflictDoNothing()
 
-    const numMessages = Math.floor(Math.random() * 3) + 1
-    const selectedFakers = [...fakeUsers].sort(() => Math.random() - 0.5).slice(0, numMessages)
+    try {
+      const { sendNewMessageEmail } = await import("./mailer")
+      const siteUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN || "localhost"}`
+      const emailNotifs = await getConfigVal("email_notifications_enabled", "1")
+      if (emailNotifs === "1" && realUser.email && !realUser.email.includes("@rdn.local")) {
+        sendNewMessageEmail(realUser.email, realUser.name, faker.name, template.message, siteUrl).catch(() => {})
+      }
+    } catch {}
 
-    for (const faker of selectedFakers) {
-      const template = pickRandom(templates)
-      const msgTime = now() - Math.floor(Math.random() * 3600)
-
-      await db.insert(messagesTable).values({
-        u1: faker.id,
-        u2: realUser.id,
-        message: template.message,
-        time: msgTime,
-        read: 0,
-      })
-
-      await db.insert(notificationsTable).values({
-        userId: realUser.id,
-        fromId: faker.id,
-        type: "message",
-        message: `${faker.name} sent you a message`,
-        link: `/chat/${faker.id}`,
-        read: 0,
-        time: msgTime,
-      })
-
-      await db.insert(autoMessageLogTable).values({
-        fakeUserId: faker.id,
-        realUserId: realUser.id,
-        time: now(),
-      })
-
-      // Record the like using the correct schema fields (userId, targetId)
-      await db.insert(likesTable).values({
-        userId: faker.id,
-        targetId: realUser.id,
-        created: msgTime,
-      }).onConflictDoNothing()
-
-      sentCount++
-    }
+    sentCount++
   }
 
   return sentCount
 }
 
+export async function triggerAutoMessages(realUserId?: number, isNewUser = false): Promise<number> {
+  if (!(await isAutoMessagingEnabled())) return 0
+
+  if (realUserId) {
+    const minDelay = isNewUser ? await getNewUserDelaySeconds() : await getMinDelaySeconds()
+    const maxDelay = isNewUser ? await getNewUserDelaySeconds() : await getMaxDelaySeconds()
+    const delaySec = randomDelay(minDelay, maxDelay)
+    const delayMs = delaySec * 1000
+
+    setTimeout(async () => {
+      try {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, realUserId)).limit(1)
+        if (!user || user.fake === 1 || user.banned === 1) return
+
+        const cutoff = now() - (isNewUser ? 600 : 900)
+        if (parseInt(user.lastAccess || "0") < cutoff) return
+
+        await sendAutoMessagesToUser(realUserId)
+      } catch (err) {
+        console.error("[FakeScheduler] Error sending auto messages:", err)
+      }
+    }, delayMs)
+
+    return 0
+  }
+
+  const realUsers = await db.select().from(usersTable)
+    .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
+    .limit(50)
+
+  let total = 0
+  for (const u of realUsers) {
+    const sent = await sendAutoMessagesToUser(u.id)
+    total += sent
+  }
+  return total
+}
+
 export function startAutoMessageScheduler() {
-  setTimeout(() => { triggerAutoMessages().catch(console.error) }, 5000)
+  setTimeout(() => { triggerAutoMessages().catch(console.error) }, 10000)
   setInterval(() => { triggerAutoMessages().catch(console.error) }, 30 * 60 * 1000)
 }

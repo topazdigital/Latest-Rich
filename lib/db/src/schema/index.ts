@@ -18,6 +18,7 @@ export const usersTable = pgTable("users", {
   bio: text("bio").default(""),
   looking: integer("looking").default(2),
   verified: integer("verified").default(0),
+  emailVerified: integer("email_verified").default(0),
   premium: integer("premium").default(0),
   premiumExpiry: integer("premium_expiry").default(0),
   credits: integer("credits").default(0),
@@ -33,6 +34,7 @@ export const usersTable = pgTable("users", {
   online: integer("online").default(0),
   lastDailyBonus: integer("last_daily_bonus").default(0),
   profileComplete: integer("profile_complete").default(0),
+  welcomeShown: integer("welcome_shown").default(0),
 })
 
 export const userExtendedTable = pgTable("user_extended", {
@@ -56,6 +58,8 @@ export const photosTable = pgTable("photos", {
   photo: text("photo").notNull(),
   thumb: text("thumb").default(""),
   approved: integer("approved").default(1),
+  flagged: integer("flagged").default(0),
+  flagReason: text("flag_reason").default(""),
   main: integer("main").default(0),
   created: integer("created").default(0),
 })
@@ -175,6 +179,7 @@ export const autoMessageLogTable = pgTable("auto_message_log", {
   id: serial("id").primaryKey(),
   fakeUserId: integer("fake_user_id").notNull(),
   realUserId: integer("real_user_id").notNull(),
+  templateId: integer("template_id").default(0),
   time: integer("time").default(0),
 })
 
@@ -194,6 +199,14 @@ export const reportedUsersTable = pgTable("reported_users", {
 })
 
 export const passwordResetTokensTable = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expires: integer("expires").default(0),
+  used: integer("used").default(0),
+})
+
+export const emailVerificationsTable = pgTable("email_verifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),

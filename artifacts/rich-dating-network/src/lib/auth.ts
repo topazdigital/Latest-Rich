@@ -5,6 +5,8 @@ export interface User {
   photo: string
   photoThumb: string
   verified: number
+  emailVerified?: number
+  welcomeShown?: number
   premium: number
   credits: number
   gender: number

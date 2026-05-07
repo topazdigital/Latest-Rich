@@ -1,6 +1,9 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, userExtendedTable, activityTable, passwordResetTokensTable } from "@workspace/db/schema"
+import {
+  usersTable, userExtendedTable, activityTable,
+  passwordResetTokensTable, emailVerificationsTable, siteConfigTable
+} from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
@@ -22,9 +25,21 @@ function calcAge(birthday: string): number {
   } catch { return 0 }
 }
 
+async function getConfig(key: string): Promise<string> {
+  try {
+    const rows = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
+    return rows[0]?.value || ""
+  } catch { return "" }
+}
+
+function getSiteUrl(req: any): string {
+  return process.env.APP_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : `${req.protocol}://${req.get("host")}`)
+}
+
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, gender, lookingFor, birthday, city, country } = req.body
+    const { name, email, password, gender, lookingFor, birthday, city, country, countryCode } = req.body
     if (!name || !email || !password) {
       res.status(400).json({ error: "Name, email and password are required" })
       return
@@ -39,6 +54,8 @@ router.post("/register", async (req, res) => {
       return
     }
     const age = calcAge(birthday || "")
+    const registrationCredits = parseInt(await getConfig("registration_credits") || "50")
+
     const [user] = await db.insert(usersTable).values({
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -49,21 +66,48 @@ router.post("/register", async (req, res) => {
       age,
       city: city || "",
       country: country || "",
+      countryCode: countryCode || "",
       lastAccess: String(now()),
       created: now(),
-      credits: 50,
+      credits: registrationCredits,
       superlike: 3,
+      emailVerified: 0,
+      welcomeShown: 0,
     }).returning()
     await db.insert(userExtendedTable).values({ userId: user.id })
-    await db.insert(activityTable).values({ type: "register", userId: user.id, title: "New registration", message: `${user.name} joined from ${country || "unknown"}`, time: now() })
+    await db.insert(activityTable).values({
+      type: "register", userId: user.id,
+      title: "New registration",
+      message: `${user.name} joined from ${country || "unknown"}`,
+      time: now()
+    })
+
+    const requireEmailVerification = await getConfig("require_email_verification")
+    if (requireEmailVerification === "1") {
+      const verifyToken = crypto.randomBytes(32).toString("hex")
+      await db.insert(emailVerificationsTable).values({
+        userId: user.id,
+        token: verifyToken,
+        expires: now() + 86400,
+        used: 0,
+      })
+      const siteUrl = getSiteUrl(req)
+      import("../lib/mailer").then(({ sendVerificationEmail }) => {
+        sendVerificationEmail(user.email, user.name, verifyToken, siteUrl).catch(() => {})
+      }).catch(() => {})
+    }
 
     import("../lib/fake-message-scheduler").then(({ triggerAutoMessages }) => {
-      triggerAutoMessages(user.id).catch(() => {})
+      triggerAutoMessages(user.id, true).catch(() => {})
     }).catch(() => {})
 
     const token = signToken({ userId: user.id })
     const { password: _, ...safeUser } = user
-    res.json({ token, user: safeUser })
+    res.json({
+      token,
+      user: safeUser,
+      requireEmailVerification: requireEmailVerification === "1",
+    })
   } catch (err: any) {
     console.error("Register error:", err)
     res.status(500).json({ error: "Registration failed" })
@@ -94,11 +138,14 @@ router.post("/login", async (req, res) => {
       return
     }
     await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, user.id))
-    await db.insert(activityTable).values({ type: "login", userId: user.id, title: "User login", message: `${user.name} logged in`, time: now() }).catch(() => {})
+    await db.insert(activityTable).values({
+      type: "login", userId: user.id,
+      title: "User login", message: `${user.name} logged in`, time: now()
+    }).catch(() => {})
 
     if (user.fake !== 1) {
       import("../lib/fake-message-scheduler").then(({ triggerAutoMessages }) => {
-        triggerAutoMessages(user.id).catch(() => {})
+        triggerAutoMessages(user.id, false).catch(() => {})
       }).catch(() => {})
     }
 
@@ -120,44 +167,100 @@ router.post("/logout", async (req, res) => {
       if (payload?.userId) {
         await db.update(usersTable).set({ online: 0 }).where(eq(usersTable.id, payload.userId))
       }
-    } catch { /* ignore */ }
+    } catch { }
   }
   res.json({ success: true })
 })
 
-// Forgot password — request reset link
+router.post("/verify-email", async (req, res) => {
+  try {
+    const { token } = req.body
+    if (!token) { res.status(400).json({ error: "Token required" }); return }
+    const [record] = await db.select().from(emailVerificationsTable).where(eq(emailVerificationsTable.token, token)).limit(1)
+    if (!record || record.used === 1 || record.expires < now()) {
+      res.status(400).json({ error: "Invalid or expired verification link" }); return
+    }
+    await db.update(usersTable).set({ emailVerified: 1 }).where(eq(usersTable.id, record.userId))
+    await db.update(emailVerificationsTable).set({ used: 1 }).where(eq(emailVerificationsTable.id, record.id))
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, record.userId)).limit(1)
+    const jwtToken = signToken({ userId: record.userId })
+    const { password: _, ...safeUser } = user
+    res.json({ success: true, token: jwtToken, user: safeUser, message: "Email verified! Welcome back 🎉" })
+  } catch (err) {
+    console.error("Verify email error:", err)
+    res.status(500).json({ error: "Verification failed" })
+  }
+})
+
+router.get("/verify-email/:token", async (req, res) => {
+  try {
+    const { token } = req.params
+    const [record] = await db.select().from(emailVerificationsTable).where(eq(emailVerificationsTable.token, token)).limit(1)
+    if (!record || record.used === 1 || record.expires < now()) {
+      res.status(400).json({ valid: false, error: "Invalid or expired link" }); return
+    }
+    res.json({ valid: true })
+  } catch {
+    res.status(500).json({ valid: false })
+  }
+})
+
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) { res.status(400).json({ error: "Email required" }); return }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
+    if (!user) { res.json({ success: true }); return }
+    if (user.emailVerified === 1) { res.json({ success: true, message: "Email already verified" }); return }
+
+    await db.update(emailVerificationsTable).set({ used: 1 }).where(eq(emailVerificationsTable.userId, user.id))
+    const verifyToken = crypto.randomBytes(32).toString("hex")
+    await db.insert(emailVerificationsTable).values({ userId: user.id, token: verifyToken, expires: now() + 86400, used: 0 })
+
+    const siteUrl = getSiteUrl(req)
+    import("../lib/mailer").then(({ sendVerificationEmail }) => {
+      sendVerificationEmail(user.email, user.name, verifyToken, siteUrl).catch(() => {})
+    }).catch(() => {})
+
+    res.json({ success: true, message: "Verification email sent" })
+  } catch (err) {
+    res.status(500).json({ error: "Failed to resend" })
+  }
+})
+
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body
     if (!email) { res.status(400).json({ error: "Email is required" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
-    // Always return success to prevent email enumeration
     if (!user) { res.json({ success: true, message: "If this email is registered, you will receive reset instructions." }); return }
 
-    // Invalidate previous tokens
     await db.update(passwordResetTokensTable).set({ used: 1 }).where(eq(passwordResetTokensTable.userId, user.id))
 
     const token = crypto.randomBytes(32).toString("hex")
-    const expires = now() + 3600 // 1 hour
+    const expires = now() + 3600
     await db.insert(passwordResetTokensTable).values({ userId: user.id, token, expires, used: 0 })
 
-    // In production you'd send an email. Here we return the token for in-app reset flow
-    // and log to activity so admin can see it
+    const siteUrl = getSiteUrl(req)
+    import("../lib/mailer").then(({ sendPasswordResetEmail }) => {
+      sendPasswordResetEmail(user.email, user.name, token, siteUrl).catch(() => {})
+    }).catch(() => {})
+
     await db.insert(activityTable).values({
       type: "system", userId: user.id,
       title: "Password reset requested",
-      message: `Reset token generated for ${user.email}`,
+      message: `Reset link sent to ${user.email}`,
       time: now()
     }).catch(() => {})
 
-    res.json({ success: true, message: "Password reset instructions sent to your email.", token })
+    res.json({ success: true, message: "Password reset instructions have been sent to your email." })
   } catch (err) {
     console.error("Forgot password error:", err)
     res.status(500).json({ error: "Failed to process request" })
   }
 })
 
-// Reset password with token
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body
@@ -173,21 +276,24 @@ router.post("/reset-password", async (req, res) => {
     await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, resetRecord.userId))
     await db.update(passwordResetTokensTable).set({ used: 1 }).where(eq(passwordResetTokensTable.id, resetRecord.id))
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, resetRecord.userId)).limit(1)
+    const jwtToken = signToken({ userId: resetRecord.userId })
+    const { password: _, ...safeUser } = user
+
     await db.insert(activityTable).values({
       type: "system", userId: resetRecord.userId,
       title: "Password reset completed",
-      message: `User ID ${resetRecord.userId} reset their password`,
+      message: `User ${user.name} reset their password`,
       time: now()
     }).catch(() => {})
 
-    res.json({ success: true, message: "Password updated successfully. You can now sign in." })
+    res.json({ success: true, message: "Password updated successfully. Welcome back!", token: jwtToken, user: safeUser })
   } catch (err) {
     console.error("Reset password error:", err)
     res.status(500).json({ error: "Failed to reset password" })
   }
 })
 
-// Verify reset token validity
 router.get("/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params
