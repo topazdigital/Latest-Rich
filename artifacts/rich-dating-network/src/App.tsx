@@ -25,6 +25,7 @@ import VisitorsPage from "./pages/VisitorsPage"
 import LikesPage from "./pages/LikesPage"
 import BoostPage from "./pages/BoostPage"
 import MainNav from "./components/layout/MainNav"
+import SEOHead from "./components/layout/SEOHead"
 import NotFound from "./pages/not-found"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost"]
@@ -82,6 +83,7 @@ function MyProfile() {
 function Router() {
   return (
     <AuthGuard>
+      <SEOHead />
       <AppLayout>
         <Switch>
           <Route path="/" component={LandingPage} />

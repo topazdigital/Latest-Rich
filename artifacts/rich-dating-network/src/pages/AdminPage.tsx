@@ -9,6 +9,7 @@ import AdminSettings from "../components/admin/AdminSettings"
 import AdminOrders from "../components/admin/AdminOrders"
 import AdminFakeUsers from "../components/admin/AdminFakeUsers"
 import AdminBoost from "../components/admin/AdminBoost"
+import AdminPayments from "../components/admin/AdminPayments"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -16,6 +17,7 @@ const MENU = [
   { key: "fake-users", label: "Fake Users", icon: "🤖" },
   { key: "fake-messages", label: "Fake Messages", icon: "💬" },
   { key: "boost", label: "Boost Config", icon: "⚡" },
+  { key: "payments", label: "Payment Providers", icon: "💳" },
   { key: "activity", label: "Activity Log", icon: "📋" },
   { key: "orders", label: "Orders / Revenue", icon: "💰" },
   { key: "settings", label: "Settings", icon: "⚙️" },
@@ -34,77 +36,109 @@ export default function AdminPage() {
   if (!user || user.admin !== 1) return null
 
   return (
-    <div className="min-h-screen bg-gray-950 flex">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="p-4 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center text-white font-bold text-lg shadow-lg">❤️</div>
+    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex' }}>
+      {/* Sidebar */}
+      <aside style={{
+        position: 'fixed', inset: '0 auto 0 0', zIndex: 50,
+        width: '16rem', background: '#0f172a',
+        borderRight: '1px solid #1e293b',
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.2s',
+        display: 'flex', flexDirection: 'column',
+      }} className="admin-sidebar">
+        {/* Logo */}
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid #1e293b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.875rem', background: 'linear-gradient(135deg,#FF192C,#ff5f6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(255,25,44,0.35)' }}>❤️</div>
             <div>
-              <div className="text-white font-bold text-sm">Rich Dating Network</div>
-              <div className="text-brand-400 text-xs font-medium">Control Panel</div>
+              <p style={{ color: '#fff', fontWeight: 800, fontSize: '0.82rem' }}>Rich Dating Network</p>
+              <p style={{ color: '#FF192C', fontSize: '0.7rem', fontWeight: 700 }}>Admin Panel</p>
             </div>
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-6 p-3 bg-gray-800 rounded-xl border border-gray-700">
-            <div className="w-9 h-9 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+        {/* Admin user */}
+        <div style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', background: '#1e293b', borderRadius: '0.875rem', border: '1px solid #334155' }}>
+            <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '50%', background: '#FF192C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '0.875rem', flexShrink: 0 }}>
               {user.name?.[0]?.toUpperCase()}
             </div>
-            <div>
-              <div className="text-white text-sm font-medium">{user.name}</div>
-              <div className="text-brand-400 text-xs font-bold tracking-wide">ADMINISTRATOR</div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</p>
+              <p style={{ color: '#FF192C', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em' }}>ADMINISTRATOR</p>
             </div>
           </div>
 
-          <nav className="space-y-1">
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             {MENU.map(m => (
-              <button
-                key={m.key}
-                onClick={() => { setTab(m.key); setSidebarOpen(false) }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                  tab === m.key
-                    ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }`}
-              >
-                <span className="text-base">{m.icon}</span>
-                <span className="font-medium">{m.label}</span>
+              <button key={m.key} onClick={() => { setTab(m.key); setSidebarOpen(false) }} style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '0.625rem 0.875rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
+                background: tab === m.key ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
+                color: tab === m.key ? '#fff' : '#94a3b8',
+                fontSize: '0.82rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
+                fontFamily: 'inherit',
+                boxShadow: tab === m.key ? '0 4px 12px rgba(255,25,44,0.3)' : 'none',
+              }}
+                onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#1e293b' }}
+                onMouseLeave={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                <span style={{ fontSize: '1rem' }}>{m.icon}</span>
+                <span>{m.label}</span>
               </button>
             ))}
           </nav>
 
-          <div className="mt-6 pt-6 border-t border-gray-800">
-            <button onClick={() => setLocation("/home")} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-              <span>🏠</span><span>Back to App</span>
+          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #1e293b' }}>
+            <button onClick={() => setLocation("/home")} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+              padding: '0.625rem 0.875rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
+              background: 'transparent', color: '#94a3b8', fontSize: '0.82rem', fontFamily: 'inherit', fontWeight: 600,
+            }}>
+              <span>🏠</span> Back to App
             </button>
           </div>
         </div>
       </aside>
 
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} />}
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.6)' }} onClick={() => setSidebarOpen(false)} />
+      )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden text-gray-400 hover:text-white p-1">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Main content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }} className="admin-main">
+        <header style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.875rem', position: 'sticky', top: 0, zIndex: 10 }}>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex' }} className="sidebar-toggle">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h1 className="text-white font-semibold">{MENU.find(m => m.key === tab)?.label}</h1>
+          <div>
+            <h1 style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{MENU.find(m => m.key === tab)?.label}</h1>
+            <p style={{ color: '#475569', fontSize: '0.72rem' }}>Rich Dating Network · Admin</p>
+          </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
           {tab === "dashboard" && <AdminDashboard />}
           {tab === "users" && <AdminUsers />}
           {tab === "fake-users" && <AdminFakeUsers />}
           {tab === "fake-messages" && <AdminFakeMessages />}
           {tab === "boost" && <AdminBoost />}
+          {tab === "payments" && <AdminPayments />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "settings" && <AdminSettings />}
         </main>
       </div>
+
+      <style>{`
+        @media (min-width: 768px) {
+          .admin-sidebar { transform: translateX(0) !important; position: relative !important; }
+          .admin-main { margin-left: 0; }
+          .sidebar-toggle { display: none !important; }
+        }
+      `}</style>
     </div>
   )
 }

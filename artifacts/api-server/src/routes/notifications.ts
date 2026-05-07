@@ -23,8 +23,15 @@ router.get("/count", requireAuth, async (req, res) => {
       .where(and(eq(notificationsTable.userId, req.userId!), eq(notificationsTable.read, 0)))
     const unreadMsgs = await db.select().from(messagesTable)
       .where(and(eq(messagesTable.u2, req.userId!), eq(messagesTable.read, 0)))
-    res.json({ unread: unreadNotifs.length, chatUnread: unreadMsgs.length })
-  } catch { res.status(500).json({ unread: 0, chatUnread: 0 }) }
+    res.json({ count: unreadNotifs.length, unread: unreadNotifs.length, chatUnread: unreadMsgs.length })
+  } catch { res.status(500).json({ count: 0, unread: 0, chatUnread: 0 }) }
+})
+
+router.post("/read-all", requireAuth, async (req, res) => {
+  try {
+    await db.update(notificationsTable).set({ read: 1 }).where(eq(notificationsTable.userId, req.userId!))
+    res.json({ success: true })
+  } catch { res.status(500).json({ error: "Failed" }) }
 })
 
 export default router

@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'wouter'
-import { Home, Search, Flame, MessageCircle, User, Bell, Heart, Gift, Eye, Settings, Crown, Coins, Zap } from 'lucide-react'
+import { Home, Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap } from 'lucide-react'
 import { getPhotoUrl } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
+import NotificationDropdown from './NotificationDropdown'
 
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
@@ -15,97 +16,109 @@ const navItems = [
 export default function MainNav() {
   const [location] = useLocation()
   const { user } = useAuth()
-  const { unread, chatUnread } = useNotifications()
+  const { chatUnread } = useNotifications()
 
   return (
     <>
       {/* Top header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100/80 h-14 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
-          <Link href="/home" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl gradient-brand flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
-              <Heart className="w-4 h-4 text-white fill-white" />
+      <header style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
+        background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(0,0,0,0.07)',
+        height: '3.5rem',
+        boxShadow: '0 1px 12px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 1rem', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/home" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+            <div style={{ width: '2rem', height: '2rem', borderRadius: '0.75rem', background: 'linear-gradient(135deg,#FF192C,#ff5f6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,25,44,0.3)' }}>
+              <Heart size={14} color="#fff" fill="#fff" />
             </div>
-            <span className="font-black text-gray-900 hidden sm:block text-sm tracking-tight">Rich <span className="text-brand-500">Dating</span></span>
+            <span style={{ fontWeight: 900, color: '#111827', fontSize: '0.9rem', letterSpacing: '-0.02em' }}>
+              Rich <span style={{ color: '#FF192C' }}>Dating</span>
+            </span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-0.5">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} className="desktop-nav">
             {navItems.map(item => {
               const active = location.startsWith(item.href)
               const badge = item.href === '/chat' ? chatUnread : 0
               return (
-                <Link key={item.href} href={item.href}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all relative ${active ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}>
-                  <item.icon size={16} />
+                <Link key={item.href} href={item.href} style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.45rem 0.875rem', borderRadius: '0.75rem',
+                  fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
+                  position: 'relative', transition: 'all 0.15s',
+                  background: active ? '#fff0f1' : 'transparent',
+                  color: active ? '#FF192C' : '#6b7280',
+                }}>
+                  <item.icon size={15} />
                   {item.label}
                   {badge > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-brand-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    <span style={{ position: 'absolute', top: '-2px', right: '-2px', minWidth: '16px', height: '16px', background: '#FF192C', color: '#fff', fontSize: '10px', fontWeight: 800, borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
                       {badge > 99 ? '99+' : badge}
                     </span>
                   )}
                 </Link>
               )
             })}
-            <Link href="/visitors"
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${location.startsWith('/visitors') ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}>
-              <Eye size={16} /> Visitors
+            <Link href="/visitors" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', transition: 'all 0.15s', background: location.startsWith('/visitors') ? '#fff0f1' : 'transparent', color: location.startsWith('/visitors') ? '#FF192C' : '#6b7280' }}>
+              <Eye size={15} /> Visitors
             </Link>
-            <Link href="/gifts"
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all ${location.startsWith('/gifts') ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}>
-              <Gift size={16} /> Gifts
+            <Link href="/gifts" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.875rem', borderRadius: '0.75rem', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', transition: 'all 0.15s', background: location.startsWith('/gifts') ? '#fff0f1' : 'transparent', color: location.startsWith('/gifts') ? '#FF192C' : '#6b7280' }}>
+              <Gift size={15} /> Gifts
             </Link>
           </nav>
 
           {/* Right actions */}
-          <div className="flex items-center gap-1.5">
-            {/* Boost button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {user && user.fake !== 1 && (
-              <Link href="/boost"
-                className={`hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${location.startsWith('/boost') ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200'}`}>
-                <Zap size={12} className={location.startsWith('/boost') ? 'fill-white' : ''} /> Boost
+              <Link href="/boost" style={{
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+                borderRadius: '0.75rem', padding: '0.35rem 0.75rem',
+                fontSize: '0.75rem', fontWeight: 800, textDecoration: 'none', transition: 'all 0.15s',
+                background: location.startsWith('/boost') ? 'linear-gradient(135deg,#f97316,#ef4444)' : '#fff7ed',
+                color: location.startsWith('/boost') ? '#fff' : '#ea580c',
+                border: location.startsWith('/boost') ? 'none' : '1px solid #fed7aa',
+                boxShadow: location.startsWith('/boost') ? '0 3px 10px rgba(249,115,22,0.35)' : 'none',
+              }} className="boost-btn">
+                <Zap size={12} fill={location.startsWith('/boost') ? '#fff' : 'none'} /> Boost
               </Link>
             )}
 
-            {/* Credits indicator */}
             {user && user.fake !== 1 && (
-              <Link href="/credits"
-                className="hidden sm:flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors">
+              <Link href="/credits" style={{
+                display: 'flex', alignItems: 'center', gap: '0.35rem',
+                background: '#fffbeb', border: '1px solid #fde68a',
+                color: '#b45309', borderRadius: '0.75rem', padding: '0.35rem 0.75rem',
+                fontSize: '0.75rem', fontWeight: 800, textDecoration: 'none',
+              }} className="credits-btn">
                 💳 {user.credits || 0}
               </Link>
             )}
 
-            {/* Premium badge */}
             {user?.premium === 1 && (
-              <span className="hidden sm:flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-sm">
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', borderRadius: '0.75rem', padding: '0.35rem 0.75rem', fontSize: '0.72rem', fontWeight: 800 }} className="vip-badge">
                 <Crown size={11} /> VIP
               </span>
             )}
 
-            {/* Notifications */}
-            <Link href="/notifications" className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700">
-              <Bell size={18} />
-              {unread > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 bg-brand-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 shadow-sm">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </Link>
+            {/* Notification bell with dropdown */}
+            <NotificationDropdown />
 
-            {/* Admin */}
             {user?.admin === 1 && (
-              <Link href="/admin" className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700" title="Admin Panel">
+              <Link href="/admin" style={{ width: '2.25rem', height: '2.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', color: '#6b7280', textDecoration: 'none', transition: 'all 0.15s' }}
+                title="Admin Panel">
                 <Settings size={17} />
               </Link>
             )}
 
-            {/* Profile avatar */}
-            <Link href="/profile" className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-brand-200 hover:ring-brand-400 transition-all flex-shrink-0 shadow-sm">
+            <Link href="/profile" style={{ width: '2rem', height: '2rem', borderRadius: '50%', overflow: 'hidden', outline: '2px solid #ffc5c9', outlineOffset: '1px', flexShrink: 0, display: 'block' }}>
               <img
                 src={getPhotoUrl(user?.photoThumb || user?.photo)}
                 alt="Profile"
-                className="w-full h-full object-cover"
-                onError={e => (e.currentTarget.src = '/images/default-avatar.svg')}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={e => { (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.svg' }}
               />
             </Link>
           </div>
@@ -113,35 +126,52 @@ export default function MainNav() {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/98 backdrop-blur-md border-t border-gray-100 md:hidden mobile-nav-safe shadow-lg">
-        <div className="grid grid-cols-5 h-16">
+      <nav style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+        background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)',
+        borderTop: '1px solid rgba(0,0,0,0.07)',
+        boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
+      }} className="mobile-nav">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', height: '4rem' }}>
           {navItems.map(item => {
             const active = location.startsWith(item.href)
             const badge = item.href === '/chat' ? chatUnread : 0
             return (
-              <Link key={item.href} href={item.href}
-                className={`nav-item pt-2 relative transition-colors ${active ? 'text-brand-500' : 'text-gray-400 hover:text-gray-600'}`}>
-                <div className="relative">
-                  {active && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-xl bg-brand-50" />
-                    </div>
-                  )}
-                  <div className="relative">
+              <Link key={item.href} href={item.href} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '0.2rem', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.02em',
+                textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', position: 'relative',
+                color: active ? '#FF192C' : '#9ca3af', paddingTop: '0.5rem', transition: 'color 0.15s',
+              }}>
+                <div style={{ position: 'relative' }}>
+                  {active && <div style={{ position: 'absolute', inset: '-6px', background: '#fff0f1', borderRadius: '0.75rem' }} />}
+                  <div style={{ position: 'relative' }}>
                     <item.icon size={22} strokeWidth={active ? 2.5 : 2} />
                   </div>
                   {badge > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-brand-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', minWidth: '14px', height: '14px', background: '#FF192C', color: '#fff', fontSize: '9px', fontWeight: 800, borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>
                       {badge > 9 ? '9+' : badge}
                     </span>
                   )}
                 </div>
-                <span className={active ? 'text-brand-500' : ''}>{item.label}</span>
+                <span style={{ color: active ? '#FF192C' : '#9ca3af' }}>{item.label}</span>
               </Link>
             )
           })}
         </div>
       </nav>
+
+      <style>{`
+        @media (max-width: 767px) {
+          .desktop-nav { display: none !important; }
+          .boost-btn { display: none !important; }
+          .credits-btn { display: none !important; }
+          .vip-badge { display: none !important; }
+        }
+        @media (min-width: 768px) {
+          .mobile-nav { display: none !important; }
+        }
+      `}</style>
     </>
   )
 }
