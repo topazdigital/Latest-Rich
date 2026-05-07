@@ -31,4 +31,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Start background auto-message scheduler
+import("./lib/fake-message-scheduler").then(({ startAutoMessageScheduler }) => {
+  startAutoMessageScheduler();
+}).catch((err) => logger.error({ err }, "Failed to start auto-message scheduler"));
+
 export default app;
