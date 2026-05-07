@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Clock, Coins, TrendingUp, Crown, Loader2, ChevronRight, Star, Users } from 'lucide-react'
+import { Zap, Clock, TrendingUp, Crown, Loader2, ChevronRight, Star, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authFetch } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
@@ -15,15 +15,8 @@ export default function BoostPage() {
   const [status, setStatus] = useState<BoostStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [boosting, setBoosting] = useState(false)
+  const [timeLeftStr, setTimeLeftStr] = useState('')
   const { user } = useAuth()
-
-  function timeLeft(endTime: number): string {
-    const diff = endTime - Math.floor(Date.now() / 1000)
-    if (diff <= 0) return 'Expired'
-    const m = Math.floor(diff / 60)
-    const s = diff % 60
-    return m > 0 ? `${m}m ${s}s` : `${s}s`
-  }
 
   async function fetchStatus() {
     try {
@@ -36,9 +29,22 @@ export default function BoostPage() {
 
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(fetchStatus, 10000)
+    const interval = setInterval(fetchStatus, 15000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (!status?.boost?.endTime) return
+    const tick = () => {
+      const diff = status.boost!.endTime - Math.floor(Date.now() / 1000)
+      if (diff <= 0) { setTimeLeftStr('Expired'); return }
+      const m = Math.floor(diff / 60), s = diff % 60
+      setTimeLeftStr(m > 0 ? `${m}m ${s}s` : `${s}s`)
+    }
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => clearInterval(t)
+  }, [status?.boost?.endTime])
 
   async function activateBoost() {
     setBoosting(true)
@@ -55,145 +61,208 @@ export default function BoostPage() {
 
   if (loading) {
     return (
-      <div className="page-container flex items-center justify-center min-h-[60vh]">
-        <Loader2 size={28} className="animate-spin text-brand-500" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 size={28} color="#FF192C" style={{ animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
-  const boost = status?.boost
   const config = status?.config || { credits: 50, duration: 30 }
   const credits = status?.credits || 0
   const canAfford = credits >= config.credits
 
   return (
-    <div className="page-container max-w-2xl">
+    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+
       {/* Header */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4 shadow-2xl shadow-orange-500/30"
-          style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}>
-          <Zap className="w-10 h-10 text-white fill-white" />
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{
+          width: '5rem', height: '5rem',
+          borderRadius: '1.5rem',
+          background: 'linear-gradient(135deg, #f97316, #ef4444)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 1rem',
+          boxShadow: '0 8px 32px rgba(249,115,22,0.35)',
+        }}>
+          <Zap size={40} color="#fff" fill="#fff" />
         </div>
-        <h1 className="text-3xl font-black text-gray-900 mb-2">Boost Profile</h1>
-        <p className="text-gray-500 text-base max-w-sm mx-auto">
-          Pin your profile to the top of discovery. Get up to 10x more profile views!
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#111827', marginBottom: '0.5rem' }}>Boost Your Profile</h1>
+        <p style={{ color: '#6b7280', fontSize: '0.95rem', maxWidth: '24rem', margin: '0 auto' }}>
+          Pin your profile to the top of discovery and get up to 10× more views!
         </p>
       </div>
 
       {/* Active boost banner */}
-      {status?.active && boost && (
-        <div className="rounded-3xl p-6 mb-6 text-white relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}>
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-10 translate-x-10" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-3 h-3 bg-green-300 rounded-full animate-pulse shadow-lg shadow-green-300/50" />
-              <span className="font-bold text-lg">Boost Active!</span>
-            </div>
-            <p className="text-white/80 text-sm mb-4">Your profile is pinned at the top of discovery. Making the most of it! 🔥</p>
-            <div className="flex items-center gap-2 bg-white/20 rounded-2xl px-4 py-3 w-fit">
-              <Clock size={16} />
-              <span className="font-bold text-lg">{timeLeft(boost.endTime)}</span>
-              <span className="text-white/70 text-sm">remaining</span>
-            </div>
+      {status?.active && status.boost && (
+        <div style={{
+          background: 'linear-gradient(135deg, #f97316, #ef4444)',
+          borderRadius: '1.25rem',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          color: '#fff',
+          boxShadow: '0 6px 24px rgba(249,115,22,0.35)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: '-1.5rem', right: '-1.5rem', width: '8rem', height: '8rem', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+            <div style={{ width: '0.75rem', height: '0.75rem', background: '#86efac', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
+            <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>Boost Active!</span>
           </div>
+          <p style={{ opacity: 0.85, fontSize: '0.85rem', marginBottom: '1rem' }}>
+            Your profile is pinned at the top of discovery. Make it count! 🔥
+          </p>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+            background: 'rgba(255,255,255,0.2)', borderRadius: '0.875rem', padding: '0.5rem 1rem',
+          }}>
+            <Clock size={16} color="#fff" />
+            <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{timeLeftStr}</span>
+            <span style={{ opacity: 0.75, fontSize: '0.82rem' }}>remaining</span>
+          </div>
+          <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }`}</style>
         </div>
       )}
 
       {/* Main card */}
       {!status?.active && (
-        <div className="card p-8 mb-6">
-          <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+          {/* Features grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
             {[
-              { icon: TrendingUp, label: 'Top Placement', desc: 'Appear first in discovery' },
-              { icon: Users, label: 'More Views', desc: 'Up to 10x more profile visits' },
-              { icon: Star, label: 'Premium Badge', desc: 'Special boost indicator' },
+              { icon: TrendingUp, label: 'Top Placement', desc: 'Appear #1 in discovery', color: '#eff6ff', iconColor: '#2563eb' },
+              { icon: Users, label: '10× More Views', desc: 'Massive visibility boost', color: '#f0fdf4', iconColor: '#16a34a' },
+              { icon: Star, label: '⚡ Badge', desc: 'Special boost indicator', color: '#fff7ed', iconColor: '#ea580c' },
             ].map((f, i) => (
-              <div key={i} className="text-center p-4 rounded-2xl bg-gray-50 hover:bg-brand-50 transition-colors group">
-                <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center text-white mx-auto mb-3 group-hover:scale-110 transition-transform shadow-md">
-                  <f.icon size={18} />
+              <div key={i} style={{
+                textAlign: 'center',
+                padding: '0.875rem 0.5rem',
+                borderRadius: '0.875rem',
+                background: f.color,
+                transition: 'transform 0.2s',
+              }}>
+                <div style={{
+                  width: '2.25rem', height: '2.25rem', borderRadius: '0.75rem',
+                  background: 'linear-gradient(135deg, #FF192C, #ff5f6b)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 0.5rem',
+                }}>
+                  <f.icon size={16} color="#fff" />
                 </div>
-                <div className="text-sm font-bold text-gray-900 mb-1">{f.label}</div>
-                <div className="text-xs text-gray-500">{f.desc}</div>
+                <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#111827', marginBottom: '0.2rem' }}>{f.label}</p>
+                <p style={{ fontSize: '0.68rem', color: '#6b7280' }}>{f.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* Pricing */}
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-100 rounded-2xl p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Zap size={18} className="text-orange-500" />
-                  <span className="font-bold text-gray-900">Profile Boost</span>
-                </div>
-                <div className="text-sm text-gray-500">{config.duration} minutes of top placement</div>
+          {/* Price display */}
+          <div style={{
+            background: 'linear-gradient(135deg, #fff7ed, #fff)',
+            border: '1.5px solid #fed7aa',
+            borderRadius: '1rem',
+            padding: '1rem 1.25rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: '1rem',
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                <Zap size={16} color="#f97316" />
+                <span style={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Profile Boost</span>
               </div>
-              <div className="text-right">
-                <div className="flex items-center gap-1.5">
-                  <Coins size={18} className="text-amber-500" />
-                  <span className="text-2xl font-black text-gray-900">{config.credits}</span>
-                </div>
-                <div className="text-xs text-gray-400">credits</div>
-              </div>
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{config.duration} minutes of top placement</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{config.credits}</p>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af' }}>credits</p>
             </div>
           </div>
 
-          {/* Credits display */}
-          <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-2xl">
-            <div className="flex items-center gap-2 text-gray-600 text-sm font-medium">
-              <Coins size={16} className="text-amber-500" />
-              Your credits
-            </div>
-            <div className={`font-bold text-lg ${canAfford ? 'text-gray-900' : 'text-red-500'}`}>
+          {/* Credits balance */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: '#f9fafb', borderRadius: '0.875rem', padding: '0.875rem 1rem',
+            marginBottom: '1rem',
+          }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6b7280' }}>💳 Your balance</span>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: canAfford ? '#111827' : '#ef4444' }}>
               {credits} credits
-            </div>
+            </span>
           </div>
 
           {!canAfford && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-600 flex items-start gap-2">
+            <div style={{
+              background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '0.875rem',
+              padding: '0.875rem', marginBottom: '1rem', fontSize: '0.85rem', color: '#dc2626',
+              display: 'flex', gap: '0.5rem',
+            }}>
               <span>⚠️</span>
-              <span>You need {config.credits} credits to boost. You have {credits}. <a href="/credits" className="font-bold underline">Buy credits</a> to boost your profile.</span>
+              <span>You need {config.credits} credits to boost. <a href="/credits" style={{ fontWeight: 700, color: '#dc2626' }}>Buy credits</a> to continue.</span>
             </div>
           )}
 
           <button
             onClick={activateBoost}
             disabled={boosting || !canAfford}
-            className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
-            style={{ background: canAfford ? 'linear-gradient(135deg, #f97316, #ef4444)' : '#d1d5db', boxShadow: canAfford ? '0 8px 32px rgba(249,115,22,0.35)' : 'none' }}>
-            {boosting ? <Loader2 size={20} className="animate-spin" /> : <Zap size={20} className="fill-white" />}
-            {boosting ? 'Activating Boost...' : `Boost for ${config.duration} min · ${config.credits} credits`}
+            style={{
+              width: '100%',
+              padding: '1rem',
+              borderRadius: '1rem',
+              border: 'none',
+              background: canAfford ? 'linear-gradient(135deg, #f97316, #ef4444)' : '#e5e7eb',
+              color: canAfford ? '#fff' : '#9ca3af',
+              fontWeight: 800,
+              fontSize: '0.95rem',
+              cursor: canAfford ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+              boxShadow: canAfford ? '0 6px 24px rgba(249,115,22,0.35)' : 'none',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+            }}>
+            {boosting ? (
+              <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Activating...</>
+            ) : (
+              <><Zap size={18} fill={canAfford ? '#fff' : '#9ca3af'} /> Boost for {config.duration} min · {config.credits} credits</>
+            )}
           </button>
         </div>
       )}
 
       {/* How it works */}
-      <div className="card p-6">
-        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <Crown size={16} className="text-amber-500" /> How Boost Works
-        </h3>
-        <div className="space-y-3">
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <p style={{ fontWeight: 800, color: '#111827', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
+          <Crown size={16} color="#f59e0b" /> How Boost Works
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           {[
-            { step: '1', text: 'Your profile moves to the very top of the Discover page for everyone', color: 'bg-blue-500' },
-            { step: '2', text: 'A special ⚡ badge appears on your profile so people notice you', color: 'bg-orange-500' },
-            { step: '3', text: 'After the boost period, your profile returns to normal ranking', color: 'bg-green-500' },
+            { step: '1', text: 'Your profile moves to the very top of the Discover page for everyone', bg: '#3b82f6' },
+            { step: '2', text: 'A special ⚡ badge appears on your profile so people notice you', bg: '#f97316' },
+            { step: '3', text: 'After the boost period, your profile returns to normal ranking', bg: '#22c55e' },
           ].map((item) => (
-            <div key={item.step} className="flex items-start gap-3">
-              <div className={`w-7 h-7 rounded-full ${item.color} text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                {item.step}
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">{item.text}</p>
+            <div key={item.step} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{
+                width: '1.75rem', height: '1.75rem', borderRadius: '50%',
+                background: item.bg, color: '#fff',
+                fontSize: '0.75rem', fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, marginTop: '0.1rem',
+              }}>{item.step}</div>
+              <p style={{ fontSize: '0.85rem', color: '#4b5563', lineHeight: '1.6' }}>{item.text}</p>
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <a href="/credits" className="flex items-center justify-between text-sm text-brand-500 font-semibold hover:text-brand-600 transition-colors">
+        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
+          <a href="/credits" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontSize: '0.85rem', color: '#FF192C', fontWeight: 700, textDecoration: 'none',
+          }}>
             <span>Need more credits? Get them here</span>
             <ChevronRight size={16} />
           </a>
         </div>
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
