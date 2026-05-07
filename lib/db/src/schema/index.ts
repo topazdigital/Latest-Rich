@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, real } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, integer, real, boolean } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -31,6 +31,8 @@ export const usersTable = pgTable("users", {
   superlike: integer("superlike").default(3),
   popular: integer("popular").default(0),
   online: integer("online").default(0),
+  lastDailyBonus: integer("last_daily_bonus").default(0),
+  profileComplete: integer("profile_complete").default(0),
 })
 
 export const userExtendedTable = pgTable("user_extended", {
@@ -191,6 +193,23 @@ export const reportedUsersTable = pgTable("reported_users", {
   time: integer("time").default(0),
 })
 
+export const passwordResetTokensTable = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expires: integer("expires").default(0),
+  used: integer("used").default(0),
+})
+
+export const profileBoostsTable = pgTable("profile_boosts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  startTime: integer("start_time").default(0),
+  endTime: integer("end_time").default(0),
+  creditsSpent: integer("credits_spent").default(0),
+  active: integer("active").default(1),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })
@@ -205,3 +224,4 @@ export type Feed = typeof feedTable.$inferSelect
 export type Notification = typeof notificationsTable.$inferSelect
 export type Order = typeof ordersTable.$inferSelect
 export type Photo = typeof photosTable.$inferSelect
+export type ProfileBoost = typeof profileBoostsTable.$inferSelect

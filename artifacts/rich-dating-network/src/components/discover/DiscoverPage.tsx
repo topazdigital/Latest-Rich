@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'wouter'
 import { getPhotoUrl, isOnline, truncate } from '../../lib/utils'
-import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2 } from 'lucide-react'
+import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
@@ -44,14 +44,8 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => {
-    fetchUsers()
-  }, [filterGender, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium])
-
-  useEffect(() => {
-    const timer = setTimeout(fetchUsers, 400)
-    return () => clearTimeout(timer)
-  }, [search])
+  useEffect(() => { fetchUsers() }, [filterGender, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium])
+  useEffect(() => { const t = setTimeout(fetchUsers, 400); return () => clearTimeout(t) }, [search])
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -72,20 +66,30 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
   }
 
   function clearFilters() {
-    setFilterGender('0')
-    setFilterCity('')
-    setFilterCountry('')
-    setFilterAgeMin(18)
-    setFilterAgeMax(60)
-    setFilterOnline(false)
-    setFilterPremium(false)
-    setSearch('')
+    setFilterGender('0'); setFilterCity(''); setFilterCountry('')
+    setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setSearch('')
   }
 
   const nearbyCount = filtered.filter(u => u.city === myCity || u.country === myCountry).length
+  const boostedCount = filtered.filter(u => u.isBoosted).length
 
   return (
     <div className="page-container">
+      {/* Boost promo banner */}
+      {boostedCount === 0 && (
+        <Link href="/boost" className="flex items-center gap-3 p-3 rounded-2xl mb-4 cursor-pointer hover:opacity-90 transition-opacity"
+          style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}>
+          <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Zap size={16} className="text-white fill-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-bold text-sm">Boost your profile!</p>
+            <p className="text-white/70 text-xs">Appear at the top of discovery for 10x more views</p>
+          </div>
+          <span className="text-white/80 text-xs font-semibold bg-white/20 px-2.5 py-1 rounded-lg">Try it →</span>
+        </Link>
+      )}
+
       {/* Search bar */}
       <div className="flex items-center gap-2.5 mb-4">
         <div className="flex-1 relative">
@@ -109,7 +113,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
 
       {/* Filters panel */}
       {showFilters && (
-        <div className="card p-4 mb-5 border border-gray-100">
+        <div className="card p-4 mb-5 border border-gray-100 animate-fade-in">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">Gender</label>
@@ -124,10 +128,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
               <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">Location</label>
               <LocationAutocomplete
                 value={filterCity}
-                onChange={(city, country) => {
-                  setFilterCity(city)
-                  setFilterCountry(country)
-                }}
+                onChange={(city, country) => { setFilterCity(city); setFilterCountry(country) }}
                 placeholder="Any city..."
                 className="py-2 text-sm"
               />
@@ -136,15 +137,11 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
               <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">Age Range: {filterAgeMin} – {filterAgeMax}</label>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
-                  <input type="range" min={18} max={80} value={filterAgeMin}
-                    onChange={e => setFilterAgeMin(+e.target.value)}
-                    className="w-full accent-brand-500" />
+                  <input type="range" min={18} max={80} value={filterAgeMin} onChange={e => setFilterAgeMin(+e.target.value)} className="w-full accent-brand-500" />
                 </div>
                 <span className="text-gray-400 text-xs">–</span>
                 <div className="flex-1">
-                  <input type="range" min={18} max={80} value={filterAgeMax}
-                    onChange={e => setFilterAgeMax(+e.target.value)}
-                    className="w-full accent-brand-500" />
+                  <input type="range" min={18} max={80} value={filterAgeMax} onChange={e => setFilterAgeMax(+e.target.value)} className="w-full accent-brand-500" />
                 </div>
               </div>
             </div>
@@ -152,21 +149,18 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={filterOnline} onChange={e => setFilterOnline(e.target.checked)}
-                  className="rounded w-3.5 h-3.5 accent-brand-500" />
+                <input type="checkbox" checked={filterOnline} onChange={e => setFilterOnline(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
                 <span className="text-xs text-gray-600 flex items-center gap-1.5">
                   <span className="w-2 h-2 bg-green-500 rounded-full inline-block" /> Online now
                 </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={filterPremium} onChange={e => setFilterPremium(e.target.checked)}
-                  className="rounded w-3.5 h-3.5 accent-brand-500" />
+                <input type="checkbox" checked={filterPremium} onChange={e => setFilterPremium(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
                 <span className="text-xs text-gray-600">👑 VIP only</span>
               </label>
             </div>
             {hasActiveFilters && (
-              <button onClick={clearFilters}
-                className="flex items-center gap-1.5 text-xs text-brand-500 font-medium hover:text-brand-600 transition-colors">
+              <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs text-brand-500 font-medium hover:text-brand-600 transition-colors">
                 <X size={13} /> Clear filters
               </button>
             )}
@@ -174,15 +168,19 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
         </div>
       )}
 
-      {/* Location context */}
-      {myCity && nearbyCount > 0 && !filterCity && (
-        <div className="flex items-center gap-2 mb-4">
-          <MapPin size={14} className="text-brand-500" />
-          <span className="text-sm text-gray-600">
-            <span className="font-semibold text-brand-500">{nearbyCount}</span> members near <span className="font-medium">{myCity}</span> shown first
-          </span>
-        </div>
-      )}
+      {/* Context banners */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {myCity && nearbyCount > 0 && !filterCity && (
+          <div className="flex items-center gap-1.5 bg-brand-50 text-brand-600 text-xs font-medium px-3 py-1.5 rounded-full">
+            <MapPin size={12} /> <span><strong>{nearbyCount}</strong> near {myCity}</span>
+          </div>
+        )}
+        {boostedCount > 0 && (
+          <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-medium px-3 py-1.5 rounded-full">
+            <Zap size={12} className="fill-orange-500" /> <span><strong>{boostedCount}</strong> boosted profile{boostedCount > 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
 
       {/* Results */}
       {loading ? (
@@ -197,10 +195,18 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
             {filtered.map((u: any) => {
               const isNearby = u.city === myCity || u.country === myCountry
+              const isBoosted = !!u.isBoosted
               return (
-                <div key={u.id} className="profile-card group relative">
-                  {isNearby && !filterCity && (
-                    <div className="absolute top-2 right-2 z-10 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <div key={u.id} className={`profile-card group relative ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}>
+                  {/* Boost badge */}
+                  {isBoosted && (
+                    <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                      <Zap size={8} className="fill-white" /> BOOST
+                    </div>
+                  )}
+                  {/* Nearby badge (only if not boosted to avoid overlap) */}
+                  {isNearby && !filterCity && !isBoosted && (
+                    <div className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                       <MapPin size={8} /> Near
                     </div>
                   )}
@@ -210,9 +216,9 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
                       loading="lazy" />
                     <div className="gradient-bottom absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     {isOnline(u.lastAccess) && (
-                      <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
+                      <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                     )}
-                    {u.premium === 1 && !isNearby && (
+                    {u.premium === 1 && !isBoosted && !isNearby && (
                       <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-sm text-white rounded-full p-1">
                         <Crown size={9} />
                       </div>
@@ -249,9 +255,7 @@ export default function DiscoverPage({ userId, myCity, myCountry }: Props) {
               <h2 className="text-xl font-semibold text-gray-900 mb-2">No members found</h2>
               <p className="text-gray-500 text-sm mb-4">Try adjusting your search or filters</p>
               {hasActiveFilters && (
-                <button onClick={clearFilters} className="btn-primary text-sm py-2 px-5">
-                  Clear all filters
-                </button>
+                <button onClick={clearFilters} className="btn-primary text-sm py-2 px-5">Clear all filters</button>
               )}
             </div>
           )}

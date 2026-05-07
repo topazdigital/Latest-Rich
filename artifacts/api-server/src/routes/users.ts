@@ -1,9 +1,9 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, userExtendedTable, photosTable, likesTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql } from "drizzle-orm"
+import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable } from "@workspace/db/schema"
+import { eq, and, ne, desc, sql, gt } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
-import { hashPassword, verifyPassword } from "../lib/password"
+import { hashPassword, verifyAndUpgrade } from "../lib/password"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -13,7 +13,6 @@ function safeUser(u: any) {
   return rest
 }
 
-// Detect contact info in profile bio/text
 function containsContactInfo(text: string): boolean {
   if (!text) return false
   if (/[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}/.test(text)) return true
@@ -49,20 +48,36 @@ router.get("/me/full", requireAuth, async (req, res) => {
   }
 })
 
+// Daily login bonus
+router.post("/me/daily-bonus", requireAuth, async (req, res) => {
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    if (!user) { res.status(404).json({ error: "Not found" }); return }
+    const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000)
+    if ((user.lastDailyBonus || 0) >= todayStart) {
+      res.json({ alreadyClaimed: true, credits: user.credits })
+      return
+    }
+    const bonus = 10
+    const newCredits = (user.credits || 0) + bonus
+    await db.update(usersTable).set({ credits: newCredits, lastDailyBonus: now() }).where(eq(usersTable.id, user.id))
+    res.json({ alreadyClaimed: false, bonus, credits: newCredits })
+  } catch {
+    res.status(500).json({ error: "Failed" })
+  }
+})
+
 router.put("/me", requireAuth, async (req, res) => {
   try {
     const { name, bio, city, country, countryCode, birthday, looking, occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship } = req.body
 
-    // Validate bio — no contact info allowed
     if (bio && containsContactInfo(bio)) {
       res.status(400).json({
-        error: "Your bio cannot contain email addresses, phone numbers, social media handles, or links. Please keep contact sharing inside chat (Premium members only).",
+        error: "Your bio cannot contain email addresses, phone numbers, social media handles, or links.",
         code: "contact_info_in_bio",
       })
       return
     }
-
-    // Validate name — no contact info
     if (name && containsContactInfo(name)) {
       res.status(400).json({ error: "Display name cannot contain contact information.", code: "contact_info_in_name" })
       return
@@ -106,12 +121,16 @@ router.put("/me/password", requireAuth, async (req, res) => {
   try {
     const { current, newPass } = req.body
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!user || !(await verifyPassword(current, user.password))) {
+    const valid = await verifyAndUpgrade(current, user?.password || "", async (h) => {
+      await db.update(usersTable).set({ password: h }).where(eq(usersTable.id, user.id))
+    })
+    if (!user || !valid) {
       res.status(400).json({ error: "Current password is incorrect" }); return
     }
     if (!newPass || newPass.length < 6) {
       res.status(400).json({ error: "New password too short" }); return
     }
+    const { hashPassword } = await import("../lib/password")
     await db.update(usersTable).set({ password: await hashPassword(newPass) }).where(eq(usersTable.id, user.id))
     res.json({ success: true })
   } catch {
@@ -133,6 +152,12 @@ router.get("/search", requireAuth, async (req, res) => {
     const myCity = myUser[0]?.city || ""
     const myCountry = myUser[0]?.country || ""
 
+    // Get currently boosted user IDs
+    const boostedRows = await db.select({ userId: profileBoostsTable.userId })
+      .from(profileBoostsTable)
+      .where(and(eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
+    const boostedIds = new Set(boostedRows.map(b => b.userId))
+
     let users = await db.select().from(usersTable)
       .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
       .orderBy(desc(usersTable.lastAccess))
@@ -148,13 +173,22 @@ router.get("/search", requireAuth, async (req, res) => {
       return true
     })
 
+    // Sort: boosted first, then by proximity, then by last access
     users.sort((a, b) => {
+      const aBoost = boostedIds.has(a.id) ? 0 : 1
+      const bBoost = boostedIds.has(b.id) ? 0 : 1
+      if (aBoost !== bBoost) return aBoost - bBoost
       const aCity = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bCity = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
       return aCity - bCity
     })
 
-    res.json(users.slice(0, 200).map(safeUser))
+    const result = users.slice(0, 200).map(u => ({
+      ...safeUser(u),
+      isBoosted: boostedIds.has(u.id),
+    }))
+
+    res.json(result)
   } catch {
     res.status(500).json({ error: "Failed" })
   }
@@ -166,18 +200,26 @@ router.get("/suggested", requireAuth, async (req, res) => {
     const myCity = myUser[0]?.city || ""
     const myCountry = myUser[0]?.country || ""
 
+    const boostedRows = await db.select({ userId: profileBoostsTable.userId })
+      .from(profileBoostsTable)
+      .where(and(eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
+    const boostedIds = new Set(boostedRows.map(b => b.userId))
+
     const users = await db.select().from(usersTable)
       .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
       .orderBy(desc(usersTable.lastAccess))
       .limit(100)
 
     const sorted = users.sort((a, b) => {
+      const aBoost = boostedIds.has(a.id) ? 0 : 1
+      const bBoost = boostedIds.has(b.id) ? 0 : 1
+      if (aBoost !== bBoost) return aBoost - bBoost
       const aScore = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bScore = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
       return aScore - bScore
     })
 
-    res.json(sorted.slice(0, 40).map(safeUser))
+    res.json(sorted.slice(0, 40).map(u => ({ ...safeUser(u), isBoosted: boostedIds.has(u.id) })))
   } catch {
     res.status(500).json([])
   }
@@ -201,7 +243,11 @@ router.get("/:id", requireAuth, async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
-    res.json({ ...safeUser(user), userExtended: extended || {} })
+    // Check if this user has an active boost
+    const [activeBoost] = await db.select().from(profileBoostsTable)
+      .where(and(eq(profileBoostsTable.userId, id), eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
+      .limit(1)
+    res.json({ ...safeUser(user), userExtended: extended || {}, isBoosted: !!activeBoost })
   } catch {
     res.status(500).json({ error: "Failed" })
   }

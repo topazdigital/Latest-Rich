@@ -1,9 +1,10 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, userExtendedTable, activityTable } from "@workspace/db/schema"
+import { usersTable, userExtendedTable, activityTable, passwordResetTokensTable } from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
-import { hashPassword, verifyPassword } from "../lib/password"
+import { hashPassword, verifyAndUpgrade } from "../lib/password"
+import crypto from "crypto"
 
 const router = Router()
 
@@ -56,7 +57,6 @@ router.post("/register", async (req, res) => {
     await db.insert(userExtendedTable).values({ userId: user.id })
     await db.insert(activityTable).values({ type: "register", userId: user.id, title: "New registration", message: `${user.name} joined from ${country || "unknown"}`, time: now() })
 
-    // Trigger auto messages for new user (async, don't await)
     import("../lib/fake-message-scheduler").then(({ triggerAutoMessages }) => {
       triggerAutoMessages(user.id).catch(() => {})
     }).catch(() => {})
@@ -78,7 +78,14 @@ router.post("/login", async (req, res) => {
       return
     }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
-    if (!user || !(await verifyPassword(password, user.password))) {
+    if (!user) {
+      res.status(401).json({ error: "Invalid email or password" })
+      return
+    }
+    const valid = await verifyAndUpgrade(password, user.password, async (newHash) => {
+      await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user.id))
+    })
+    if (!valid) {
       res.status(401).json({ error: "Invalid email or password" })
       return
     }
@@ -89,7 +96,6 @@ router.post("/login", async (req, res) => {
     await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, user.id))
     await db.insert(activityTable).values({ type: "login", userId: user.id, title: "User login", message: `${user.name} logged in`, time: now() }).catch(() => {})
 
-    // Trigger auto-messages on login (async — fires and forgets)
     if (user.fake !== 1) {
       import("../lib/fake-message-scheduler").then(({ triggerAutoMessages }) => {
         triggerAutoMessages(user.id).catch(() => {})
@@ -106,8 +112,6 @@ router.post("/login", async (req, res) => {
 })
 
 router.post("/logout", async (req, res) => {
-  // JWT is stateless — client just drops the token
-  // But we update online status
   const auth = req.headers.authorization
   if (auth) {
     try {
@@ -119,6 +123,82 @@ router.post("/logout", async (req, res) => {
     } catch { /* ignore */ }
   }
   res.json({ success: true })
+})
+
+// Forgot password — request reset link
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) { res.status(400).json({ error: "Email is required" }); return }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
+    // Always return success to prevent email enumeration
+    if (!user) { res.json({ success: true, message: "If this email is registered, you will receive reset instructions." }); return }
+
+    // Invalidate previous tokens
+    await db.update(passwordResetTokensTable).set({ used: 1 }).where(eq(passwordResetTokensTable.userId, user.id))
+
+    const token = crypto.randomBytes(32).toString("hex")
+    const expires = now() + 3600 // 1 hour
+    await db.insert(passwordResetTokensTable).values({ userId: user.id, token, expires, used: 0 })
+
+    // In production you'd send an email. Here we return the token for in-app reset flow
+    // and log to activity so admin can see it
+    await db.insert(activityTable).values({
+      type: "system", userId: user.id,
+      title: "Password reset requested",
+      message: `Reset token generated for ${user.email}`,
+      time: now()
+    }).catch(() => {})
+
+    res.json({ success: true, message: "Password reset instructions sent to your email.", token })
+  } catch (err) {
+    console.error("Forgot password error:", err)
+    res.status(500).json({ error: "Failed to process request" })
+  }
+})
+
+// Reset password with token
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body
+    if (!token || !newPassword) { res.status(400).json({ error: "Token and new password are required" }); return }
+    if (newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return }
+
+    const [resetRecord] = await db.select().from(passwordResetTokensTable).where(eq(passwordResetTokensTable.token, token)).limit(1)
+    if (!resetRecord || resetRecord.used === 1 || resetRecord.expires < now()) {
+      res.status(400).json({ error: "Invalid or expired reset token" }); return
+    }
+
+    const newHash = await hashPassword(newPassword)
+    await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, resetRecord.userId))
+    await db.update(passwordResetTokensTable).set({ used: 1 }).where(eq(passwordResetTokensTable.id, resetRecord.id))
+
+    await db.insert(activityTable).values({
+      type: "system", userId: resetRecord.userId,
+      title: "Password reset completed",
+      message: `User ID ${resetRecord.userId} reset their password`,
+      time: now()
+    }).catch(() => {})
+
+    res.json({ success: true, message: "Password updated successfully. You can now sign in." })
+  } catch (err) {
+    console.error("Reset password error:", err)
+    res.status(500).json({ error: "Failed to reset password" })
+  }
+})
+
+// Verify reset token validity
+router.get("/reset-password/:token", async (req, res) => {
+  try {
+    const { token } = req.params
+    const [record] = await db.select().from(passwordResetTokensTable).where(eq(passwordResetTokensTable.token, token)).limit(1)
+    if (!record || record.used === 1 || record.expires < now()) {
+      res.status(400).json({ valid: false, error: "Invalid or expired reset token" }); return
+    }
+    res.json({ valid: true })
+  } catch {
+    res.status(500).json({ valid: false })
+  }
 })
 
 export default router

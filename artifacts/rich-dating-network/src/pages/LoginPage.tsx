@@ -89,7 +89,6 @@ export default function LoginPage() {
       {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden flex-col"
         style={{ background: 'linear-gradient(145deg, #1a0a0e 0%, #3d0d1a 40%, #7a1226 70%, #FF192C 100%)' }}>
-        {/* Animated blobs */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full opacity-20"
             style={{ background: 'radial-gradient(circle, #FF192C, transparent)' }} />
@@ -100,7 +99,6 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 flex flex-col h-full p-10 xl:p-14">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center border border-white/30">
               <Heart className="w-5 h-5 text-white fill-white" />
@@ -108,7 +106,6 @@ export default function LoginPage() {
             <span className="text-white font-bold text-xl tracking-tight">Rich Dating</span>
           </Link>
 
-          {/* Center content */}
           <div className="flex-1 flex flex-col justify-center mt-12">
             <div className="mb-3">
               <span className="bg-white/10 backdrop-blur border border-white/20 text-white/80 text-xs font-medium px-3 py-1.5 rounded-full">
@@ -123,7 +120,6 @@ export default function LoginPage() {
               Join thousands of successful, verified singles. Real-time matching based on your location, lifestyle, and preferences.
             </p>
 
-            {/* Floating profile cards */}
             <div className="flex flex-col gap-3 max-w-xs">
               {PROFILES.map((p, i) => (
                 <div key={i}
@@ -148,7 +144,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Bottom trust signals */}
           <div className="flex items-center gap-6 mt-10 pt-8 border-t border-white/10">
             {[
               { icon: <Shield size={14} />, label: 'Verified Profiles' },
@@ -166,7 +161,6 @@ export default function LoginPage() {
       {/* RIGHT PANEL — Form */}
       <div className="flex-1 flex flex-col min-h-screen bg-white overflow-y-auto">
         <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-14 xl:px-20 max-w-md mx-auto w-full">
-          {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link href="/" className="inline-flex items-center gap-2">
               <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center shadow-lg">
@@ -181,7 +175,6 @@ export default function LoginPage() {
             <p className="text-gray-500">Sign in to continue to your matches</p>
           </div>
 
-          {/* Google sign in */}
           {socialConfig.googleClientId && (
             <button
               onClick={() => window.google?.accounts?.id?.prompt()}
@@ -216,7 +209,9 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-gray-700">Password</label>
-                <button type="button" className="text-xs text-brand-500 hover:text-brand-600 font-medium">Forgot password?</button>
+                <Link href="/forgot-password" className="text-xs text-brand-500 hover:text-brand-600 font-semibold transition-colors">
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
