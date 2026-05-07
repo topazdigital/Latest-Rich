@@ -12,6 +12,10 @@ import creditsRouter from "./credits"
 import paymentsRouter from "./payments"
 import storiesRouter from "./stories"
 import uploadsRouter from "./uploads"
+import adminRouter from "./admin"
+import giftsRouter from "./gifts"
+import visitsRouter from "./visits"
+import blockRouter from "./block"
 
 const router: IRouter = Router()
 
@@ -28,5 +32,9 @@ router.use("/credits", creditsRouter)
 router.use("/payments", paymentsRouter)
 router.use("/stories", storiesRouter)
 router.use("/uploads", uploadsRouter)
+router.use("/admin", adminRouter)
+router.use("/gifts", giftsRouter)
+router.use("/visits", visitsRouter)
+router.use("/", blockRouter)
 
 export default router

@@ -18,11 +18,15 @@ import PremiumPageWrapper from "./pages/PremiumPageWrapper"
 import CreditsPageWrapper from "./pages/CreditsPageWrapper"
 import TermsPage from "./pages/TermsPage"
 import PrivacyPage from "./pages/PrivacyPage"
+import AdminPage from "./pages/AdminPage"
+import GiftsPage from "./pages/GiftsPage"
+import VisitorsPage from "./pages/VisitorsPage"
 import MainNav from "./components/layout/MainNav"
 import NotFound from "./pages/not-found"
 
-const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits"]
+const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors"]
 const AUTH_ONLY = ["/", "/login", "/register"]
+const ADMIN_PREFIXES = ["/admin"]
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
@@ -32,8 +36,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (loading) return
     const isProtected = PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
     const isAuthOnly = AUTH_ONLY.includes(location)
-    if (!user && isProtected) setLocation("/login")
+    const isAdmin = ADMIN_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+    if (!user && (isProtected || isAdmin)) setLocation("/login")
     else if (user && isAuthOnly) setLocation("/home")
+    else if (user && isAdmin && user.admin !== 1) setLocation("/home")
   }, [user, loading, location])
 
   if (loading) {
@@ -52,7 +58,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
-  const showNav = PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+  const isAdmin = location.startsWith("/admin")
+  const showNav = !isAdmin && PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
   return (
     <div className={showNav ? "pt-14 pb-16 md:pb-0 min-h-screen bg-gray-50" : ""}>
       {showNav && <MainNav />}
@@ -89,8 +96,12 @@ function Router() {
           <Route path="/settings" component={SettingsPageWrapper} />
           <Route path="/premium" component={PremiumPageWrapper} />
           <Route path="/credits" component={CreditsPageWrapper} />
+          <Route path="/gifts" component={GiftsPage} />
+          <Route path="/visitors" component={VisitorsPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/admin" component={AdminPage} />
+          <Route path="/admin/:rest*" component={AdminPage} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

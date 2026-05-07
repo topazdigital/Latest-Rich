@@ -8,6 +8,7 @@ export interface User {
   premium: number
   credits: number
   gender: number
+  looking?: number
   age: number
   city: string
   country: string
@@ -16,6 +17,9 @@ export interface User {
   bio?: string
   fake?: number
   admin?: number
+  online?: number
+  superlike?: number
+  banned?: number
 }
 
 export interface AuthState {
@@ -37,4 +41,18 @@ export function setStoredAuth(state: AuthState) {
 
 export function clearStoredAuth() {
   localStorage.removeItem('rdn_auth')
+}
+
+/** Authenticated fetch — automatically adds Authorization header from stored token */
+export function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const stored = getStoredAuth()
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> || {}),
+  }
+  if (stored.token) {
+    headers['Authorization'] = `Bearer ${stored.token}`
+  }
+  const base = import.meta.env.BASE_URL?.replace(/\/$/, '') || ''
+  const fullUrl = url.startsWith('/api') ? base + url : url
+  return fetch(fullUrl, { ...options, headers })
 }

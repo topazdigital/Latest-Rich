@@ -31,7 +31,7 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
   }
 
   try {
-    const { default: Stripe } = await import("stripe")
+    const Stripe = (await import("stripe")).default
     const stripe = new Stripe(stripeKey)
     const { packageId, type } = req.body
 
@@ -46,7 +46,8 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
       lineItem = { name: pkg.name, amount: Math.round(pkg.price * 100) }
     }
 
-    const baseUrl = process.env.APP_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+    const baseUrl = process.env.APP_URL ||
+      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:8080")
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -59,7 +60,7 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
         quantity: 1,
       }],
       mode: "payment",
-      success_url: `${baseUrl}/api/payments/stripe/success?session_id={CHECKOUT_SESSION_ID}&type=${type}&packageId=${packageId}&userId=${req.userId}`,
+      success_url: `${baseUrl}/api/payments/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/${type}?cancelled=1`,
       metadata: { userId: String(req.userId), type, packageId: String(packageId) },
     })
@@ -83,44 +84,55 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
 })
 
 router.get("/stripe/success", async (req, res) => {
-  const { session_id, type, packageId, userId } = req.query
+  const { session_id } = req.query
   const stripeKey = process.env.STRIPE_SECRET_KEY
 
-  if (stripeKey && session_id) {
-    try {
-      const { default: Stripe } = await import("stripe")
-      const stripe = new Stripe(stripeKey)
-      const session = await stripe.checkout.sessions.retrieve(String(session_id))
-
-      if (session.payment_status === "paid") {
-        const uid = parseInt(String(userId))
-        const pkgId = parseInt(String(packageId))
-
-        if (type === "premium") {
-          const pkg = PREMIUM_PACKAGES[pkgId]
-          if (pkg) {
-            const expiry = now() + pkg.days * 86400
-            await db.update(usersTable).set({ premium: 1, premiumExpiry: expiry }).where(eq(usersTable.id, uid))
-          }
-        } else if (type === "credits") {
-          const pkg = CREDIT_PACKAGES[pkgId]
-          if (pkg) {
-            const [user] = await db.select().from(usersTable).where(eq(usersTable.id, uid)).limit(1)
-            if (user) {
-              await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, uid))
-            }
-          }
-        }
-
-        await db.update(ordersTable).set({ status: "completed" })
-          .where(eq(ordersTable.stripeSessionId, String(session_id)))
-      }
-    } catch (err) {
-      console.error("Stripe success handler error:", err)
-    }
+  if (!stripeKey || !session_id) {
+    return res.redirect("/premium?error=invalid")
   }
 
-  res.redirect(`/${type}?success=1`)
+  try {
+    const Stripe = (await import("stripe")).default
+    const stripe = new Stripe(stripeKey)
+    const session = await stripe.checkout.sessions.retrieve(String(session_id))
+
+    if (session.payment_status !== "paid") {
+      return res.redirect("/premium?error=unpaid")
+    }
+
+    // Derive all values from verified Stripe session metadata — never from query params
+    const { userId, type, packageId } = session.metadata || {}
+    if (!userId || !type || !packageId) {
+      return res.redirect("/premium?error=missing_metadata")
+    }
+
+    const uid = parseInt(userId)
+    const pkgId = parseInt(packageId)
+
+    if (type === "premium") {
+      const pkg = PREMIUM_PACKAGES[pkgId]
+      if (pkg) {
+        const expiry = now() + pkg.days * 86400
+        await db.update(usersTable).set({ premium: 1, premiumExpiry: expiry }).where(eq(usersTable.id, uid))
+      }
+    } else if (type === "credits") {
+      const pkg = CREDIT_PACKAGES[pkgId]
+      if (pkg) {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, uid)).limit(1)
+        if (user) {
+          await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, uid))
+        }
+      }
+    }
+
+    await db.update(ordersTable).set({ status: "completed" })
+      .where(eq(ordersTable.stripeSessionId, String(session_id)))
+
+    res.redirect(`/${type}?success=1`)
+  } catch (err) {
+    console.error("Stripe success handler error:", err)
+    res.redirect("/premium?error=server")
+  }
 })
 
 router.get("/stripe/cancel", async (req, res) => {

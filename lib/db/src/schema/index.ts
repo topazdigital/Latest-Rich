@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, varchar, real } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, integer, real } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -26,6 +26,11 @@ export const usersTable = pgTable("users", {
   banned: integer("banned").default(0),
   lastAccess: text("last_access").default("0"),
   created: integer("created").default(0),
+  lat: text("lat").default("0"),
+  lng: text("lng").default("0"),
+  superlike: integer("superlike").default(3),
+  popular: integer("popular").default(0),
+  online: integer("online").default(0),
 })
 
 export const userExtendedTable = pgTable("user_extended", {
@@ -117,6 +122,73 @@ export const storiesTable = pgTable("stories", {
   video: text("video").default(""),
   expires: integer("expires").default(0),
   created: integer("created").default(0),
+})
+
+export const fakeMessageTemplatesTable = pgTable("fake_message_templates", {
+  id: serial("id").primaryKey(),
+  message: text("message").notNull(),
+  active: integer("active").default(1),
+})
+
+export const userVisitsTable = pgTable("user_visits", {
+  id: serial("id").primaryKey(),
+  visitorId: integer("visitor_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  targetId: integer("target_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  time: integer("time").default(0),
+})
+
+export const giftsTable = pgTable("gifts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  emoji: text("emoji").default("🎁"),
+  credits: integer("credits").default(10),
+  active: integer("active").default(1),
+})
+
+export const userGiftsTable = pgTable("user_gifts", {
+  id: serial("id").primaryKey(),
+  fromId: integer("from_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  toId: integer("to_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  giftId: integer("gift_id").notNull().references(() => giftsTable.id, { onDelete: "cascade" }),
+  message: text("message").default(""),
+  time: integer("time").default(0),
+})
+
+export const siteConfigTable = pgTable("site_config", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").default(""),
+})
+
+export const activityTable = pgTable("activity", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(),
+  userId: integer("user_id").default(0),
+  title: text("title").default(""),
+  message: text("message").default(""),
+  time: integer("time").default(0),
+})
+
+export const autoMessageLogTable = pgTable("auto_message_log", {
+  id: serial("id").primaryKey(),
+  fakeUserId: integer("fake_user_id").notNull(),
+  realUserId: integer("real_user_id").notNull(),
+  time: integer("time").default(0),
+})
+
+export const blockedUsersTable = pgTable("blocked_users", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  blockedId: integer("blocked_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  time: integer("time").default(0),
+})
+
+export const reportedUsersTable = pgTable("reported_users", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  reportedId: integer("reported_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  reason: text("reason").default(""),
+  time: integer("time").default(0),
 })
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })

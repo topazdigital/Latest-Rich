@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter'
-import { Home, Search, Flame, MessageCircle, User, Bell, Heart } from 'lucide-react'
+import { Home, Search, Flame, MessageCircle, User, Bell, Heart, Gift, Eye, Settings } from 'lucide-react'
 import { getPhotoUrl } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
@@ -41,6 +41,14 @@ export default function MainNav() {
                 </Link>
               )
             })}
+            <Link href="/visitors"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${location.startsWith('/visitors') ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <Eye size={18} />Visitors
+            </Link>
+            <Link href="/gifts"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${location.startsWith('/gifts') ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <Gift size={18} />Gifts
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
@@ -48,18 +56,25 @@ export default function MainNav() {
               <Bell size={20} className="text-gray-600" />
               {unread > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center">{unread > 9 ? '9+' : unread}</span>}
             </Link>
+            {user?.admin === 1 && (
+              <Link href="/admin" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600" title="Admin Panel">
+                <Settings size={18} />
+              </Link>
+            )}
             <Link href="/settings" className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-brand-200 hover:ring-brand-400 transition-all">
-              <img src={getPhotoUrl(user?.photoThumb || user?.photo)} alt="avatar" className="w-full h-full object-cover" />
+              <img src={getPhotoUrl(user?.photoThumb || user?.photo)} alt="avatar" className="w-full h-full object-cover"
+                onError={e => (e.currentTarget.src = '/images/default-avatar.png')} />
             </Link>
           </div>
         </div>
       </header>
 
+      {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 md:hidden">
         <div className="grid grid-cols-5 h-16">
           {navItems.map(item => {
             const active = location.startsWith(item.href)
-            const badge = item.href === '/chat' ? chatUnread : 0
+            const badge = item.href === '/chat' ? chatUnread : item.href === '/notifications' ? unread : 0
             return (
               <Link key={item.href} href={item.href}
                 className={`nav-item pt-2 relative ${active ? 'text-brand-500' : 'text-gray-400'}`}>
