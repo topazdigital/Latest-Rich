@@ -20,6 +20,7 @@ import locationRouter from "./location"
 import socialAuthRouter from "./social-auth"
 import boostRouter from "./boost"
 import brandingRouter from "./branding"
+import videoCallsRouter from "./video-calls"
 
 const router: IRouter = Router()
 
@@ -43,6 +44,7 @@ router.use("/visits", visitsRouter)
 router.use("/location", locationRouter)
 router.use("/boost", boostRouter)
 router.use("/branding", brandingRouter)
+router.use("/video-calls", videoCallsRouter)
 router.use("/", blockRouter)
 
 export default router

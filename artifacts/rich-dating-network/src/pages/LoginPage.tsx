@@ -1,35 +1,85 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'wouter'
 import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAuth } from '../hooks/useAuth'
 
 declare global {
   interface Window {
     google?: any
-    FB?: any
     handleGoogleOneTap?: (response: any) => void
   }
 }
 
-const PROFILES = [
-  { name: 'Sophie, 28', city: 'New York', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', verified: true },
-  { name: 'Emma, 31', city: 'London', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', verified: true },
-  { name: 'Priya, 26', city: 'Dubai', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', verified: true },
-]
+// Geo-aware profile pools: matched by user's detected country/region
+const PROFILE_POOLS: Record<string, { name: string; age: number; city: string; img: string; tag: string }[]> = {
+  KE: [
+    { name: 'Amara', age: 26, city: 'Nairobi', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Looking for successful men' },
+    { name: 'Lucia', age: 29, city: 'Mombasa', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', tag: 'Ready for love 💕' },
+    { name: 'Grace', age: 24, city: 'Nairobi', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', tag: 'Loves adventure' },
+    { name: 'David', age: 52, city: 'Nairobi', img: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=120&h=120&fit=crop&crop=face', tag: 'Successful entrepreneur' },
+    { name: 'James', age: 48, city: 'Nairobi', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&h=120&fit=crop&crop=face', tag: 'Looking for true love' },
+  ],
+  NG: [
+    { name: 'Chioma', age: 27, city: 'Lagos', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Ambitious & beautiful' },
+    { name: 'Blessing', age: 25, city: 'Abuja', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', tag: 'Ready to mingle 😊' },
+    { name: 'Emmanuel', age: 45, city: 'Lagos', img: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=120&h=120&fit=crop&crop=face', tag: 'Successful businessman' },
+  ],
+  ZA: [
+    { name: 'Lerato', age: 28, city: 'Johannesburg', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', tag: 'Looking for real love' },
+    { name: 'Nomvula', age: 31, city: 'Cape Town', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Beach lover 🌊' },
+    { name: 'Trevor', age: 50, city: 'Cape Town', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&h=120&fit=crop&crop=face', tag: 'Wine & dine kind of guy' },
+  ],
+  GB: [
+    { name: 'Sophie', age: 28, city: 'London', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', tag: 'Coffee & conversation' },
+    { name: 'Emma', age: 31, city: 'Manchester', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Art & culture lover' },
+    { name: 'Oliver', age: 44, city: 'London', img: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=120&h=120&fit=crop&crop=face', tag: 'Gentleman & professional' },
+  ],
+  AE: [
+    { name: 'Fatima', age: 27, city: 'Dubai', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', tag: 'Ready for something real' },
+    { name: 'Sara', age: 29, city: 'Abu Dhabi', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', tag: 'Luxury lifestyle ✨' },
+    { name: 'Khalid', age: 47, city: 'Dubai', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&h=120&fit=crop&crop=face', tag: 'Business & adventure' },
+  ],
+  IN: [
+    { name: 'Priya', age: 26, city: 'Mumbai', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', tag: 'Smart & ambitious 💼' },
+    { name: 'Ananya', age: 28, city: 'Delhi', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Culture & family values' },
+    { name: 'Raj', age: 51, city: 'Bangalore', img: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=120&h=120&fit=crop&crop=face', tag: 'Tech founder, loves travel' },
+  ],
+  DEFAULT: [
+    { name: 'Sophie', age: 28, city: 'New York', img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=120&h=120&fit=crop&crop=face', tag: 'Looking for real connection' },
+    { name: 'Emma', age: 31, city: 'London', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Art, travel & love ✈️' },
+    { name: 'Priya', age: 26, city: 'Dubai', img: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=120&h=120&fit=crop&crop=face', tag: 'Ready to find my person' },
+    { name: 'James', age: 48, city: 'Toronto', img: 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=120&h=120&fit=crop&crop=face', tag: 'Successful & caring' },
+  ],
+}
+
+function getProfiles(countryCode: string) {
+  const pool = PROFILE_POOLS[countryCode] || PROFILE_POOLS.DEFAULT
+  // Rotate based on time so it feels dynamic
+  const offset = Math.floor(Date.now() / 60000) % pool.length
+  const rotated = [...pool.slice(offset), ...pool.slice(0, offset)]
+  return rotated.slice(0, 3)
+}
 
 export default function LoginPage() {
   const [, setLocation] = useLocation()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
-  const { login } = useAuth()
+  const [countryCode, setCountryCode] = useState('DEFAULT')
+  const [profiles, setProfiles] = useState(PROFILE_POOLS.DEFAULT.slice(0, 3))
 
   useEffect(() => {
     fetch('/api/auth/social/config').then(r => r.json()).then(d => setSocialConfig(d)).catch(() => {})
+    // Auto-detect country for profile selection
+    fetch('/api/location/detect').then(r => r.json()).then(d => {
+      if (d.countryCode) {
+        setCountryCode(d.countryCode)
+        setProfiles(getProfiles(d.countryCode))
+      }
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -54,22 +104,15 @@ export default function LoginPage() {
     const existing = document.getElementById('google-gsi-script')
     if (!existing) {
       const script = document.createElement('script')
-      script.id = 'google-gsi-script'
-      script.src = 'https://accounts.google.com/gsi/client'
-      script.async = true
-      script.defer = true
+      script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true
       document.head.appendChild(script)
     }
     const initGoogle = () => {
       if (!window.google?.accounts) return
-      window.google.accounts.id.initialize({
-        client_id: socialConfig.googleClientId,
-        callback: window.handleGoogleOneTap,
-        auto_select: false,
-      })
+      window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleOneTap, auto_select: false })
     }
     if (window.google?.accounts) initGoogle()
-    else { const s = document.getElementById('google-gsi-script'); if (s) s.onload = initGoogle }
+    else { const s = document.getElementById('google-gsi-script'); if (s) (s as HTMLScriptElement).onload = initGoogle }
     return () => window.google?.accounts?.id?.cancel()
   }, [socialConfig.googleClientId])
 
@@ -77,10 +120,18 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await login(email, password)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Login failed')
+      const { setStoredAuth } = await import('../lib/auth')
+      setStoredAuth({ user: data.user, token: data.token })
       setLocation('/home')
     } catch (err: any) {
-      toast.error(err.message || 'Invalid email or password')
+      toast.error(err.message || 'Invalid credentials')
     } finally { setLoading(false) }
   }
 
@@ -94,8 +145,6 @@ export default function LoginPage() {
             style={{ background: 'radial-gradient(circle, #FF192C, transparent)' }} />
           <div className="absolute bottom-[-15%] right-[-15%] w-[60%] h-[60%] rounded-full opacity-15"
             style={{ background: 'radial-gradient(circle, #ff8c94, transparent)' }} />
-          <div className="absolute top-[30%] right-[-5%] w-[40%] h-[40%] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #ffd4d8, transparent)' }} />
         </div>
 
         <div className="relative z-10 flex flex-col h-full p-10 xl:p-14">
@@ -120,25 +169,25 @@ export default function LoginPage() {
               Join thousands of successful, verified singles. Real-time matching based on your location, lifestyle, and preferences.
             </p>
 
+            {/* Geo-smart rotating profiles */}
             <div className="flex flex-col gap-3 max-w-xs">
-              {PROFILES.map((p, i) => (
-                <div key={i}
-                  className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-3"
-                  style={{ transform: `translateX(${i * 16}px)` }}>
-                  <img src={p.img} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-white/40"
-                    onError={e => (e.currentTarget.style.display = 'none')} />
-                  <div>
+              {profiles.map((p, i) => (
+                <div key={`${p.name}-${i}`}
+                  className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-3 transition-all"
+                  style={{ transform: `translateX(${i * 14}px)` }}>
+                  <img src={p.img} alt="" className="w-11 h-11 rounded-full object-cover border-2 border-white/40"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-white text-sm font-semibold">{p.name}</span>
-                      {p.verified && <Shield size={12} className="text-blue-300 fill-blue-300" />}
+                      <span className="text-white text-sm font-semibold">{p.name}, {p.age}</span>
+                      <Shield size={11} className="text-blue-300 fill-blue-300 flex-shrink-0" />
                     </div>
-                    <div className="flex items-center gap-1 text-white/50 text-xs">
-                      <MapPin size={10} /> {p.city}
+                    <div className="flex items-center gap-1 text-white/50 text-xs truncate">
+                      <MapPin size={9} /> {p.city}
                     </div>
+                    <div className="text-white/40 text-xs mt-0.5 truncate">{p.tag}</div>
                   </div>
-                  <div className="ml-auto">
-                    <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg shadow-green-400/50" />
-                  </div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full shadow-lg shadow-green-400/50 flex-shrink-0" />
                 </div>
               ))}
             </div>
@@ -150,15 +199,13 @@ export default function LoginPage() {
               { icon: <Star size={14} />, label: '4.9★ Rating' },
               { icon: <Crown size={14} />, label: 'VIP Members' },
             ].map((t, i) => (
-              <div key={i} className="flex items-center gap-2 text-white/50 text-xs">
-                {t.icon} {t.label}
-              </div>
+              <div key={i} className="flex items-center gap-2 text-white/50 text-xs">{t.icon} {t.label}</div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL — Form */}
+      {/* RIGHT PANEL */}
       <div className="flex-1 flex flex-col min-h-screen bg-white overflow-y-auto">
         <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-14 xl:px-20 max-w-md mx-auto w-full">
           <div className="lg:hidden mb-8 text-center">
@@ -172,7 +219,7 @@ export default function LoginPage() {
 
           <div className="mb-8">
             <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome back 👋</h1>
-            <p className="text-gray-500">Sign in to continue to your matches</p>
+            <p className="text-gray-500">Sign in with email, username or phone</p>
           </div>
 
           {socialConfig.googleClientId && (
@@ -195,16 +242,16 @@ export default function LoginPage() {
           {socialConfig.googleClientId && (
             <div className="relative mb-5">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-              <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-gray-400 font-medium">or sign in with email</span></div>
+              <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-gray-400 font-medium">or sign in with</span></div>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email address</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email, username or phone</label>
+              <input type="text" value={identifier} onChange={e => setIdentifier(e.target.value)}
                 className="w-full px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
-                placeholder="your@email.com" required />
+                placeholder="e.g. john@email.com or @johndoe or +254700..." required autoComplete="username" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">

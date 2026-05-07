@@ -6,6 +6,8 @@ export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  username: text("username").unique(),
+  phone: text("phone").default(""),
   password: text("password").notNull(),
   photo: text("photo").default(""),
   photoThumb: text("photo_thumb").default(""),
@@ -50,6 +52,16 @@ export const userExtendedTable = pgTable("user_extended", {
   drinking: text("drinking").default(""),
   children: text("children").default(""),
   relationship: text("relationship").default(""),
+  interests: text("interests").default(""),
+  lookingForAge: text("looking_for_age").default(""),
+  idealDate: text("ideal_date").default(""),
+  passions: text("passions").default(""),
+  selfDescription: text("self_description").default(""),
+  favoriteTravel: text("favorite_travel").default(""),
+  funActivities: text("fun_activities").default(""),
+  languages: text("languages").default(""),
+  zodiac: text("zodiac").default(""),
+  personalityType: text("personality_type").default(""),
 })
 
 export const photosTable = pgTable("photos", {
@@ -221,6 +233,16 @@ export const profileBoostsTable = pgTable("profile_boosts", {
   endTime: integer("end_time").default(0),
   creditsSpent: integer("credits_spent").default(0),
   active: integer("active").default(1),
+})
+
+export const fakeVideoCallsTable = pgTable("fake_video_calls", {
+  id: serial("id").primaryKey(),
+  fakeUserId: integer("fake_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  realUserId: integer("real_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  videoUrl: text("video_url").default(""),
+  triggeredAt: integer("triggered_at").default(0),
+  answered: integer("answered").default(0),
+  dismissed: integer("dismissed").default(0),
 })
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })

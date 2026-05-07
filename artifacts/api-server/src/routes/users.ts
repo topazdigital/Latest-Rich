@@ -284,4 +284,64 @@ router.get("/:id/liked-status", requireAuth, async (req, res) => {
   }
 })
 
+// Save profile completion questions (passions, idealDate, selfDescription, personalityType)
+router.post("/profile/questions", requireAuth, async (req, res) => {
+  try {
+    const { passions, idealDate, selfDescription, personalityType } = req.body
+    const userId = req.userId!
+
+    // Update user_extended
+    const existingExt = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, userId)).limit(1)
+    if (existingExt.length > 0) {
+      await db.update(userExtendedTable).set({
+        passions: passions || "",
+        idealDate: idealDate || "",
+        selfDescription: selfDescription || "",
+        personalityType: personalityType || "",
+      }).where(eq(userExtendedTable.userId, userId))
+    } else {
+      await db.insert(userExtendedTable).values({
+        userId,
+        passions: passions || "",
+        idealDate: idealDate || "",
+        selfDescription: selfDescription || "",
+        personalityType: personalityType || "",
+      })
+    }
+
+    // Update bio if selfDescription is provided and bio is empty
+    if (selfDescription) {
+      const [user] = await db.select({ bio: usersTable.bio }).from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+      if (!user?.bio) {
+        await db.update(usersTable).set({ bio: selfDescription }).where(eq(usersTable.id, userId))
+      }
+    }
+
+    // Mark profile as having questions completed
+    await db.update(usersTable).set({ profileComplete: 1 }).where(eq(usersTable.id, userId))
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error("Profile questions error:", err)
+    res.status(500).json({ error: "Failed to save" })
+  }
+})
+
+// Look up user by username (for /@username routes)
+router.get("/by-username/:username", async (req, res) => {
+  try {
+    const username = req.params.username.replace(/^@/, "").toLowerCase()
+    const [user] = await db.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      username: usersTable.username,
+    }).from(usersTable).where(eq(usersTable.username, username)).limit(1)
+
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+    res.json({ id: user.id, name: user.name, username: user.username })
+  } catch {
+    res.status(500).json({ error: "Failed" })
+  }
+})
+
 export default router

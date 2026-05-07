@@ -4,7 +4,7 @@ import {
   usersTable, userExtendedTable, activityTable,
   passwordResetTokensTable, emailVerificationsTable, siteConfigTable
 } from "@workspace/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, or } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import crypto from "crypto"
@@ -37,9 +37,42 @@ function getSiteUrl(req: any): string {
     (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : `${req.protocol}://${req.get("host")}`)
 }
 
+function sanitizeUsername(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9_\.]/g, "").slice(0, 30)
+}
+
+// Check availability of username, email, or phone
+router.get("/check-availability", async (req, res) => {
+  try {
+    const { field, value } = req.query as { field: string; value: string }
+    if (!field || !value) { res.json({ available: false }); return }
+
+    if (field === "email") {
+      const rows = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.email, value.toLowerCase().trim())).limit(1)
+      res.json({ available: rows.length === 0 })
+    } else if (field === "username") {
+      const clean = sanitizeUsername(value)
+      if (clean.length < 3) { res.json({ available: false, reason: "min 3 chars" }); return }
+      const rows = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.username, clean)).limit(1)
+      res.json({ available: rows.length === 0, cleaned: clean })
+    } else if (field === "phone") {
+      const phone = value.replace(/\s/g, "")
+      const rows = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.phone, phone)).limit(1)
+      res.json({ available: rows.length === 0 })
+    } else {
+      res.json({ available: false })
+    }
+  } catch (err) {
+    res.json({ available: false })
+  }
+})
+
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, gender, lookingFor, birthday, city, country, countryCode } = req.body
+    const { name, email, password, username, phone, gender, lookingFor, birthday, city, country, countryCode } = req.body
     if (!name || !email || !password) {
       res.status(400).json({ error: "Name, email and password are required" })
       return
@@ -48,17 +81,58 @@ router.post("/register", async (req, res) => {
       res.status(400).json({ error: "Password must be at least 6 characters" })
       return
     }
+
+    // 18+ enforcement
+    if (birthday) {
+      const age = calcAge(birthday)
+      if (age < 18) {
+        res.status(400).json({ error: "You must be 18 or older to register" })
+        return
+      }
+    }
+
     const existing = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
     if (existing.length > 0) {
       res.status(400).json({ error: "Email already registered" })
       return
     }
+
+    // Validate username if provided
+    let cleanUsername: string | null = null
+    if (username) {
+      cleanUsername = sanitizeUsername(username)
+      if (cleanUsername.length < 3) {
+        res.status(400).json({ error: "Username must be at least 3 characters" })
+        return
+      }
+      const existingUsername = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.username, cleanUsername)).limit(1)
+      if (existingUsername.length > 0) {
+        res.status(400).json({ error: "Username already taken" })
+        return
+      }
+    }
+
+    // Validate phone if provided
+    let cleanPhone = ""
+    if (phone) {
+      cleanPhone = phone.replace(/\s/g, "")
+      const existingPhone = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.phone, cleanPhone)).limit(1)
+      if (existingPhone.length > 0) {
+        res.status(400).json({ error: "Phone number already registered" })
+        return
+      }
+    }
+
     const age = calcAge(birthday || "")
     const registrationCredits = parseInt(await getConfig("registration_credits") || "50")
 
     const [user] = await db.insert(usersTable).values({
       name: name.trim(),
       email: email.toLowerCase().trim(),
+      username: cleanUsername || null,
+      phone: cleanPhone,
       password: await hashPassword(password),
       gender: parseInt(gender) || 1,
       looking: parseInt(lookingFor) || 2,
@@ -116,21 +190,44 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required" })
+    // Accept email, username, or phone as identifier
+    const { identifier, email, password } = req.body
+    const loginId = (identifier || email || "").trim()
+    if (!loginId || !password) {
+      res.status(400).json({ error: "Email/username/phone and password are required" })
       return
     }
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
+
+    // Try find by email first, then username, then phone
+    let user: typeof usersTable.$inferSelect | undefined
+
+    const byEmail = await db.select().from(usersTable)
+      .where(eq(usersTable.email, loginId.toLowerCase())).limit(1)
+    if (byEmail.length > 0) {
+      user = byEmail[0]
+    } else {
+      // Try username
+      const byUsername = await db.select().from(usersTable)
+        .where(eq(usersTable.username, loginId.toLowerCase())).limit(1)
+      if (byUsername.length > 0) {
+        user = byUsername[0]
+      } else {
+        // Try phone
+        const byPhone = await db.select().from(usersTable)
+          .where(eq(usersTable.phone, loginId.replace(/\s/g, ""))).limit(1)
+        if (byPhone.length > 0) user = byPhone[0]
+      }
+    }
+
     if (!user) {
-      res.status(401).json({ error: "Invalid email or password" })
+      res.status(401).json({ error: "Invalid credentials" })
       return
     }
     const valid = await verifyAndUpgrade(password, user.password, async (newHash) => {
-      await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user.id))
+      await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
     })
     if (!valid) {
-      res.status(401).json({ error: "Invalid email or password" })
+      res.status(401).json({ error: "Invalid credentials" })
       return
     }
     if (user.banned === 1) {
@@ -145,7 +242,7 @@ router.post("/login", async (req, res) => {
 
     if (user.fake !== 1) {
       import("../lib/fake-message-scheduler").then(({ triggerAutoMessages }) => {
-        triggerAutoMessages(user.id, false).catch(() => {})
+        triggerAutoMessages(user!.id, false).catch(() => {})
       }).catch(() => {})
     }
 
