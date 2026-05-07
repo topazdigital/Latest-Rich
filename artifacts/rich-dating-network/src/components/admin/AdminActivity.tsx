@@ -51,7 +51,7 @@ export default function AdminActivity() {
                 <div className="text-gray-300 text-sm mt-0.5">{row.activity?.title}</div>
                 <div className="text-gray-500 text-xs mt-0.5">{row.activity?.message}</div>
               </div>
-              <div className="text-gray-500 text-xs shrink-0">{timeAgo(row.activity?.time * 1000)}</div>
+              <div className="text-gray-500 text-xs shrink-0">{timeAgo(row.activity?.time)}</div>
             </div>
           ))}
           {activity.length === 0 && (

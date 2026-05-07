@@ -58,7 +58,7 @@ export default function AdminOrders() {
                       {row.order?.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{timeAgo(row.order?.time * 1000)}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{timeAgo(row.order?.time)}</td>
                 </tr>
               ))}
             </tbody>
