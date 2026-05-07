@@ -37,6 +37,9 @@ export const usersTable = pgTable("users", {
   lastDailyBonus: integer("last_daily_bonus").default(0),
   profileComplete: integer("profile_complete").default(0),
   welcomeShown: integer("welcome_shown").default(0),
+  verificationStatus: text("verification_status").default("none"),
+  verificationPhoto: text("verification_photo").default(""),
+  verificationNote: text("verification_note").default(""),
 })
 
 export const userExtendedTable = pgTable("user_extended", {

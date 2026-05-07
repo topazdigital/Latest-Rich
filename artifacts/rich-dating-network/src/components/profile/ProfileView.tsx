@@ -4,10 +4,40 @@ import { Link } from 'wouter'
 import { Heart, MessageCircle, BadgeCheck, Crown, MapPin, Edit3, Gift, Flag, ShieldOff, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import { INTERESTS } from '../settings/SettingsPage'
 
 interface Props {
   user: any; photos: any[]; isOwnProfile: boolean;
   myId: number; hasLiked: boolean; isMatch: boolean;
+}
+
+function calcZodiac(birthday: string): string {
+  if (!birthday) return ''
+  const d = new Date(birthday)
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return '♈ Aries'
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return '♉ Taurus'
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return '♊ Gemini'
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return '♋ Cancer'
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return '♌ Leo'
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return '♍ Virgo'
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return '♎ Libra'
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return '♏ Scorpio'
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return '♐ Sagittarius'
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return '♑ Capricorn'
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return '♒ Aquarius'
+  return '♓ Pisces'
+}
+
+function calcAge(birthday: string): number | null {
+  if (!birthday) return null
+  const d = new Date(birthday)
+  const t = new Date()
+  let age = t.getFullYear() - d.getFullYear()
+  const m = t.getMonth() - d.getMonth()
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--
+  return age
 }
 
 export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked, isMatch }: Props) {
@@ -22,6 +52,18 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
     ...(user.photo ? [{ id: 0, photo: user.photo, thumb: user.photoThumb }] : []),
     ...photos.filter((p: any) => p.photo !== user.photo),
   ]
+
+  // Interests
+  const userInterests: string[] = (() => {
+    try { return JSON.parse(user.userExtended?.interests || '[]') } catch { return [] }
+  })()
+  const interestDetails = userInterests
+    .map(id => INTERESTS.find(i => i.id === id))
+    .filter(Boolean) as typeof INTERESTS
+
+  // Age — live calculated from birthday if available
+  const displayAge = user.birthday ? calcAge(user.birthday) ?? user.age : user.age
+  const zodiac = user.birthday ? calcZodiac(user.birthday) : ''
 
   async function toggleLike() {
     const prev = liked
@@ -90,10 +132,15 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-3xl font-bold">{user.name}</h1>
-                  {user.verified === 1 && <BadgeCheck size={24} className="text-blue-300" />}
+                  {user.verified === 1 && (
+                    <div title="Verified member">
+                      <BadgeCheck size={26} className="text-blue-400 drop-shadow" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 text-white/80 text-sm">
-                  <span>{user.age} years</span>
+                <div className="flex items-center gap-3 text-white/80 text-sm flex-wrap">
+                  <span>{displayAge} years</span>
+                  {zodiac && <><span>•</span><span>{zodiac}</span></>}
                   <span>•</span>
                   <span>{genderLabel(user.gender)}</span>
                   {user.city && <><span>•</span><span className="flex items-center gap-1"><MapPin size={12} />{user.city}</span></>}
@@ -154,10 +201,34 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         </div>
       )}
 
-      {user.userExtended && Object.values(user.userExtended).some((v: any) => v && v !== '') && (
+      {/* Interests section */}
+      {interestDetails.length > 0 && (
+        <div className="card p-5 mb-4">
+          <h2 className="font-semibold text-gray-900 mb-3">My Interests</h2>
+          <div className="flex flex-wrap gap-2">
+            {interestDetails.map(interest => (
+              <div
+                key={interest.id}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-medium shadow-sm"
+                style={{ background: interest.color }}>
+                <span>{interest.emoji}</span>
+                <span>{interest.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {user.userExtended && Object.values(user.userExtended).some((v: any) => v && v !== '' && v !== '[]') && (
         <div className="card p-5 mb-4">
           <h2 className="font-semibold text-gray-900 mb-3">Details</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
+            {zodiac && (
+              <div>
+                <p className="text-gray-400 text-xs">Zodiac</p>
+                <p className="text-gray-800 font-medium">{zodiac}</p>
+              </div>
+            )}
             {[
               ['Occupation', user.userExtended.occupation],
               ['Education', user.userExtended.education],
@@ -169,7 +240,8 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               ['Drinking', user.userExtended.drinking],
               ['Children', user.userExtended.children],
               ['Relationship', user.userExtended.relationship],
-            ].filter(([, v]) => v).map(([label, value]) => (
+              ['Languages', user.userExtended.languages],
+            ].filter(([, v]) => v && v !== '[]').map(([label, value]) => (
               <div key={label as string}>
                 <p className="text-gray-400 text-xs">{label}</p>
                 <p className="text-gray-800 font-medium">{value}</p>

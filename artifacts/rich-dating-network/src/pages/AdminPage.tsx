@@ -12,10 +12,12 @@ import AdminBoost from "../components/admin/AdminBoost"
 import AdminPayments from "../components/admin/AdminPayments"
 import AdminPhotos from "../components/admin/AdminPhotos"
 import AdminCustomPayments from "../components/admin/AdminCustomPayments"
+import AdminVerifications from "../components/admin/AdminVerifications"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
   { key: "users", label: "Manage Users", icon: "👥" },
+  { key: "verifications", label: "Verifications", icon: "✅" },
   { key: "fake-users", label: "Fake Users", icon: "🤖" },
   { key: "fake-messages", label: "Fake Messages", icon: "💬" },
   { key: "photos", label: "Photo Moderation", icon: "🖼️" },
@@ -126,6 +128,7 @@ export default function AdminPage() {
         <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
           {tab === "dashboard" && <AdminDashboard />}
           {tab === "users" && <AdminUsers />}
+          {tab === "verifications" && <AdminVerifications />}
           {tab === "fake-users" && <AdminFakeUsers />}
           {tab === "fake-messages" && <AdminFakeMessages />}
           {tab === "photos" && <AdminPhotos />}

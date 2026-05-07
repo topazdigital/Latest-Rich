@@ -4,7 +4,7 @@ import {
   usersTable, ordersTable, notificationsTable, messagesTable,
   activityTable, fakeMessageTemplatesTable, siteConfigTable,
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
-  chatLocksTable
+  chatLocksTable, userExtendedTable
 } from "@workspace/db/schema"
 import { eq, desc, sql, and, ne, gte, count, SQL, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -444,6 +444,89 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
+  }
+})
+
+// ─── Verifications ────────────────────────────────────────────────────
+
+// GET /api/admin/verifications?status=pending|approved|rejected
+router.get("/verifications", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.query.status || "pending")
+    const users = await db.select().from(usersTable)
+      .where(eq(usersTable.verificationStatus as any, status))
+      .orderBy(desc(usersTable.id))
+      .limit(200)
+    res.json(users.map(safeUser))
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/verifications/:id/approve
+router.post("/verifications/:id/approve", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+    await db.update(usersTable).set({
+      verificationStatus: "approved",
+      verificationNote: "",
+      verified: 1,
+    }).where(eq(usersTable.id, id))
+    await db.insert(notificationsTable).values({
+      userId: id,
+      fromId: null,
+      type: "verified",
+      message: "🎉 Your identity has been verified! You now have a blue tick on your profile.",
+      link: `/profile/${id}`,
+      read: 0,
+      time: now(),
+    })
+    await db.insert(activityTable).values({
+      type: "verification",
+      userId: req.userId,
+      title: "Verification approved",
+      message: `${user.name} (id: ${user.id}) has been verified`,
+      time: now(),
+    })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/verifications/:id/reject
+router.post("/verifications/:id/reject", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const { note } = req.body
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+    await db.update(usersTable).set({
+      verificationStatus: "rejected",
+      verificationNote: note || "Does not meet requirements",
+      verified: 0,
+    }).where(eq(usersTable.id, id))
+    await db.insert(notificationsTable).values({
+      userId: id,
+      fromId: null,
+      type: "info",
+      message: `Your verification was not approved${note ? `: ${note}` : ""}. Please try again with a clearer photo.`,
+      link: "/settings",
+      read: 0,
+      time: now(),
+    })
+    await db.insert(activityTable).values({
+      type: "verification",
+      userId: req.userId,
+      title: "Verification rejected",
+      message: `${user.name} (id: ${user.id}): ${note || "no reason given"}`,
+      time: now(),
+    })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
   }
 })
 

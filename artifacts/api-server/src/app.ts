@@ -41,4 +41,9 @@ import("./lib/push").then(({ initWebPush }) => {
   initWebPush();
 }).catch((err) => logger.error({ err }, "Failed to init web push"));
 
+// Start age auto-updater (runs on startup + every 6h)
+import("./lib/age-updater").then(({ startAgeUpdater }) => {
+  startAgeUpdater();
+}).catch((err) => logger.error({ err }, "Failed to start age updater"));
+
 export default app;

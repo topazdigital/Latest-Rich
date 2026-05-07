@@ -55,6 +55,8 @@ const SECTIONS = [
       { key: "require_email_verification", label: "Require Email Verification", type: "select", options: [["0","No (users access site instantly)"],["1","Yes (must verify email first)"]], help: "Toggle whether new users must verify their email" },
       { key: "photo_moderation", label: "Photo Moderation (Manual Review)", type: "select", options: [["0","Auto-approve"],["1","Manual review required"]], help: "Require admin approval for all uploaded photos" },
       { key: "auto_detect_contacts", label: "Auto-Detect Contact Info in Photos", type: "select", options: [["1","Enabled (reject suspicious photos)"],["0","Disabled"]], help: "Automatically reject photos that appear to contain phone numbers or contact info in the filename" },
+      { key: "verification_mode", label: "Identity Verification Mode", type: "select", options: [["manual","Manual (admin reviews each selfie)"],["auto","Auto-approve (selfie accepted instantly)"]], help: "How to handle user identity verification selfies" },
+      { key: "verification_gesture", label: "Verification Gesture / Challenge", type: "text", placeholder: "e.g. Hold up two fingers and smile", help: "The gesture users must perform in their selfie photo to prove they are real" },
     ]
   },
   {

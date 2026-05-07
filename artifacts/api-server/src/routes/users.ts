@@ -104,7 +104,8 @@ router.put("/me", requireAuth, async (req, res) => {
     }).where(eq(usersTable.id, req.userId!))
 
     const [existing] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, req.userId!)).limit(1)
-    const extData = { occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship }
+    const { interests, languages, zodiac, passions } = req.body
+    const extData = { occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship, interests: interests || undefined, languages: languages || undefined, zodiac: zodiac || undefined, passions: passions || undefined }
     if (existing) {
       await db.update(userExtendedTable).set(extData).where(eq(userExtendedTable.userId, req.userId!))
     } else {
