@@ -1,0 +1,69 @@
+<ion-view title="" hide-nav-bar="true">
+  <div class="twigo-register-header">
+    <div class="content-header-div-title">
+      <h2 class="twigo-font view-title-h2">{{alang[246].text}}</h2>
+    </div>
+    <div class="content-header-div-right" ng-click="goTo('home.welcome','left','')">
+      <img src="twigo/img/arrow-back.png"/>
+    </div>
+  </div>
+  <ion-content  scroll="false" ng-style="{height: iframeHeight + 'px'}" class="bg-fff">
+    <div class="page landing visible zIndex-600">
+    <div class="flexible-page">
+      <div class="page-content">
+        <div class="landing-decorations twigo-landing" style="background-image:url('twigo/img/twigo_bg.png')"></div>
+        <div class="landing-wrapper">
+          <div class="landing-logo mt--30px">
+            <div class="brick box-shadow-credits register-photo" ng-click="pick()">
+              <div class="brick__image" id="photo-upload" style="background-image: url('img/no_user.png')"></div>
+            </div>
+          </div>
+          <div class="landing-actions mt-80px">
+            <div class="cta-box">
+              <div class="cta-box__buttons">
+                <ul class="list-view ">
+                  <li class="list-item-form border-none">
+                    <label for="signin-name comforta">{{alang[158].text}}</label>
+                    <input ng-model="user.reg_name" placeholder="" name="name" type="text" autocapitalize="off" class="register-twigo-input" />
+                  </li>
+                  <li class="list-item-form border-none">
+                    <label for="signin-name comforta">{{lang[331].text}}</label>
+                    <input ng-model="user.reg_username" placeholder="" ng-keyup="checkUsername(user.reg_username)" name="username" type="text" autocapitalize="off" class="register-twigo-input">
+                    <div class="twigo-username-preview">
+                      <small class="comforta text-left">
+                        {{profileUrl}}@<strong>{{profileUsername}}</strong>
+                      </small>
+                    </div>
+                  </li>
+                  <li class="list-item-form border-none">
+                    <label for="signin-name">{{alang[149].text}}</label>
+                    <input ng-model="user.reg_email" placeholder="" name="email" type="email"  autocapitalize="off" class="register-twigo-input">
+                  </li>
+                  <li class="list-item-form border-none">
+                    <label for="signin-password comforta">{{alang[150].text}}</label>
+                    <input type="password" id="regpass" ng-model="user.reg_pass" ng-keyup="count = $count + 1" ng-init="count=0" ng-minlength="4" class="register-twigo-input" required>
+                  </li>
+                </ul>
+                <div class="button-wrapper mt-25px">
+                  <div class="login-loader mb-40" ng-if="regBtn">
+                    <center>
+                      <div class="loader02"></div>
+                    </center>
+                  </div>
+                  <button class="button button--secundary a" ng-class="{active: isActive}" ng-if="!regBtn" ng-click="next(user)">
+                    <div class="button__content"><span class="button__text">{{nexttext}}</span></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div flow-init
+      flow-name="uploader.flow"
+      flow-files-added="processFiles($files)">
+      <button flow-btn type="file" id="uploadRegPhoto" style="display: none;">Upload Images</button>
+    </div>
+  </ion-content>
+</ion-view>

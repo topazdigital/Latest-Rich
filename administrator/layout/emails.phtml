@@ -1,0 +1,871 @@
+<?php
+if ($sm['admin_ajax'] == false) {
+    header('Location: ' . $sm['config']['site_url'] . 'index.php?page=admin&p=users');
+    exit;
+}
+?>
+<script>
+  aurl = 'emails';
+  currentMenu = 'emails';
+  currentMenuCollapse = 'communications';
+</script>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Email Campaigns</h3>
+    <p class="text-muted">Create and send batched HTML emails to real users.</p>
+  </div>
+
+  <div class="card-body">
+    <form id="admin-email-form">
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" id="email_subject" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label>Message (HTML)</label>
+        <textarea id="email_message" class="form-control" rows="8" required></textarea>
+        <small class="text-muted">
+          Use <code>{NAME}</code>, <code>{USERNAME}</code>, <code>{EMAIL}</code>, <code>{UNSUBSCRIBE_LINK}</code> – they will be replaced automatically.
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label class="custom-control custom-checkbox">
+          <input type="checkbox" id="rec_all_real" class="custom-control-input">
+          <span class="custom-control-label">
+            Send to all real users (<span id="real-users-count">…</span>)
+          </span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>Custom Recipients (type emails or user IDs)</label>
+        <div style="position:relative;">
+          <textarea id="recipients_list" class="form-control" rows="4"
+                    placeholder="Type email or ID… autocomplete will suggest real users"></textarea>
+          <div id="recipients-suggestions"
+               style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;max-height:150px;overflow-y:auto;z-index:1000;display:none;"></div>
+        </div>
+        <small class="text-muted">Press Enter after selecting a suggestion.</small>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>Batch size</label>
+          <input type="number" id="batch_size" class="form-control" value="100" min="1">
+        </div>
+        <div class="form-group col-md-4">
+          <label>Cooling (minutes)</label>
+          <input type="number" id="cooling_minutes" class="form-control" value="10" min="1">
+        </div>
+        <div class="form-group col-md-4">
+          <label>Start time</label>
+          <input type="datetime-local" id="scheduled_start" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>From Name</label>
+        <input type="text" id="from_name" class="form-control"
+               value="<?= htmlspecialchars($sm['config']['name']); ?>">
+      </div>
+
+      <div class="form-group">
+        <label>From Email</label>
+        <input type="email" id="from_email" class="form-control"
+               value="<?= htmlspecialchars($sm['config']['contact_email'] ?? $sm['config_email']['user'] ?? ''); ?>">
+      </div>
+
+      <input type="hidden" id="campaign_id" value="">
+
+      <button type="button" id="preview-email" class="btn btn-secondary mr-2">Preview</button>
+      <button type="button" id="save-campaign" class="btn btn-primary mr-2">Save</button>
+      <button type="button" id="start-campaign" class="btn btn-success">Start Campaign</button>
+    </form>
+
+    <hr>
+
+    <h4>Saved Campaigns</h4>
+    <div class="d-flex justify-content-between mb-2">
+      <button id="delete-selected" class="btn btn-danger btn-sm" disabled>Delete Selected</button>
+    </div>
+
+    <div id="campaigns-list">
+      <table class="table table-sm" id="campaigns-table">
+        <thead>
+            <tr>
+            <th><input type="checkbox" id="select-all"></th>
+            <th>ID</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Sent/Total</th>
+            <th>Next</th>
+            <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <h4>Campaign History</h4>
+    <div id="campaign-history">
+      <table class="table table-sm table-striped" id="history-table">
+        <thead>
+            <tr>
+            <th>Campaign ID</th>
+            <th>Subject</th>
+            <th>Sent At</th>
+            <th>Recipients</th>
+            <th>Status</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <h4>Automatic Processing</h4>
+    <div class="card mb-3" style="border-left: 4px solid #28a745;">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-1">
+              <span class="badge badge-success" id="auto-status">●</span>
+              Auto-Scheduler
+            </h5>
+            <p class="text-muted mb-0">
+              Automatically processes ready campaigns every <strong id="auto-interval-display">5</strong> minutes <br>
+              <small class="text-warning">⚡ Runs in background even when page is closed</small>
+            </p>
+          </div>
+          <div class="custom-control custom-switch" style="transform: scale(1.5);">
+            <input type="checkbox" class="custom-control-input" id="auto-scheduler-toggle" checked>
+            <label class="custom-control-label" for="auto-scheduler-toggle"></label>
+          </div>
+        </div>
+        
+        <div class="mt-3">
+          <label>Check Interval (minutes)</label>
+          <input type="number" id="auto-interval" class="form-control" value="5" min="1" max="60" style="width: 150px;">
+          <small class="text-muted">How often to check for campaigns ready to send</small>
+        </div>
+        
+        <div class="mt-3">
+          <div class="row">
+            <div class="col-md-4">
+              <strong>Status:</strong> <span id="auto-scheduler-status" class="text-success">Running</span>
+            </div>
+            <div class="col-md-4">
+              <strong>Last Check:</strong> <span id="last-check-time">Never</span>
+            </div>
+            <div class="col-md-4">
+              <strong>Next Check:</strong> <span id="next-check-time">Calculating...</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-3">
+          <div id="auto-log" class="bg-light p-2" style="max-height: 150px; overflow-y: auto; border-radius: 4px; font-family: monospace; font-size: 12px;">
+            <div class="text-muted">Auto-scheduler log will appear here...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Manual Controls</h4>
+    <div class="form-inline mb-3">
+      <select id="process-campaign-select" class="form-control mr-2"></select>
+      <button id="process-next-batch" class="btn btn-warning mr-2">Send Next Batch</button>
+      <button id="process-all-ready" class="btn btn-danger">Process All Ready Now</button>
+    </div>
+
+    <div id="email-preview" style="display:none;margin-top:20px;">
+      <h4>Preview</h4>
+      <div id="preview-content" style="border:1px solid #ddd;padding:15px;background:#fff;"></div>
+    </div>
+
+    <div class="form-group mt-3">
+      <label>Test SMTP</label>
+      <div class="input-group">
+        <input type="email" id="test_smtp_email" class="form-control"
+               placeholder="your@email.com" value="<?= htmlspecialchars($sm['user']['email'] ?? ''); ?>">
+        <div class="input-group-append">
+          <button id="test-smtp" class="btn btn-outline-secondary">Test</button>
+        </div>
+      </div>
+      <small id="test-smtp-result" class="text-muted"></small>
+    </div>
+  </div>
+</div>
+
+<script>
+/* --------------------------------------------------------------
+   GLOBAL HELPERS (with base64 encoding to avoid mod_security)
+   -------------------------------------------------------------- */
+const endpoint = '<?= rtrim($sm['config']['site_url'], "/"); ?>/requests/email.php';
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelector(sel);
+const esc = txt => {
+  const d = document.createElement('div');
+  d.textContent = txt;
+  return d.innerHTML;
+};
+
+// Safe base64 for Unicode strings
+function utf8_to_b64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function b64_to_utf8(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
+
+const ajax = (action, data, cb) => {
+  const fd = new FormData();
+  fd.append('action', action);
+  for (let k in data) {
+    if (Array.isArray(data[k])) data[k].forEach(v => fd.append(k + '[]', v));
+    else fd.append(k, data[k]);
+  }
+  fetch(endpoint, { 
+    method: 'POST', 
+    body: fd,
+    headers: { 'Accept': 'application/json' }
+  })
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => {
+          throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+        });
+      }
+      return response.json();
+    })
+    .then(cb)
+    .catch(e => {
+      console.error('AJAX error:', e);
+      alert('Request failed: ' + e.message);
+    });
+};
+
+/* --------------------------------------------------------------
+   ELEMENTS (safe – will be null if missing)
+   -------------------------------------------------------------- */
+const realCountEl   = $('real-users-count');
+const allRealChk    = $('rec_all_real');
+const recBox        = $('recipients_list');
+const suggBox       = $('recipients-suggestions');
+const tbody         = $$('#campaigns-table tbody');
+const historyTbody  = $$('#history-table tbody');
+const selCampaign   = $('process-campaign-select');
+const previewDiv    = $('email-preview');
+const previewCont   = $('preview-content');
+const testResult    = $('test-smtp-result');
+
+/* --------------------------------------------------------------
+   1. REAL USER COUNT (once)
+   -------------------------------------------------------------- */
+if (realCountEl) {
+  ajax('count_real_users', {}, r => {
+    if (r.success) realCountEl.textContent = r.count + ' real users';
+  });
+}
+
+/* --------------------------------------------------------------
+   2. ALL-REAL CHECKBOX – disables custom list
+   -------------------------------------------------------------- */
+if (allRealChk && recBox) {
+  const toggle = () => recBox.disabled = allRealChk.checked;
+  allRealChk.addEventListener('change', toggle);
+  toggle();
+}
+
+/* --------------------------------------------------------------
+   3. AUTOCOMPLETE (fixed positioning & insertion)
+   -------------------------------------------------------------- */
+if (recBox && suggBox) {
+  const hide = () => suggBox.style.display = 'none';
+  const show = html => {
+    suggBox.innerHTML = html;
+    suggBox.style.display = 'block';
+  };
+
+  recBox.addEventListener('input', () => {
+    const line = recBox.value.split('\n').pop().trim();
+    if (line.length < 2) return hide();
+    ajax('search_users', { q: line }, r => {
+      if (!r.success || !r.users.length) return hide();
+      const html = r.users.map(u =>
+        `<div class="sugg-item" data-email="${u.email}" data-id="${u.id}"
+              style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;">
+          ${esc(u.display_name)} <small>(${u.id})</small>
+        </div>`
+      ).join('');
+      show(html);
+    });
+  });
+
+  suggBox.addEventListener('click', e => {
+    const item = e.target.closest('.sugg-item');
+    if (!item) return;
+    const lines = recBox.value.split('\n');
+    lines[lines.length - 1] = item.dataset.email + ' (' + item.dataset.id + ')';
+    recBox.value = lines.join('\n') + '\n';
+    hide();
+    recBox.focus();
+  });
+
+  document.addEventListener('click', e => {
+    if (!recBox.contains(e.target) && !suggBox.contains(e.target)) hide();
+  });
+}
+
+/* --------------------------------------------------------------
+   4. LOAD CAMPAIGN HISTORY
+   -------------------------------------------------------------- */
+const loadCampaignHistory = () => {
+  ajax('get_campaign_history', {}, r => {
+    if (!historyTbody) return;
+
+    if (!r.success || !r.history || r.history.length === 0) {
+      historyTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No campaign history yet.</td></tr>';
+      return;
+    }
+
+    let rows = '';
+    r.history.forEach(h => {
+      rows += `<tr>
+        <td>${h.campaign_id}</td>
+        <td>${esc(h.subject)}</td>
+        <td>${h.sent_at}</td>
+        <td>${h.recipients_count}</td>
+        <td><span class="badge badge-${h.status === 'completed' ? 'success' : 'info'}">${h.status}</span></td>
+      </tr>`;
+    });
+    historyTbody.innerHTML = rows;
+  });
+};
+
+/* --------------------------------------------------------------
+   5. LOAD CAMPAIGNS (refresh after every action)
+   -------------------------------------------------------------- */
+const loadCampaigns = () => {
+  ajax('list_campaigns', {}, r => {
+    if (!tbody || !selCampaign) return;
+
+    if (!r.success || !r.campaigns.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center">No campaigns.</td></tr>';
+      selCampaign.innerHTML = '<option>--</option>';
+      return;
+    }
+
+    let rows = '', opts = '<option value="">--select--</option>';
+    r.campaigns.forEach(c => {
+      // Check if campaign is finished (completed or all sent)
+      const isFinished = c.status === 'completed' || c.status === 'finished' || 
+                        c.sent_recipients >= c.total_recipients;
+      
+      // Show restart button for finished campaigns
+      const restartBtn = isFinished 
+        ? `<button class="btn btn-sm btn-success restart-btn" data-id="${c.id}" title="Restart this campaign">
+             ↻ Restart
+           </button>` 
+        : '';
+      
+      rows += `<tr>
+        <td><input type="checkbox" class="campaign-check" data-id="${c.id}"></td>
+        <td>${c.id}</td>
+        <td>${esc(c.subject)}</td>
+        <td><span class="badge badge-${c.status === 'completed' ? 'success' : c.status === 'running' ? 'primary' : 'secondary'}">${c.status}</span></td>
+        <td>${c.sent_recipients}/${c.total_recipients}</td>
+        <td>${c.next_run_human || '-'}</td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-sm btn-info load-btn" data-id="${c.id}">Load</button>
+          ${restartBtn}
+          <button class="btn btn-sm btn-danger stop-btn" data-id="${c.id}">Stop</button>
+        </td>
+      </tr>`;
+      opts += `<option value="${c.id}">${c.id} - ${esc(c.subject)}</option>`;
+    });
+    tbody.innerHTML = rows;
+    selCampaign.innerHTML = opts;
+
+    // re-attach handlers
+    const selectAll = $$('#select-all');
+    if (selectAll) {
+      selectAll.onclick = () => {
+        document.querySelectorAll('.campaign-check').forEach(ch => ch.checked = selectAll.checked);
+        toggleDelBtn();
+      };
+    }
+    
+    document.querySelectorAll('.campaign-check').forEach(ch => ch.onchange = toggleDelBtn);
+    document.querySelectorAll('.load-btn').forEach(b => b.onclick = () => loadOne(b.dataset.id));
+    document.querySelectorAll('.restart-btn').forEach(b => b.onclick = () => restartCampaign(b.dataset.id));
+    document.querySelectorAll('.stop-btn').forEach(b => b.onclick = () => {
+      if (confirm('Stop this campaign?')) ajax('stop_campaign', {campaign_id: b.dataset.id}, () => {
+        loadCampaigns();
+        loadCampaignHistory();
+      });
+    });
+    toggleDelBtn();
+  });
+};
+
+/* --------------------------------------------------------------
+   6. RESTART CAMPAIGN
+   -------------------------------------------------------------- */
+const restartCampaign = (cid) => {
+  if (!confirm('Restart this campaign? It will reset and send to all recipients again.')) return;
+  
+  ajax('restart_campaign', {campaign_id: cid}, r => {
+    if (r.success) {
+      alert(`Campaign restarted! Queued ${r.queued} recipients.`);
+      autoLog(`Campaign ${cid} restarted - ${r.queued} recipients queued`, 'success');
+      loadCampaigns();
+      loadCampaignHistory();
+    } else {
+      alert('Error: ' + (r.message || 'Failed to restart campaign'));
+      autoLog(`Failed to restart campaign ${cid}: ${r.message}`, 'error');
+    }
+  });
+};
+
+/* --------------------------------------------------------------
+   7. LOAD SINGLE CAMPAIGN
+   -------------------------------------------------------------- */
+const loadOne = cid => {
+  ajax('get_campaign', {campaign_id: cid}, r => {
+    if (!r.success) return alert(r.message);
+    const c = r.campaign;
+    const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+    const chk = (id, bool) => { const el = $(id); if (el) el.checked = bool; };
+    set('campaign_id', c.id);
+    set('email_subject', c.subject);
+    set('email_message', c.message);   // message already decoded by PHP
+    set('batch_size', c.batch_size);
+    set('cooling_minutes', c.cooling_minutes);
+    set('from_name', c.from_name);
+    set('from_email', c.from_email);
+    chk('rec_all_real', c.all_real == 1);
+    set('recipients_list', c.recipients || '');
+    if (allRealChk && recBox) recBox.disabled = allRealChk.checked;
+    alert('Campaign loaded');
+  });
+};
+
+/* --------------------------------------------------------------
+   8. DELETE SELECTED
+   -------------------------------------------------------------- */
+const toggleDelBtn = () => {
+  const any = document.querySelector('.campaign-check:checked');
+  const delBtn = $('delete-selected');
+  if (delBtn) delBtn.disabled = !any;
+};
+
+const deleteSelectedBtn = $('delete-selected');
+if (deleteSelectedBtn) {
+  deleteSelectedBtn.addEventListener('click', () => {
+    const ids = Array.from(document.querySelectorAll('.campaign-check:checked')).map(ch => ch.dataset.id);
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} campaign(s)?`)) return;
+    ajax('delete_campaigns', {ids}, r => {
+      alert(r.success ? `Deleted ${r.deleted}` : r.message);
+      loadCampaigns();
+      loadCampaignHistory();
+    });
+  });
+}
+
+/* --------------------------------------------------------------
+   9. PREVIEW (no encoding needed for preview)
+   -------------------------------------------------------------- */
+const previewBtn = $('preview-email');
+if (previewBtn) {
+  previewBtn.addEventListener('click', () => {
+    const subj = $('email_subject').value;
+    const msg  = $('email_message').value;
+    ajax('preview', {subject: subj, message: msg}, r => {
+      if (r.success && previewCont && previewDiv) {
+        previewCont.innerHTML = r.html;
+        previewDiv.style.display = 'block';
+      }
+    });
+  });
+}
+
+/* --------------------------------------------------------------
+   10. COLLECT FORM DATA (with base64 encoding of subject & message)
+   -------------------------------------------------------------- */
+const collect = () => ({
+  campaign_id: $('campaign_id').value,
+  subject: utf8_to_b64($('email_subject').value),      // encode subject
+  message: utf8_to_b64($('email_message').value),      // encode message
+  all_real: $('rec_all_real').checked ? 1 : 0,
+  recipients: $('recipients_list').value.trim(),
+  batch_size: $('batch_size').value,
+  cooling_minutes: $('cooling_minutes').value,
+  from_name: $('from_name').value,
+  from_email: $('from_email').value,
+  scheduled_start: $('scheduled_start').value
+});
+
+/* --------------------------------------------------------------
+   11. SAVE
+   -------------------------------------------------------------- */
+const saveBtn = $('save-campaign');
+if (saveBtn) {
+  saveBtn.addEventListener('click', () => {
+    ajax('save_campaign', collect(), r => {
+      alert(r.success ? 'Saved!' : r.message);
+      if (r.success) {
+        loadCampaigns();
+        loadCampaignHistory();
+      }
+    });
+  });
+}
+
+/* --------------------------------------------------------------
+  12. START
+   -------------------------------------------------------------- */
+const startBtn = $('start-campaign');
+if (startBtn) {
+  startBtn.addEventListener('click', () => {
+    if (!confirm('Start campaign now?')) return;
+    ajax('start_campaign', collect(), r => {
+      alert(r.success ? `Started – queued ${r.queued}` : r.message);
+      if (r.success) {
+        loadCampaigns();
+        loadCampaignHistory();
+      }
+    });
+  });
+}
+
+/* --------------------------------------------------------------
+   BACKGROUND AUTO-SCHEDULER (WORKS OFFLINE)
+   -------------------------------------------------------------- */
+let autoSchedulerWorker = null;
+let autoSchedulerEnabled = true;
+
+const autoLog = (message, type = 'info') => {
+  const logDiv = $('auto-log');
+  if (!logDiv) return;
+  
+  const timestamp = new Date().toLocaleTimeString();
+  const colors = {
+    info: '#6c757d',
+    success: '#28a745',
+    warning: '#ffc107',
+    error: '#dc3545'
+  };
+  
+  const entry = document.createElement('div');
+  entry.style.color = colors[type] || colors.info;
+  entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+  
+  logDiv.insertBefore(entry, logDiv.firstChild);
+  
+  // Keep only last 20 logs
+  while (logDiv.children.length > 20) {
+    logDiv.removeChild(logDiv.lastChild);
+  }
+};
+
+const updateNextCheckTime = (minutes) => {
+  const nextTime = new Date(Date.now() + minutes * 60 * 1000);
+  const timeStr = nextTime.toLocaleTimeString();
+  const nextCheckEl = $('next-check-time');
+  if (nextCheckEl) nextCheckEl.textContent = timeStr;
+};
+
+const processReadyCampaigns = () => {
+  const lastCheckEl = $('last-check-time');
+  if (lastCheckEl) lastCheckEl.textContent = new Date().toLocaleTimeString();
+  
+  autoLog('Checking for ready campaigns...', 'info');
+  
+  ajax('process_all_ready', {}, r => {
+    if (!r.success) {
+      autoLog('Error checking campaigns: ' + (r.message || 'Unknown error'), 'error');
+      return;
+    }
+    
+    if (!r.ready_campaigns || r.ready_campaigns.length === 0) {
+      autoLog('No campaigns ready to send', 'info');
+      return;
+    }
+    
+    autoLog(`Found ${r.ready_campaigns.length} campaign(s) ready to process`, 'success');
+    
+    let totalSent = 0;
+    let processed = 0;
+    
+    r.ready_campaigns.forEach(id => {
+      ajax('process_campaign', {campaign_id: id}, res => {
+        processed++;
+        if (res.success) {
+          totalSent += res.sent;
+          autoLog(`Campaign ${id}: Sent ${res.sent} emails`, 'success');
+        } else {
+          autoLog(`Campaign ${id}: Error - ${res.message}`, 'error');
+        }
+        
+        // After all campaigns processed, refresh list
+        if (processed === r.ready_campaigns.length) {
+          autoLog(`✓ Total sent: ${totalSent} emails across ${processed} campaign(s)`, 'success');
+          loadCampaigns();
+          loadCampaignHistory();
+        }
+      });
+    });
+  });
+};
+
+// Create background scheduler using setInterval (works even when page is inactive)
+const startAutoScheduler = () => {
+  const intervalMinutes = parseInt($('auto-interval')?.value || 5);
+  
+  // Clear any existing worker
+  if (autoSchedulerWorker) {
+    clearInterval(autoSchedulerWorker);
+  }
+  
+  autoSchedulerEnabled = true;
+  
+  // Save state to localStorage so it persists
+  localStorage.setItem('autoSchedulerEnabled', 'true');
+  localStorage.setItem('autoSchedulerInterval', intervalMinutes.toString());
+  
+  // Update UI
+  const statusEl = $('auto-scheduler-status');
+  const badgeEl = $('auto-status');
+  if (statusEl) statusEl.textContent = 'Running';
+  if (statusEl) statusEl.className = 'text-success';
+  if (badgeEl) badgeEl.className = 'badge badge-success';
+  
+  // First check immediately
+  processReadyCampaigns();
+  updateNextCheckTime(intervalMinutes);
+  
+  // Set up recurring background checks
+  autoSchedulerWorker = setInterval(() => {
+    if (autoSchedulerEnabled) {
+      processReadyCampaigns();
+      updateNextCheckTime(intervalMinutes);
+    }
+  }, intervalMinutes * 60 * 1000);
+  
+  autoLog(`Auto-scheduler started (checking every ${intervalMinutes} minutes) - Runs in background`, 'success');
+};
+
+const stopAutoScheduler = () => {
+  autoSchedulerEnabled = false;
+  
+  if (autoSchedulerWorker) {
+    clearInterval(autoSchedulerWorker);
+    autoSchedulerWorker = null;
+  }
+  
+  // Save state
+  localStorage.setItem('autoSchedulerEnabled', 'false');
+  
+  // Update UI
+  const statusEl = $('auto-scheduler-status');
+  const badgeEl = $('auto-status');
+  const nextCheckEl = $('next-check-time');
+  
+  if (statusEl) statusEl.textContent = 'Stopped';
+  if (statusEl) statusEl.className = 'text-danger';
+  if (badgeEl) badgeEl.className = 'badge badge-danger';
+  if (nextCheckEl) nextCheckEl.textContent = 'Stopped';
+  
+  autoLog('Auto-scheduler stopped', 'warning');
+};
+
+// Toggle handler
+const toggleEl = $('auto-scheduler-toggle');
+if (toggleEl) {
+  toggleEl.addEventListener('change', function() {
+    if (this.checked) {
+      startAutoScheduler();
+    } else {
+      stopAutoScheduler();
+    }
+  });
+}
+
+// Interval change handler
+const intervalEl = $('auto-interval');
+if (intervalEl) {
+  intervalEl.addEventListener('change', function() {
+    const minutes = parseInt(this.value);
+    const displayEl = $('auto-interval-display');
+    if (displayEl) displayEl.textContent = minutes;
+    
+    // Save to localStorage
+    localStorage.setItem('autoSchedulerInterval', minutes.toString());
+    
+    // Restart scheduler with new interval if it's running
+    if (autoSchedulerEnabled) {
+      autoLog(`Interval changed to ${minutes} minutes, restarting...`, 'info');
+      startAutoScheduler();
+    }
+  });
+}
+
+/* --------------------------------------------------------------
+  13. MANUAL SEND BUTTONS
+   -------------------------------------------------------------- */
+const processNextBtn = $('process-next-batch');
+if (processNextBtn) {
+  processNextBtn.addEventListener('click', () => {
+    const cid = selCampaign?.value;
+    if (!cid) return alert('Select a campaign first');
+    
+    autoLog(`Manual: Processing campaign ${cid}`, 'info');
+    ajax('process_campaign', {campaign_id: cid}, r => {
+      alert(r.success ? `Sent ${r.sent}` : r.message);
+      if (r.success) {
+        autoLog(`Manual: Sent ${r.sent} emails from campaign ${cid}`, 'success');
+      }
+      loadCampaigns();
+      loadCampaignHistory();
+    });
+  });
+}
+
+const processAllBtn = $('process-all-ready');
+if (processAllBtn) {
+  processAllBtn.addEventListener('click', () => {
+    if (!confirm('Process all ready campaigns now?')) return;
+    autoLog('Manual: Processing all ready campaigns', 'info');
+    processReadyCampaigns();
+  });
+}
+
+/* --------------------------------------------------------------
+  14. TEST SMTP
+   -------------------------------------------------------------- */
+const testSmtpBtn = $('test-smtp');
+if (testSmtpBtn) {
+  testSmtpBtn.addEventListener('click', () => {
+    const email = $('test_smtp_email').value.trim();
+    if (!email.includes('@')) return alert('Enter a valid email');
+    ajax('test_smtp', {test_email: email}, r => {
+      if (testResult) testResult.textContent = r.message;
+    });
+  });
+}
+
+/* --------------------------------------------------------------
+  15. DEFAULT MESSAGE ON FOCUS
+   -------------------------------------------------------------- */
+const emailMsgArea = $('email_message');
+if (emailMsgArea) {
+  emailMsgArea.addEventListener('focus', function () {
+    if (this.value.trim() === '') {
+      this.value = `<h2>Hi {NAME}!</h2>\n<p>Thanks for being part of our community.</p>\n<p>…your message here…</p>`;
+    }
+  });
+}
+
+/* --------------------------------------------------------------
+  16. INITIAL LOAD + AUTO-START SCHEDULER
+   -------------------------------------------------------------- */
+loadCampaigns();
+loadCampaignHistory();
+
+// Refresh campaigns list every 30 seconds
+setInterval(() => {
+  loadCampaigns();
+  loadCampaignHistory();
+}, 30000);
+
+// Restore auto-scheduler state from localStorage and start
+setTimeout(() => {
+  const savedEnabled = localStorage.getItem('autoSchedulerEnabled');
+  const savedInterval = localStorage.getItem('autoSchedulerInterval');
+  
+  if (savedInterval) {
+    const intervalInput = $('auto-interval');
+    if (intervalInput) {
+      intervalInput.value = savedInterval;
+      const displayEl = $('auto-interval-display');
+      if (displayEl) displayEl.textContent = savedInterval;
+    }
+  }
+  
+  // Start scheduler if it was enabled (default is enabled)
+  if (savedEnabled !== 'false') {
+    if (toggleEl) toggleEl.checked = true;
+    startAutoScheduler();
+  } else {
+    if (toggleEl) toggleEl.checked = false;
+    stopAutoScheduler();
+  }
+}, 1000);
+
+// Keep scheduler alive even when page is inactive
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && autoSchedulerEnabled && !autoSchedulerWorker) {
+    autoLog('Page became visible, restarting auto-scheduler', 'info');
+    startAutoScheduler();
+  }
+});
+</script>
+
+<style>
+.sugg-item:hover { 
+  background:#f0f0f0; 
+}
+
+.custom-switch .custom-control-label::before {
+  width: 2.5rem;
+  height: 1.5rem;
+}
+
+.custom-switch .custom-control-label::after {
+  width: calc(1.5rem - 4px);
+  height: calc(1.5rem - 4px);
+}
+
+#auto-status {
+  font-size: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {0%, 100% { opacity: 1; }
+50% { opacity: 0.5; }
+}
+#auto-log::-webkit-scrollbar {
+width: 6px;
+}
+#auto-log::-webkit-scrollbar-track {
+background: #f1f1f1;
+}
+#auto-log::-webkit-scrollbar-thumb {
+background: #888;
+border-radius: 3px;
+}
+#auto-log::-webkit-scrollbar-thumb:hover {
+background: #555;
+}
+.restart-btn {
+margin: 0 2px;
+}
+.restart-btn i {
+margin-right: 3px;
+}
+#history-table {
+font-size: 0.9rem;
+}
+#history-table tbody tr:hover {
+background-color: #f8f9fa;
+}
+</style>

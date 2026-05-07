@@ -1,0 +1,27 @@
+[30-Jul-2024 21:03:05 Africa/Nairobi] PHP Warning:  Undefined array key "HTTP_ACCEPT_LANGUAGE" in /home/topazdig/date.topazdigital.co.ke/assets/includes/connect.php on line 305
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 44
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 73
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 105
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 150
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 183
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 210
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 240
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 266
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 292
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 301
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 310
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 331
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 339
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 360
+[06-Aug-2024 15:53:21 America/Chicago] PHP Notice:  Undefined index: paymentOption in /home/topazdig/sincerelysingle.com/pay/payment-response.php on line 371
+[19-Aug-2024 12:50:57 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:44:58 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:28 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:28 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:28 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:29 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:29 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:31 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[22-Aug-2024 15:47:38 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[23-Aug-2024 13:40:45 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376
+[23-Aug-2024 15:10:04 Africa/Nairobi] PHP Notice:  Undefined index: HTTP_ACCEPT_LANGUAGE in /home/topazdig/sincerelysingle.com/assets/includes/connect.php on line 376

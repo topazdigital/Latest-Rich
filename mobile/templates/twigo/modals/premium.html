@@ -1,0 +1,49 @@
+<ion-modal-view>
+  <ion-content class="mi-violetita twigo-bg">
+	<div class="credits-modal-bg" style="background: url('{{siteUrl}}mobile/twigo/img/premium.png') no-repeat top center;" ></div>	    
+	<div class="credits-modal-photo" style="background-image: url('{{me.profile_photo}}');" ></div>
+	<div class="credits-separator"></div>
+	<ion-slide-box show-pager="true" class="slider-pager credits-slider">
+		<ion-slide ng-repeat="i in [1,2,3,4,5,6] track by $index" class="credits-slider-items">
+			<div ng-if="$index == 0" class="credit-slide">		
+				<h2 class="comforta" >{{pchat}} {{alang[56].text}}<h2>
+				<p>{{alang[57].text}}</p>
+			</div>
+			<div ng-if="$index == 1" class="credit-slide">		
+				<h2 class="comforta" >{{alang[58].text}}<h2>
+				<p>{{alang[59].text}}</p>
+			</div>
+			<div ng-if="$index == 2" class="credit-slide">		
+				<h2 class="comforta">{{alang[60].text}}<h2>
+				<p>{{alang[61].text}}</p>
+			</div>	
+			<div ng-if="$index == 3" class="credit-slide">		
+				<h2 class="comforta" >{{alang[62].text}}<h2>
+				<p>{{alang[63].text}}</p>
+			</div>
+			<div ng-if="$index == 4" class="credit-slide">		
+				<h2 class="comforta" >{{alang[64].text}}<h2>
+				<p>{{alang[65].text}} </p>
+			</div>	
+			<div ng-if="$index == 5" class="credit-slide">		
+				<h2 class="comforta">{{alang[66].text}}<h2>
+				<p>{{alang[67].text}}</p>
+			</div>			
+		</ion-slide>
+	</ion-slide-box	>  
+		<div class="text-muted border-none">
+		  <div class="item item-divider b-none text-center twigo-gradient1 credits-header">{{alang[68].text}}</div>		
+			<div class="list credits-prices" ng-repeat="i in cp track by $index" ng-click="buyPremium(i.quantity,i.price,$index)" >
+			  <div class="item premium-bg comforta div-c1">
+				<div>
+					<span class="ml-5 text-gray-777">{{i.quantity}} {{alang[69].text}}</span>
+					<span class="credits-price">{{i.price}} {{currency}}</span>
+				</div>									
+			  </div>
+			</div>				  
+		</div>	
+  </ion-content>
+  <ion-footer>
+	<button class="button button-clear comforta close-credits-modal" ng-click="closePremiumModal()">{{alang[44].text}}</button>
+  </ion-footer>
+</ion-modal-view>

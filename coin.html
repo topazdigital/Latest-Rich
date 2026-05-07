@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Coin Crash v2</title>
+    <style>
+        body {
+            background: #111;
+            color: #fff;
+            font-family: monospace;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #222;
+            border-top: 2px solid #333;
+        }
+
+        #hud {
+            text-align: center;
+            padding: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="hud">
+        💰 Balance: <span id="balance">100</span>
+    </div>
+    <canvas id="game" width="600" height="500"></canvas>
+
+    <script>
+        /* ==========================
+   GAME CONFIG
+========================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const balanceDisplay = document.getElementById("balance");
+
+let balance = 100;
+let coins = [];
+let frame = 0;
+let rngSeed = 12345;
+
+const coinRadius = 22;
+const spawnRate = 90; // how often new coin appears
+const gravity = 0.8;  // fall speed
+const houseEdge = 0.6; // 60% lose chance (house wins more)
+
+/* ==========================
+   SEEDED RNG
+========================== */
+function seededRandom() {
+  rngSeed = (rngSeed * 9301 + 49297) % 233280;
+  return rngSeed / 233280;
+}
+
+/* ==========================
+   SPAWN COINS
+========================== */
+function spawnCoin() {
+  coins.push({
+    x: seededRandom() * (canvas.width - 2 * coinRadius) + coinRadius,
+    y: -coinRadius,
+    speed: 0.8 + seededRandom() * 1.2,
+    clicked: false,
+    flashTime: 0,
+    displayText: "",
+    value: 1,
+  });
+}
+
+/* ==========================
+   DRAW / UPDATE LOOP
+========================== */
+function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Spawn new coins periodically
+  if (frame % spawnRate === 0) spawnCoin();
+  frame++;
+
+  coins.forEach((coin, i) => {
+    // Gravity movement
+    coin.y += coin.speed * gravity;
+
+    // Draw the coin
+    ctx.beginPath();
+    ctx.arc(coin.x, coin.y, coinRadius, 0, Math.PI * 2);
+    ctx.fillStyle = coin.flashTime > 0
+      ? (coin.value > 1 ? "#0f0" : "#f00")
+      : "#ffd700";
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.closePath();
+
+    // Show multiplier/divider text if clicked
+    if (coin.displayText) {
+      ctx.fillStyle = "#fff";
+      ctx.font = "16px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(coin.displayText, coin.x, coin.y - 30);
+    }
+
+    // Fade effect for clicked coins
+    if (coin.flashTime > 0) {
+      coin.flashTime--;
+      if (coin.flashTime <= 0) coin.displayText = "";
+    }
+
+    // Remove offscreen coins
+    if (coin.y > canvas.height + coinRadius) {
+      coins.splice(i, 1);
+    }
+  });
+
+  requestAnimationFrame(update);
+}
+
+/* ==========================
+   CLICK HANDLER
+========================== */
+canvas.addEventListener("click", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  coins.forEach((coin) => {
+    const dx = coin.x - mouseX;
+    const dy = coin.y - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (!coin.clicked && dist < coinRadius + 5) {
+      coin.clicked = true;
+      coin.flashTime = 60;
+
+      // --- Game logic (house bias) ---
+      const chance = seededRandom();
+      if (chance > houseEdge) {
+        // Win
+        const mult = 1.5 + seededRandom() * 1.5;
+        balance *= mult;
+        coin.value = mult;
+        coin.displayText = "×" + mult.toFixed(2);
+      } else {
+        // Lose
+        const div = 1.5 + seededRandom() * 1.5;
+        balance /= div;
+        coin.value = 1 / div;
+        coin.displayText = "÷" + div.toFixed(2);
+      }
+
+      // Keep balance safe
+      balance = Math.max(1, balance);
+      balanceDisplay.textContent = balance.toFixed(2);
+
+      // TODO: Send event to backend (later)
+      // socket.emit('coinClick', { userId, coinId, result: coin.value });
+    }
+  });
+});
+
+/* ==========================
+   START GAME
+========================== */
+update();
+    </script>
+</body>
+
+</html>

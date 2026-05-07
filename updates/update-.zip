@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en" prefix="og: http://ogp.me/ns#">
+<head>
+  <title>Page not found - Premium Dating Script</title>
+  <meta name="robots" content="index,follow" />
+  <meta name="description" content="Start your own online dating site with a our dating software platform at very low cost. Easy and Fully Customizable Dating Script.">  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <link rel="preload" href="https://premiumdatingscript.com/newsite/webfonts/3237E4_0_0.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="https://premiumdatingscript.com/newsite/webfonts/37A739_0_0.woff2" as="font" type="font/woff2" crossorigin>
+
+  <link rel="stylesheet" href="https://unpkg.com/lite-editor@1.6.39/css/lite-editor.css">
+  <link rel="stylesheet" href="https://premiumdatingscript.com/newsite/css/style.css">
+  <link rel="stylesheet" href="https://premiumdatingscript.com/newsite/css/home.css">
+  <link rel="stylesheet" href="https://premiumdatingscript.com/newsite/css/support.css">
+     
+  <link rel="stylesheet" href="https://premiumdatingscript.com/newsite/css/error.css">    
+      
+   
+     
+  <meta prefix="og: http://ogp.me/ns#" /> 
+  <meta itemprop="image" content="https://premiumdatingscript.com/inline-envato.jpg">  
+  <meta name="google-site-verification" content="FA-pLh-FNjeGeRDNE9DG4xCKPRZhzt3wp4qTlH9eEYw" /> 
+  <link rel="shortcut icon" href="https://premiumdatingscript.com/newsite/images/favicon.png">
+  <link rel="canonical" href="https://www.premiumdatingscript.com/" />
+
+  <meta name="twitter:card" content="product">
+  <meta name="twitter:site" content="@publisher_handle">
+  <meta name="twitter:title" content="Premium Dating Script - Complete Dating Software">
+  <meta name="twitter:description" content="High quality dating software with incredible out of the box ready-to-use functionality This script is built on simple PHP making it very easy to edit the code. Any custom change is possible.">
+  <meta name="twitter:creator" content="@belloosoftware">
+  <meta name="twitter:image" content="https://premiumdatingscript.com/inline-envato.jpg">
+  <meta name="twitter:data1" content="$299">
+  <meta name="twitter:label1" content="Price">
+  <meta name="twitter:data2" content="Black">
+  <meta name="twitter:label2" content="Color">
+
+  <!-- Open Graph data -->
+  <meta property="og:title" content="Premium Dating Script - Complete Dating Software" />
+  <meta property="og:type" content="product" />
+  <meta property="og:url" content="https://www.premiumdatingscript.com/" />
+  <meta property="og:image" content="https://premiumdatingscript.com/inline-envato.jpg" />
+  <meta property="og:description" content="High quality dating software with incredible out of the box ready-to-use functionality This script is built on simple PHP making it very easy to edit the code. Any custom change is possible." />
+  <meta property="og:site_name" content="Premium Dating Script - Complete Dating Software" />
+  <meta property="og:price:amount" content="299" />
+  <meta property="og:price:currency" content="USD" />
+  <script type="text/javascript">
+  </script> 
+
+  <script>
+    function inIframe () {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    }
+
+    if(inIframe() == true){
+      window.top.location.href = "https://www.premiumdatingscript.com/?ref=envato";
+    }
+
+    var extendedPrice = 499;
+    var baseExtendedPrice = 499;
+    var extendedDomains = 5;
+    var increaseExtended = '';
+    var extendedCount = 0;
+    var ref = 'envato';
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      -webkit-appearance: none;
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border-radius: 4px;
+      background-color: rgba(0, 0, 0, .5);
+      box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+    }
+  </style>
+
+  <style>
+      .promote-badge{
+          background-color: #000;
+          padding: 20px 0;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 9999999999;                
+      }
+      .promote-badge.hidden{
+          display: none;
+      }
+      .promote-badge .promote-badge-link{
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+      }
+      .promote-badge .promote-badge-link:hover{
+          text-decoration: none;
+      }
+      .promote-badge .promote-badge-wrap{
+          display: flex;
+          align-items: center;
+          gap: 25px;
+          padding-right: 40px;
+          position: relative;
+          justify-content: center;
+      }
+      .promote-badge .promote-badge-wrap .promote-badge-wrap-img{
+          max-height: 170px;
+          max-width: 160px;
+          flex-shrink: 0;
+      }
+      .promote-badge .promote-badge-wrap .promote-badge-wrap-img img{
+          width: 170px;
+      }      
+      .promote-badge .promote-badge-wrap .promote-badge-wrap-content{
+          color: #fff;
+          font-size: 20px;
+          font-weight: 500;
+          line-height: 25px;
+          font-family: 'Eina01-Bold', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;          
+      }
+      .promote-badge .promote-badge-wrap .promote-badge-wrap-content .promote-badge-wrap-content-logo{
+          display: inline-block;
+          max-height: 25px;
+          margin-bottom: 20px;
+      }
+      .promote-badge .promote-badge-wrap .promote-badge-wrap-content .promote-badge-wrap-content-logo img{
+          max-width: 200px;
+      }      
+      .promote-badge-btn{
+          display: inline-block;
+          background-color: #000000;
+          color: #fff;
+          padding: 12px 24px;
+          border-radius: 100px;
+          font-size: 16px;
+          line-height: 24px;
+          text-align: center;
+          white-space: nowrap;
+      }
+      .promote-badge-btn:hover{
+          background-color: #000000;
+          color: #fff;
+          text-decoration: none;
+      }
+      .promote-badge .promote-badge-wrap .promote-badge-close-btn{
+          position: absolute;
+          top: 0;
+          right: 0;
+          cursor: pointer;
+      }
+      @media(max-width: 991px){
+          .promote-badge .promote-badge-wrap .promote-badge-wrap-img,
+          .promote-badge .promote-badge-wrap .promote-badge-wrap-action{
+              display: none;
+          }
+      }
+      @media(max-width: 575px){
+          .promote-badge .promote-badge-wrap .promote-badge-wrap-content{
+              font-size: 16px;
+              line-height: 1.5;
+          }
+      }
+
+  </style>
+
+  <script type="text/javascript">window.$crisp=[];window.CRISP_WEBSITE_ID="647027db-5fed-4454-babb-2568bc252476";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>
+</head>
+<body class="home">
+<header class="main-nav  background-dark main-nav-transparent">
+    <nav role="navigation">
+      <a href="https://premiumdatingscript.com/" title="Premium Dating Script" style="padding-top: 6px;margin-right: 35px" class="hide-m">
+        <img src="https://premiumdatingscript.com/logo-goteo.png"> 
+        <span itemprop="name" class="visuallyhidden">Premium Dating Script</span>
+      </a>
+      <a href="https://premiumdatingscript.com/" title="Premium Dating Script" style="padding-top: 6px;margin-right: 35px" class="show-m">
+        <img src="https://premiumdatingscript.com/newsite/images/favicon.png"> 
+        <span itemprop="name" class="visuallyhidden">Premium Dating Script</span>
+      </a>      
+      <span class="nav-toggle">Menu</span>
+      
+      <ul class="h6 main-nav-items">
+
+        <li><a href="https://premiumdatingscript.com/belloo-plugins" title="Plugins">Belloo Plugins</a></li>
+        <li style="display:none"><a href="https://premiumdatingscript.com/mobile-apps" title="Mobile Apps">Mobile Apps</a></li>        
+        <!--
+        <li><a href="https://www.Bellooapp.com/get/" >Belloo Premium</a></li>       
+        <li><a href="https://www.Bellooapp.com/pricing/" >Cloud</a></li>-->
+        
+                       
+        <li style="position:relative;display: none;">
+          <a href="https://premiumdatingscript.com/themes/twigo/" target="_blank" title="Updates Center">Premium Theme</a>
+          <span class="badge" style="position: absolute;right: 10px;top:-5px;padding-right: 10px;padding-left: 10px;background: linear-gradient(355deg, rgba(255,98,165,1) 0%, rgba(255,98,165,1) 22%, rgba(255,137,97,1) 100%)!important;">TWIGO</span>
+        </li>
+
+        <li  style="position:relative">
+          <a href="https://premiumdatingscript.com/premium-fake-users"  title="Premium Fake users">Fake Users</a>
+          <span class="badge" style="position: absolute;right: 10px;top:-5px;padding-right: 10px;padding-left: 10px;background: linear-gradient(355deg, rgb(255 201 0) 0%, rgb(230 103 45) 22%, rgb(243 207 25) 100%) !important">Premium</span>
+        </li>        
+
+        <li  style="position:relative">
+          <a href="https://belloo.date/moderators/" target="_blank" title="Belloomodz">Belloomodz Software</a>
+          <span class="badge" style="position: absolute;right: 10px;top:-5px;padding-right: 10px;padding-left: 10px;background: linear-gradient(355deg, rgb(0 41 255) 0%, rgb(10 51 255) 22%, rgb(230 4 255) 100%) !important">Mods Panel</span>
+        </li>
+
+        <li  style="position:relative">
+          <a href="https://bestfans.io/" target="_blank" title="BestFans">BestFans Software</a>
+          <span class="badge" style="position: absolute;right: 10px;top:-5px;padding-right: 10px;padding-left: 10px;background: linear-gradient(355deg, rgb(93 0 0) 0%, rgb(145 21 21) 22%, rgb(255 0 0) 100%) !important">Content Creator</span>
+        </li>
+
+        <li><a href="https://premiumdatingscript.com/get-belloo" title="Pricing">Buy Belloo</a></li>
+        <li><a href="https://premiumdatingscript.com/help-center" title="Support">Support</a></li>   
+        <li><a href="https://premiumdatingscript.com/demos" class="buy" >Live demos</a></li>      
+      </ul>
+    </nav>
+</header>
+
+<section class="masthead background-dark" style="background: #000">
+  <div class="wrapper extra">
+    <div class="row">
+      <div class="col span-7">
+        <h1><span class="heading-caption">404 Error</span> Page not found</h1>
+        <p class="lead">Sorry, we couldn’t find the page you’re looking for. Perhaps you’ve mistyped the URL? Be sure
+          to check your spelling.</p>
+        <nav>
+          <ul class="actions">
+            <li><a href="https://premiumdatingscript.com/help-center" class="button">Visit our Help Center</a></li>
+            <li><a href="https://premiumdatingscript.com/" class="button button-primary">Go to Home</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="col span-5 relative">
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="block-buy" >
+  <div class="wrapper " >
+    <div class="block-buy-wrapper background-dark gradient5 box-shadow-plugins">
+      <img class="Belloo-logo hide-m " src="https://premiumdatingscript.com/newsite//images/heart-logo.png" height="180px" alt="Belloo Logo">
+      <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
+        <div>
+          <h2><span itemprop="name">Start your dating business today</span></h2>
+          <p class="lead">Standard License available now just 
+            <span itemprop="priceCurrency" content="USD">$</span><span
+            itemprop="price" content="299">299</span><br>
+          <small class="addendum" itemprop="offers" itemscope="" itemtype="http://schema.org/Offer">50% off to <a href="javascript:;">All our services</a> till 5th November 2019.</small>            
+          </p>
+        </div>
+        <nav>
+          <ul class="actions hide-m" style="position: absolute;top: 90px;right: 50px;" >
+            <li><a href="https://belloo.date/demos" class="button">Live Demos</a></li>
+            <li itemscope itemtype="http://schema.org/Offer">
+              <a href="https://premiumdatingscript.com/get-belloo" class="button" style="background: #000">Get the software</a></li>
+          </ul>
+          <ul class="actions show-m" style="padding-top: 20px">
+            <li><a href="https://belloo.date/demos" class="button">Live Demos</a></li>
+            <li itemscope itemtype="http://schema.org/Offer">
+              <a href="https://premiumdatingscript.com/get-belloo" class="button" style="background: #000">Get the software</a></li>
+          </ul>          
+        </nav>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<div class="overlay" data-overlay="bf" style="visibility:visible;opacity:1;left:0;display:none"></div>
+<section class="block-buy" data-overlay="bf" style="position:fixed;z-index:999;
+bottom: 15%;
+left: 50%;
+width: 1200px;
+margin-top: -600px;
+margin-left: -600px;display: none;">
+  <div class="wrapper" style="cursor:pointer;" >
+    <div class="block-buy-wrapper background-dark box-shadow-plugins" style="background:#000">
+        <img src="slotsware.png" height="100%" style="object-fit: contain;">
+    </div>
+  </div>
+</section>
+
+<footer class="main-footer" role="contentinfo">
+  <div class="wrapper extra">
+    <ul class="small">
+      <li>
+        <h4 class="heading-caption section-Belloo mobile-collapsible">Belloo</h4>
+        <ul class="section-Belloo" role="navigation">
+          <li><a href="https://premiumdatingscript.com/index">Home</a></li>
+          <li><a href="https://premiumdatingscript.com/enterprise">Enterprise</a></li>
+          <li><a href="https://premiumdatingscript.com/help-center">Help Center</a></li>
+          <li><a href="https://premiumdatingscript.com/updates-center">Updates Center</a></li>
+          <li><a href="https://premiumdatingscript.com/get-belloo">Get Belloo</a></li>
+          <li><a href="https://premiumdatingscript.com/mobile-apps" style="display: none">Mobile apps</a></li>          
+          <li><a href="https://premiumdatingscript.com/support/docs/documentation">Getting Started</a></li>
+          <li><a href="https://premiumdatingscript.com/belloo-plugins">Plugins</a></li>
+          <!--
+          <li><a href="#">Updates</a></li>
+          <li><a href="#">Belloo Premium</a></li>
+          <li><a href="#">Belloo Cloud</a></li> -->
+          <li><a href="https://premiumdatingscript.com/get-belloo">Pricing</a></li>
+        </ul>
+      </li>
+      <li>
+        <h4 class="heading-caption section-support mobile-collapsible">Support</h1>
+        <ul class="section-support" role="navigation">
+          <li><a href="https://premiumdatingscript.com/support/docs/system-requirements">Requirements</a></li>
+          <li><a href="https://help.market.envato.com/hc/en-us/sections/200616950-Licenses" target="_blank">Licensing and Sales</a></li>
+          <li><a href="https://premiumdatingscript.com/support/docs/troubleshooting">Troubleshooting</a></li>
+          <li><a href="https://premiumdatingscript.com/license/reset-license">License Manager</a></li>
+          <li><a href="mailto:support@premiumdatingscript.com">Contact Support</a></li>
+        </ul>
+        <h4 class="heading-caption section-legal mobile-collapsible">Terms & Policies</h1>
+        <ul class="section-legal" role="navigation">
+          <li><a href="https://premiumdatingscript.com/support/terms">Terms of Use,License and Service</a></li>
+        </li>
+      </ul>
+      </li>
+      <li>
+        <h4 class="heading-caption section-company mobile-collapsible">Company</h1>
+        <ul class="section-company" role="navigation">
+          <!--<li><a href="https://premiumdatingscript.com/about">About Us</a></li>-->
+          <li><a href="https://premiumdatingscript.com/affiliate-program">Affiliates Program</a></li>
+          <li><a href="javascript:;" onclick="openLiveChat()">Contact</a></li>
+        </ul>
+        <h4 class="heading-caption section-community mobile-collapsible">Community</h1>
+        <ul class="section-community" role="navigation">
+          <li><a href="#">Instagram</a></li> 
+          <li><a href="#">Telegram</a></li> 
+          <li><a href="#">Twitch</a></li>          
+          <li><a href="https://twitter.com/belloosoftware">Twitter</a></li>
+        </ul>
+      </li>
+      <li class="span-4">
+        <h4 class="heading-caption section-Belloo-news">Subscribe to our newsletter</h1>
+        <p class="small">The latest Belloo news, articles, and resources, sent straight to your inbox every month.</p>
+        <form novalidate="true" id="newsletterForm" action="#" method="POST" class="newsletter-form">
+          <div class="input-group">
+            <input class="signup" name="email" type="email" id="newsletterEmail" required="" placeholder="Your email address">
+            <button class="button button-primary" type="submit">Subscribe</button>
+          </div>
+          <div class="errorMsg"></div>
+        </form>
+
+        <footer>
+          <div class="section-Belloo-news">
+            <a href="https://twitter.com/belloosoftware" alt="Twitter">
+              <svg width="18px" height="15px" viewBox="0 0 18 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                <path d="M15.4384575,2.37144302 C16.1800787,1.90343782 16.7491342,1.16134624 17.0162,0.277336415 C16.321829,0.711757908 15.5545284,1.02592807 14.735869,1.19601329 C14.082585,0.459338437 13.1488818,0 12.1155426,0 C10.1330927,0 8.52658919,1.6954355 8.52658919,3.78629207 C8.52658919,4.0831287 8.5563773,4.37238192 8.61800787,4.64863498 C5.63508834,4.49046656 2.99010976,2.9846165 1.21823091,0.692257692 C0.909050889,1.25343059 0.732376592,1.90343782 0.732376592,2.59677885 C0.732376592,3.90979344 1.36614427,5.06897299 2.3296355,5.74931388 C1.74106357,5.72981366 1.18741562,5.55756175 0.702588484,5.27589195 L0.702588484,5.32247581 C0.702588484,7.15766286 1.93930856,8.68842987 3.58381757,9.03510039 C3.28182779,9.12393471 2.96545753,9.16835187 2.63676117,9.16835187 C2.40564653,9.16835187 2.17966778,9.14560162 1.96190644,9.10118446 C2.41797265,10.6048678 3.74405705,11.7012133 5.31563656,11.7304637 C4.08610671,12.7466416 2.53815226,13.3511483 0.856664906,13.3511483 C0.567001233,13.3511483 0.280419088,13.3348982 0,13.2991478 C1.5890415,14.372743 3.47596408,15 5.50360979,15 C12.1083524,15 15.7178494,9.23010256 15.7178494,4.22613029 C15.7178494,4.06146179 15.715795,3.89787664 15.7086048,3.73645818 C16.4101661,3.20236892 17.0203087,2.53502817 17.5,1.77560306 C16.8559606,2.07677308 16.1636438,2.280442 15.4384575,2.37144302 Z" fill="#FFFFFF"></path>
+              </svg>
+            </a>
+
+
+
+          </div>
+          <span>&copy; 2023 Global Dating Software</span>
+        </footer>
+      </li>
+    </ul>
+  </div>
+</footer>
+
+
+<div class="promote-badge" style="display: none;">
+    <div class="container" id="promoteBadge" style="cursor: pointer;">
+        <div class="promote-badge-wrap">
+            <div class="promote-badge-wrap-img">
+                <img src="https://slotsware.casino/images/main.jpg" style="border-radius: 10px!important;">
+            </div>
+            <div class="promote-badge-wrap-content">
+                <div class="promote-badge-wrap-content-logo">
+                    <img src="https://slotsware.casino/logo.png">
+                </div>
+                <div class="promote-badge-wrap-content">Start your casino with our crypto-fiat slots software.</div>
+            </div>
+
+            <div class="promote-badge-close-btn">
+                <img src="https://bestfans.io/images/close-icon.svg" alt="close-icon" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="overlay" ></div>
+<div id="banner-premium-profiles" data-overlay="bf" class="home-banner-subscription hidden-in-percy reveal" style="bottom:60px;">
+  <div class="home-banner-subscription__wrapper" style="cursor: pointer;grid-template-columns: auto;padding-left: 0;background: #000;padding: 0;width: 400px;display: none;" onclick="hideBFModal()">
+    <div class="home-banner-subscription__content" style="background: #000;">
+        <img src="banner_belloored.jpg" width="100%">
+    </div>
+  </div>
+</div>
+
+<div class="cookie-consent gradient32" style="display: none"><a href="#" onclick="showAlert()" style="color: #fff">Message to all clients about live chat response delay</a><div class="close"></div></div>
+
+
+<div class="cookie-consent" id="articleAdded" style="text-align: center;display: none">Article Added Successfully<div class="close"></div></div>
+
+<form id="belloopaypal" action="https://www.paypal.com/cgi-bin/webscr" method="post">
+    <input type="hidden" name="cmd" value="_xclick">
+    <input type="hidden" name="business" value="">
+    <input type="hidden" name="item_name" id="paypalItemName" value="">
+    <input type="hidden" name="currency_code" value="USD">
+    <input type="hidden" name="amount" id="paypalPrice" value="">
+    <input type="hidden" name="custom" id="paypalCustom" value="">
+    <input type="hidden" name="notify_url" value="http://premiumdatingscript.com/ipn.php">
+    <input type="hidden" name="return" value="http://premiumdatingscript.com/">
+</form>
+
+<script src="https://premiumdatingscript.com/newsite/js/jquery-2.1.1.js"></script>
+<script src="https://premiumdatingscript.com/newsite/js/script.js"></script>
+
+<script src="https://premiumdatingscript.com/newsite/js/home.js"></script>  
+<!--
+<script src="newsite/js/block-prototyping.js"></script>
+<script src="newsite/js/block-cloud.js"></script>
+<script src="newsite/js/block-redesign.js"></script>
+<script src="newsite/js/block-video.js"></script>
+-->
+<script src="https://unpkg.com/lite-editor@1.6.39/js/lite-editor.min.js"></script>
+
+  
+
+<script>
+
+
+
+function goTo(go){
+  window.location.href="https://premiumdatingscript.com/"+go;
+}
+
+function openLiveChat(action='',client=''){
+  $crisp.push(['do', 'chat:open']);
+
+  if(action == 'premiumUsers'){
+    $crisp.push(["do", "message:send", ["text","I have more questions about the premium fake users"]]);
+  }
+  if(action == 'twigo'){
+    window.location.href="https://codecanyon.net/item/twigo-exclusive-mobile-theme-belloo-dating-software/37469822";  
+  }  
+  if(action == 'helpCenter'){
+    $crisp.push(["do", "message:send", ["text","Hi! I'd like to get help."]]);
+  }
+  if(action == 'crypto'){
+    $crisp.push(["do", "message:send", ["text","Hi! I need assistence with crypto payment."]]);
+  }  
+  if(action == 'sales'){
+    $crisp.push(["do", "message:send", ["text","Hi! I'd like to know more about pricing."]]);    
+  }
+  if(action == 'extendedUpgrade'){
+    $crisp.push(["do", "message:send", ["text","Hi! I'd like to know more about how to upgrade my regular license to extended with discount."]]);    
+  } 
+  if(action == 'affiliates'){
+    window.location.href="https://premiumdatingscript.com/affiliate-program";
+  }      
+  
+  if(action == 'enterprise'){
+    $crisp.push(["do", "message:send", ["text","Hi! i have a project idea i would like to hire belloo enterprise."]]);    
+    
+  }   
+}
+
+$('#newsletterForm').submit(function(e){
+  e.preventDefault();
+  var email = $('#newsletterEmail').val();
+  $crisp.push(["set", "user:email", [email]]);
+})
+
+function showAlert(){
+  alert('Hello clients and friends, as you know im doing everything solo at the moment, thats why im not able to reply to some of you in the live chat because im using my time and energy in the new update, we are getting back as soon as possible with the update and we have a new plugin, high quality live streaming plugin 😎😎, see you all soon'); 
+}
+
+function buyBelloo(type=''){
+
+    if(type == 'Regular'){
+      window.location.href = 'https://nowpayments.io/payment/?iid=5643619261';
+    }
+    if(type == 'Extended'){
+      window.location.href = 'https://nowpayments.io/payment/?iid=4614181084';
+    }     
+
+    /*
+    if(type == 'Regular'){
+
+      window.location.href = 'https://codecanyon.net/checkout/from_item/11281271?license=regular&size=source&ref=pds';
+    }
+    if(type == 'Extended'){    
+      window.location.href = 'https://codecanyon.net/checkout/from_item/11281271?license=extended&size=source&ref=pds';
+    }
+    
+    if(type == 'Regular'){
+      $('#paypalItemName').val('BELLO Software - Regular License');
+      $('#paypalCustom').val('Regular,1');
+      $('#paypalPrice').val(299);
+    }
+    if(type == 'Extended'){
+      $('#paypalItemName').val('BELLO Software - Extended License - '+ extendedDomains+ ' domains');
+      $('#paypalCustom').val('Extended,'+extendedDomains);
+      $('#paypalPrice').val(extendedPrice);
+    }
+    $('#belloopaypal').submit();
+    */
+}
+
+var adding = false;
+
+
+function createArticle(){
+  if(!adding){
+    adding = true
+    $.ajax({
+      url: "addDoc.php", 
+      data: {
+        title: $('[data-add-doc="title"]').text(),
+        excerpt_html: $('[data-add-doc="excerpt_html"]').text(),
+        html: $('.lite-editor').html(),
+        categories: $('[data-add-doc="categories"]').val(),
+      },
+      type:'POST',
+      dataType: 'JSON',
+      success: function(result){
+        console.log(result);
+        adding = false;
+        $('#articleAdded').fadeIn();
+        setTimeout(function(){
+        window.location.reload();
+        },3000);
+      }
+    });
+  }
+}
+
+$('#license-manager-verify').submit(function(e){
+  e.preventDefault();
+  $('.button').addClass('busy');
+  $('.button').addClass('loading');
+
+  $('#license-manager-verify-error').hide();
+  $.ajax({
+    url: "https://premiumdatingscript.com/clients/reset-license-domains.php", 
+    data: {
+      license: $('#license').val()
+    },
+    type:'GET',
+    dataType: 'JSON',
+    success: function(result){
+      console.log(result);
+      $('.button').removeClass('busy');
+      $('.button').removeClass('loading');       
+      if(result.active == 0){
+        $('#license-manager-verify-error').fadeIn();
+        $('#license-manager-verify-error').html(result.reason);
+      } else {       
+        $('#reset-domain-content').hide();
+        $('#list-domain-content').show();
+        $('#client-name').text(result.client);
+        $('#client-license').text(result.license);
+        result.domains.forEach(function(domain) {
+         $('#old-domain').append('<option>'+domain.domain+'</option>');
+        });          
+      }
+    }
+  });  
+})
+
+function get(name){
+  var url = window.location.search;
+  var num = url.search(name);
+  var namel = name.length;
+  var frontlength = namel+num+1; //length of everything before the value 
+  var front = url.substring(0, frontlength);  
+  url = url.replace(front, "");  
+  num = url.search("&");
+
+ if(num>=0) return url.substr(0,num); 
+ if(num<0)  return url;             
+}
+
+var freeThemes = get('themes');
+
+if(freeThemes == 'free-themes'){
+  alert('Hi! This section is not ready yet,  we are working in free themes page.');
+}
+
+$('#license-manager').submit(function(e){
+  e.preventDefault();
+  $('.button').addClass('busy');
+  $('.button').addClass('loading');
+
+  $.ajax({
+    url: "https://premiumdatingscript.com/clients/reset-license-domains.php", 
+    data: {
+      license: $('#license').val(),
+      oldDomain: $('#old-domain').val(),
+      newDomain: $('#new-domain').val()
+    },
+    type:'POST',
+    dataType: 'JSON',
+    success: function(result){
+      console.log(result);
+      $('.button').removeClass('busy');
+      $('.button').removeClass('loading');       
+      alert(result.result);
+      window.location.reload();
+    }
+  });  
+});
+
+$('#add-domain').submit(function(e){
+  e.preventDefault();
+  $('.button').addClass('busy');
+  $('.button').addClass('loading');
+
+  if( $('#license').val() == '' || $('#increaser').val() == ''){
+    $('#add-domain-error').fadeIn();
+    $('#add-domain-error').html('Please fill all the inputs');
+    setTimeout(function(){
+      $('.button').removeClass('busy');
+      $('.button').removeClass('loading');  
+    },500);
+    return false;
+  }
+
+  $.ajax({
+    url: "https://premiumdatingscript.com/clients/add-domain.php", 
+    data: {
+      licenseBelloo: $('#license').val(),
+      licenseIncrease: $('#increaser').val(),
+    },
+    type:'POST',
+    dataType: 'JSON',
+    success: function(result){
+      $('.button').removeClass('busy');
+      $('.button').removeClass('loading');       
+      alert('License Updated Successfully');
+      window.location.reload();
+    },
+    error: function(result){
+      $('.button').removeClass('busy');
+      $('.button').removeClass('loading');       
+      alert('Waiting for Envato Approval');
+      window.location.reload();
+    }    
+  });  
+})
+
+function cryptoPayment(l){
+  var r = 299;
+  var e = 499;
+  $('[data-overlay="crypto"]').show();
+  if(l == 'Regular'){
+    $('#cryptopayment').html('Regular License <span style="color:#fff">USD $'+r+'</span>');
+  } else {
+    $('#cryptopayment').html('Extended License <span style="color:#fff">USD $'+e+'</span>');
+  }
+}
+
+
+function hideCryptoPayment(){
+  $('[data-overlay="crypto"]').hide();
+}
+
+function hideBFModal(){
+  //window.open('https://codecanyon.net/user/premiumdatingscript/portfolio','_self');
+  window.open('https://bestfans.io/','_blank');
+  $('[data-overlay="bf"]').hide();
+}
+
+setTimeout(function(){
+  $('[data-overlay="bf"]').hide();
+},15000);
+
+
+function setCookie(cname, cvalue, exdays) {
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function deleteCookie(cname) {
+    const d = new Date();
+    d.setTime(d.getTime() + (24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=;" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+    let name = cname + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(';');
+    for(let i = 0; i <ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
+}
+
+
+
+$('.promote-badge').show(); 
+$('#promoteBadge').click(function(){
+    //setCookie('belloored_promo', 1, 30);
+    $('.promote-badge').hide();
+    window.open('https://slotsware.casino/','_blank');
+})  
+
+/*
+$('.purchase-modal').show();
+$('.purchase-modal-overlay').show();
+$('.purchase-modal').html('<a href="javascript:;" onclick="openOfferPages()"><img src="slotswarepds.png" height="100%" style="object-fit: contain;width: 900px;"></a>');    */
+
+function openOfferPages(){
+  window.open('https://slotsware.casino/','_blank');
+  closePurchaseModal();
+}
+
+function closePurchaseModal(){
+    $('.purchase-modal-overlay').hide();
+    $('.purchase-modal').hide();
+}
+
+</script>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-74180858-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-74180858-1');
+</script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-1012805178"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-1012805178');
+</script>
+
+
+</body>
+</html>

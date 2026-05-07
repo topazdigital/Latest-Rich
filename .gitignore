@@ -1,0 +1,15 @@
+assets/sources/uploads/
+node_modules
+.next
+.cache
+dist
+build
+.env
+.env.local
+.replit
+vendor
+vendor/
+*/vendor/
+node_modules
+.next
+.env
