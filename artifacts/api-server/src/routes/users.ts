@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql } from "drizzle-orm"
+import { eq, and, ne, desc, sql, like, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyPassword } from "../lib/password"
 
@@ -39,7 +39,7 @@ router.get("/me/full", requireAuth, async (req, res) => {
 
 router.put("/me", requireAuth, async (req, res) => {
   try {
-    const { name, bio, city, country, birthday, looking, occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship } = req.body
+    const { name, bio, city, country, countryCode, birthday, looking, occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship } = req.body
     function calcAge(bd: string) {
       if (!bd) return 0
       const d = new Date(bd), t = new Date()
@@ -53,6 +53,7 @@ router.put("/me", requireAuth, async (req, res) => {
       bio: bio || undefined,
       city: city || undefined,
       country: country || undefined,
+      countryCode: countryCode || undefined,
       birthday: birthday || undefined,
       age: birthday ? calcAge(birthday) : undefined,
       looking: looking ? parseInt(looking) : undefined,
@@ -91,11 +92,42 @@ router.put("/me/password", requireAuth, async (req, res) => {
 
 router.get("/search", requireAuth, async (req, res) => {
   try {
-    const users = await db.select().from(usersTable)
-      .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0), eq(usersTable.fake, 0)))
+    const q = String(req.query.q || "")
+    const city = String(req.query.city || "")
+    const country = String(req.query.country || "")
+    const ageMin = parseInt(String(req.query.ageMin || "18"))
+    const ageMax = parseInt(String(req.query.ageMax || "99"))
+    const gender = parseInt(String(req.query.gender || "0"))
+    const onlineOnly = req.query.online === "1"
+
+    const myUser = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    const myCity = myUser[0]?.city || ""
+    const myCountry = myUser[0]?.country || ""
+
+    let users = await db.select().from(usersTable)
+      .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
       .orderBy(desc(usersTable.lastAccess))
-      .limit(100)
-    res.json(users.map(safeUser))
+      .limit(500)
+
+    // Filter
+    users = users.filter(u => {
+      if (q && !u.name.toLowerCase().includes(q.toLowerCase()) && !u.city?.toLowerCase().includes(q.toLowerCase())) return false
+      if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
+      if (country && u.country !== country) return false
+      if (gender > 0 && u.gender !== gender) return false
+      if (u.age < ageMin || u.age > ageMax) return false
+      if (onlineOnly && u.online !== 1) return false
+      return true
+    })
+
+    // Sort: same city first, same country second, then rest
+    users.sort((a, b) => {
+      const aCity = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
+      const bCity = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
+      return aCity - bCity
+    })
+
+    res.json(users.slice(0, 200).map(safeUser))
   } catch {
     res.status(500).json({ error: "Failed" })
   }
@@ -103,11 +135,23 @@ router.get("/search", requireAuth, async (req, res) => {
 
 router.get("/suggested", requireAuth, async (req, res) => {
   try {
+    const myUser = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    const myCity = myUser[0]?.city || ""
+    const myCountry = myUser[0]?.country || ""
+
     const users = await db.select().from(usersTable)
       .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
       .orderBy(desc(usersTable.lastAccess))
-      .limit(20)
-    res.json(users.map(safeUser))
+      .limit(100)
+
+    // Sort by location proximity
+    const sorted = users.sort((a, b) => {
+      const aScore = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
+      const bScore = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
+      return aScore - bScore
+    })
+
+    res.json(sorted.slice(0, 40).map(safeUser))
   } catch {
     res.status(500).json([])
   }

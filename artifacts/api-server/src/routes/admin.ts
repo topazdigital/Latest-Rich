@@ -28,8 +28,6 @@ function safeUser(u: typeof usersTable.$inferSelect) {
 router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
   try {
     const today = now() - 86400
-    const week = now() - 86400 * 7
-
     const [totalUsers] = await db.select({ count: count() }).from(usersTable)
     const [fakeUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.fake, 1))
     const [newToday] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.created, today))
@@ -39,6 +37,7 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
     const todayRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(amount), 0)` }).from(ordersTable).where(and(eq(ordersTable.status, "completed"), gte(ordersTable.time, today)))
     const [totalMessages] = await db.select({ count: count() }).from(messagesTable)
     const [totalLikes] = await db.select({ count: count() }).from(likesTable)
+    const [bannedUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.banned, 1))
 
     res.json({
       totalUsers: totalUsers.count,
@@ -47,6 +46,7 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
       newToday: newToday.count,
       premiumUsers: premiumUsers.count,
       onlineUsers: onlineUsers.count,
+      bannedUsers: bannedUsers.count,
       totalRevenue: totalRevenue[0]?.sum || 0,
       todayRevenue: todayRevenue[0]?.sum || 0,
       totalMessages: totalMessages.count,
@@ -58,13 +58,14 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
   }
 })
 
-// Users list with search/filter — typed to avoid query-level `any` casts
+// Users list
 router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(String(req.query.page || "1")))
     const limit = 50
     const offset = (page - 1) * limit
     const filter = String(req.query.filter || "all")
+    const search = String(req.query.search || "")
 
     const filterCondition: SQL | undefined =
       filter === "fake"    ? eq(usersTable.fake, 1)    :
@@ -74,15 +75,21 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
       filter === "admin"   ? eq(usersTable.admin, 1)   :
       undefined
 
-    const users = await db.select().from(usersTable)
+    let users = await db.select().from(usersTable)
       .where(filterCondition)
       .orderBy(desc(usersTable.id))
       .limit(limit)
       .offset(offset)
 
-    const [{ count: total }] = await db.select({ count: count() }).from(usersTable)
-      .where(filterCondition)
+    if (search) {
+      users = users.filter(u => 
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        u.city?.toLowerCase().includes(search.toLowerCase())
+      )
+    }
 
+    const [{ count: total }] = await db.select({ count: count() }).from(usersTable).where(filterCondition)
     res.json({ users: users.map(safeUser), total, page, pages: Math.ceil(total / limit) })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
@@ -172,12 +179,34 @@ router.post("/users/:id/credits", requireAuth, requireAdmin, async (req, res) =>
     const id = parseInt(req.params.id)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const amount = parseInt(req.body.amount)
-    if (isNaN(amount) || amount <= 0) { res.status(400).json({ error: "Invalid amount" }); return }
+    if (isNaN(amount)) { res.status(400).json({ error: "Invalid amount" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
-    const newCredits = (user.credits || 0) + amount
+    const newCredits = Math.max(0, (user.credits || 0) + amount)
     await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, id))
     res.json({ credits: newCredits })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Send notification to user
+router.post("/users/:id/notify", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id)
+    const { message } = req.body
+    if (!message) { res.status(400).json({ error: "Message required" }); return }
+    await db.insert(notificationsTable).values({
+      userId: id,
+      fromId: req.userId,
+      type: "admin",
+      message,
+      link: "",
+      read: 0,
+      time: now(),
+    })
+    res.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
@@ -187,7 +216,7 @@ router.post("/users/:id/credits", requireAuth, requireAdmin, async (req, res) =>
 // Create fake user
 router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, gender, looking, city, country, age, bio, photo, photoThumb } = req.body
+    const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb } = req.body
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
     const [user] = await db.insert(usersTable).values({
       name,
@@ -197,6 +226,7 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       looking: parseInt(looking) || 1,
       city: city || "New York",
       country: country || "United States",
+      countryCode: countryCode || "US",
       age: parseInt(age) || 28,
       bio: bio || "",
       photo: photo || "",
@@ -215,7 +245,7 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   }
 })
 
-// Activity log — typed filter
+// Activity log
 router.get("/activity", requireAuth, requireAdmin, async (req, res) => {
   try {
     const filter = String(req.query.filter || "all")
@@ -312,6 +342,19 @@ router.delete("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) 
   }
 })
 
+// Toggle template active status
+router.patch("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id)
+    const { active } = req.body
+    await db.update(fakeMessageTemplatesTable).set({ active: active ? 1 : 0 }).where(eq(fakeMessageTemplatesTable.id, id))
+    res.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 // Orders/revenue
 router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -354,7 +397,7 @@ router.post("/trigger-auto-messages", requireAuth, requireAdmin, async (req, res
   }
 })
 
-// Import fake users from external data
+// Import fake users
 interface FakeUserImport {
   origId?: number
   name: string
@@ -362,6 +405,7 @@ interface FakeUserImport {
   looking?: number
   city?: string
   country?: string
+  countryCode?: string
   age?: number
   bio?: string
   photo?: string
@@ -383,6 +427,7 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
           looking: u.looking || 1,
           city: u.city || "",
           country: u.country || "",
+          countryCode: u.countryCode || "",
           age: u.age || 25,
           bio: u.bio || "",
           photo: u.photo || "",
@@ -391,9 +436,24 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
           created: now(), lastAccess: String(now()),
         }).onConflictDoNothing()
         imported++
-      } catch { /* skip duplicates */ }
+      } catch { /* skip */ }
     }
     res.json({ imported })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Get all online users (admin view)
+router.get("/online-users", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fiveMinutesAgo = String(now() - 300)
+    const users = await db.select().from(usersTable)
+      .where(gte(usersTable.lastAccess as any, fiveMinutesAgo))
+      .orderBy(desc(usersTable.lastAccess))
+      .limit(100)
+    res.json(users.map(safeUser))
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })

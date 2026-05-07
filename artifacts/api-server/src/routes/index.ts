@@ -16,11 +16,14 @@ import adminRouter from "./admin"
 import giftsRouter from "./gifts"
 import visitsRouter from "./visits"
 import blockRouter from "./block"
+import locationRouter from "./location"
+import socialAuthRouter from "./social-auth"
 
 const router: IRouter = Router()
 
 router.use(healthRouter)
 router.use("/auth", authRouter)
+router.use("/auth/social", socialAuthRouter)
 router.use("/users", usersRouter)
 router.use("/likes", likesRouter)
 router.use("/chat", chatRouter)
@@ -35,6 +38,7 @@ router.use("/uploads", uploadsRouter)
 router.use("/admin", adminRouter)
 router.use("/gifts", giftsRouter)
 router.use("/visits", visitsRouter)
+router.use("/location", locationRouter)
 router.use("/", blockRouter)
 
 export default router
