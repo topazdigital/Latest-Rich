@@ -81,6 +81,14 @@ router.post("/register", async (req, res) => {
       res.status(400).json({ error: "Password must be at least 6 characters" })
       return
     }
+    if (!username || username.trim().length < 3) {
+      res.status(400).json({ error: "Username is required (min 3 characters)" })
+      return
+    }
+    if (!phone || phone.replace(/[\s+\-()]/g, "").length < 7) {
+      res.status(400).json({ error: "Phone number is required" })
+      return
+    }
 
     // 18+ enforcement
     if (birthday) {

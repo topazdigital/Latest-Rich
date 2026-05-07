@@ -32,10 +32,10 @@ export default function AdminPage() {
   const [, setLocation] = useLocation()
 
   useEffect(() => {
-    if (user && user.admin !== 1) setLocation("/home")
+    if (user && (user.admin ?? 0) < 2) setLocation("/home")
   }, [user])
 
-  if (!user || user.admin !== 1) return null
+  if (!user || (user.admin ?? 0) < 2) return null
 
   return (
     <div style={{ minHeight: '100vh', background: '#030712', display: 'flex' }}>

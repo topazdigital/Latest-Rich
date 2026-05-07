@@ -245,6 +245,14 @@ export const fakeVideoCallsTable = pgTable("fake_video_calls", {
   dismissed: integer("dismissed").default(0),
 })
 
+export const chatLocksTable = pgTable("chat_locks", {
+  id: serial("id").primaryKey(),
+  conversationKey: text("conversation_key").notNull().unique(),
+  moderatorId: integer("moderator_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  lockedAt: integer("locked_at").default(0),
+  expiresAt: integer("expires_at").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

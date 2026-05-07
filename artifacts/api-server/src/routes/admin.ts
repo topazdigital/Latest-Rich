@@ -3,7 +3,8 @@ import { db } from "@workspace/db"
 import {
   usersTable, ordersTable, notificationsTable, messagesTable,
   activityTable, fakeMessageTemplatesTable, siteConfigTable,
-  photosTable, likesTable, reportedUsersTable, autoMessageLogTable
+  photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
+  chatLocksTable
 } from "@workspace/db/schema"
 import { eq, desc, sql, and, ne, gte, count, SQL } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -14,7 +15,7 @@ function now() { return Math.floor(Date.now() / 1000) }
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
   db.select().from(usersTable).where(eq(usersTable.id, req.userId)).limit(1).then(([user]) => {
-    if (!user || user.admin !== 1) return res.status(403).json({ error: "Admin access required" })
+    if (!user || user.admin < 2) return res.status(403).json({ error: "Admin access required" })
     next()
   }).catch(() => res.status(500).json({ error: "Server error" }))
 }
@@ -118,13 +119,14 @@ router.put("/users/:id", requireAuth, requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const { name, email, city, country, bio, credits, premium, premiumExpiry, fake, admin, banned, verified, gender, looking, age } = req.body
+    const adminLevel = parseInt(admin)
     await db.update(usersTable).set({
       name, email, city, country, bio,
       credits: parseInt(credits) || 0,
       premium: parseInt(premium) || 0,
       premiumExpiry: parseInt(premiumExpiry) || 0,
       fake: parseInt(fake) || 0,
-      admin: parseInt(admin) || 0,
+      admin: isNaN(adminLevel) ? 0 : Math.max(0, Math.min(2, adminLevel)),
       banned: parseInt(banned) || 0,
       verified: parseInt(verified) || 0,
       gender: parseInt(gender) || 1,

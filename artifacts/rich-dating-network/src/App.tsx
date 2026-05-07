@@ -22,6 +22,7 @@ import CreditsPageWrapper from "./pages/CreditsPageWrapper"
 import TermsPage from "./pages/TermsPage"
 import PrivacyPage from "./pages/PrivacyPage"
 import AdminPage from "./pages/AdminPage"
+import ModeratorPage from "./pages/ModeratorPage"
 import GiftsPage from "./pages/GiftsPage"
 import VisitorsPage from "./pages/VisitorsPage"
 import LikesPage from "./pages/LikesPage"
@@ -36,6 +37,7 @@ import { getStoredAuth } from "./lib/auth"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost"]
 const ADMIN_PREFIXES = ["/admin"]
+const MODERATOR_PREFIXES = ["/moderator"]
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
@@ -45,10 +47,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (loading) return
     const isProtected = PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
     const isAdmin = ADMIN_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+    const isModerator = MODERATOR_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
     const isUsernameProfile = location.startsWith("/@")
-    if (!user && (isProtected || isAdmin)) setLocation("/login")
+    if (!user && (isProtected || isAdmin || isModerator)) setLocation("/login")
     else if (user && (location === "/" || location === "/login" || location === "/register")) setLocation("/home")
-    else if (user && isAdmin && user.admin !== 1) setLocation("/home")
+    else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/home")
+    else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/home")
   }, [user, loading, location])
 
   if (loading) {
@@ -70,7 +74,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
-  const isAdmin = location.startsWith("/admin")
+  const isAdmin = location.startsWith("/admin") || location.startsWith("/moderator")
   const showNav = !isAdmin && PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
   return (
     <div className={showNav ? "pt-14 pb-16 md:pb-0 min-h-screen bg-gray-50" : ""}>
@@ -251,6 +255,7 @@ function Router() {
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/:rest*" component={AdminPage} />
+          <Route path="/moderator" component={ModeratorPage} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

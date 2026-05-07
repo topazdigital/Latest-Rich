@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useSearch } from 'wouter'
-import { Heart, Eye, EyeOff, Loader2, ChevronRight, ChevronLeft, Crown, Shield, Users, Check, Camera, Upload, X, AtSign, Phone, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Heart, Eye, EyeOff, Loader2, ChevronRight, ChevronLeft, Crown, Shield, Users, Check, Camera, Upload, AtSign, Phone, User, CheckCircle, XCircle, AlertCircle, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { getStoredAuth } from '../lib/auth'
@@ -26,6 +26,90 @@ function AvailBadge({ status, field }: { status: AvailStatus; field: string }) {
   return <span className="text-xs text-red-500 flex items-center gap-1"><XCircle size={11} /> Already taken</span>
 }
 
+const DIAL_CODES = [
+  { code: 'US', dial: '+1', name: 'United States' },
+  { code: 'GB', dial: '+44', name: 'United Kingdom' },
+  { code: 'KE', dial: '+254', name: 'Kenya' },
+  { code: 'NG', dial: '+234', name: 'Nigeria' },
+  { code: 'ZA', dial: '+27', name: 'South Africa' },
+  { code: 'GH', dial: '+233', name: 'Ghana' },
+  { code: 'UG', dial: '+256', name: 'Uganda' },
+  { code: 'TZ', dial: '+255', name: 'Tanzania' },
+  { code: 'ET', dial: '+251', name: 'Ethiopia' },
+  { code: 'RW', dial: '+250', name: 'Rwanda' },
+  { code: 'CD', dial: '+243', name: 'DR Congo' },
+  { code: 'CM', dial: '+237', name: 'Cameroon' },
+  { code: 'CI', dial: '+225', name: "Côte d'Ivoire" },
+  { code: 'SN', dial: '+221', name: 'Senegal' },
+  { code: 'MA', dial: '+212', name: 'Morocco' },
+  { code: 'TN', dial: '+216', name: 'Tunisia' },
+  { code: 'DZ', dial: '+213', name: 'Algeria' },
+  { code: 'EG', dial: '+20', name: 'Egypt' },
+  { code: 'SD', dial: '+249', name: 'Sudan' },
+  { code: 'AO', dial: '+244', name: 'Angola' },
+  { code: 'MZ', dial: '+258', name: 'Mozambique' },
+  { code: 'ZM', dial: '+260', name: 'Zambia' },
+  { code: 'ZW', dial: '+263', name: 'Zimbabwe' },
+  { code: 'BW', dial: '+267', name: 'Botswana' },
+  { code: 'MW', dial: '+265', name: 'Malawi' },
+  { code: 'NA', dial: '+264', name: 'Namibia' },
+  { code: 'DE', dial: '+49', name: 'Germany' },
+  { code: 'FR', dial: '+33', name: 'France' },
+  { code: 'IT', dial: '+39', name: 'Italy' },
+  { code: 'ES', dial: '+34', name: 'Spain' },
+  { code: 'NL', dial: '+31', name: 'Netherlands' },
+  { code: 'BE', dial: '+32', name: 'Belgium' },
+  { code: 'CH', dial: '+41', name: 'Switzerland' },
+  { code: 'AT', dial: '+43', name: 'Austria' },
+  { code: 'SE', dial: '+46', name: 'Sweden' },
+  { code: 'NO', dial: '+47', name: 'Norway' },
+  { code: 'DK', dial: '+45', name: 'Denmark' },
+  { code: 'FI', dial: '+358', name: 'Finland' },
+  { code: 'PT', dial: '+351', name: 'Portugal' },
+  { code: 'GR', dial: '+30', name: 'Greece' },
+  { code: 'PL', dial: '+48', name: 'Poland' },
+  { code: 'RU', dial: '+7', name: 'Russia' },
+  { code: 'UA', dial: '+380', name: 'Ukraine' },
+  { code: 'TR', dial: '+90', name: 'Turkey' },
+  { code: 'CA', dial: '+1', name: 'Canada' },
+  { code: 'MX', dial: '+52', name: 'Mexico' },
+  { code: 'BR', dial: '+55', name: 'Brazil' },
+  { code: 'AR', dial: '+54', name: 'Argentina' },
+  { code: 'CO', dial: '+57', name: 'Colombia' },
+  { code: 'CL', dial: '+56', name: 'Chile' },
+  { code: 'AU', dial: '+61', name: 'Australia' },
+  { code: 'NZ', dial: '+64', name: 'New Zealand' },
+  { code: 'IN', dial: '+91', name: 'India' },
+  { code: 'PK', dial: '+92', name: 'Pakistan' },
+  { code: 'BD', dial: '+880', name: 'Bangladesh' },
+  { code: 'LK', dial: '+94', name: 'Sri Lanka' },
+  { code: 'JP', dial: '+81', name: 'Japan' },
+  { code: 'CN', dial: '+86', name: 'China' },
+  { code: 'KR', dial: '+82', name: 'South Korea' },
+  { code: 'SG', dial: '+65', name: 'Singapore' },
+  { code: 'MY', dial: '+60', name: 'Malaysia' },
+  { code: 'ID', dial: '+62', name: 'Indonesia' },
+  { code: 'TH', dial: '+66', name: 'Thailand' },
+  { code: 'PH', dial: '+63', name: 'Philippines' },
+  { code: 'VN', dial: '+84', name: 'Vietnam' },
+  { code: 'HK', dial: '+852', name: 'Hong Kong' },
+  { code: 'TW', dial: '+886', name: 'Taiwan' },
+  { code: 'AE', dial: '+971', name: 'UAE' },
+  { code: 'SA', dial: '+966', name: 'Saudi Arabia' },
+  { code: 'KW', dial: '+965', name: 'Kuwait' },
+  { code: 'QA', dial: '+974', name: 'Qatar' },
+  { code: 'BH', dial: '+973', name: 'Bahrain' },
+  { code: 'OM', dial: '+968', name: 'Oman' },
+  { code: 'IL', dial: '+972', name: 'Israel' },
+  { code: 'JO', dial: '+962', name: 'Jordan' },
+  { code: 'LB', dial: '+961', name: 'Lebanon' },
+]
+
+function getDialFromCountryCode(cc: string): string {
+  const found = DIAL_CODES.find(d => d.code === cc?.toUpperCase())
+  return found?.dial || '+1'
+}
+
 export default function RegisterPage() {
   const [, setLocation] = useLocation()
   const searchStr = useSearch()
@@ -39,9 +123,11 @@ export default function RegisterPage() {
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
   const [uploadedPhoto, setUploadedPhoto] = useState<{ url: string; filename: string } | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [showDialDropdown, setShowDialDropdown] = useState(false)
+  const [dialSearch, setDialSearch] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const dialRef = useRef<HTMLDivElement>(null)
 
-  // Availability states
   const [emailStatus, setEmailStatus] = useState<AvailStatus>('idle')
   const [usernameStatus, setUsernameStatus] = useState<AvailStatus>('idle')
   const [phoneStatus, setPhoneStatus] = useState<AvailStatus>('idle')
@@ -54,6 +140,7 @@ export default function RegisterPage() {
     email: params.get('email') || '',
     password: '',
     username: '',
+    phoneDialCode: '+1',
     phone: '',
     gender: params.get('gender') || '1',
     lookingFor: '2',
@@ -64,7 +151,6 @@ export default function RegisterPage() {
   })
   const { login } = useAuth()
 
-  // Auto-detect country on mount
   useEffect(() => {
     fetch('/api/location/detect').then(r => r.json()).then(d => {
       if (d.country) {
@@ -73,6 +159,7 @@ export default function RegisterPage() {
           country: d.country || p.country,
           countryCode: d.countryCode || p.countryCode,
           city: d.city && !p.city ? d.city : p.city,
+          phoneDialCode: d.countryCode ? getDialFromCountryCode(d.countryCode) : p.phoneDialCode,
         }))
       }
     }).catch(() => {})
@@ -103,6 +190,16 @@ export default function RegisterPage() {
     }
   }, [socialConfig.googleClientId])
 
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dialRef.current && !dialRef.current.contains(e.target as Node)) {
+        setShowDialDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   function initAndPrompt() {
     if (!window.google?.accounts) { toast.error('Google SDK not loaded'); return }
     window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleRegister })
@@ -122,7 +219,11 @@ export default function RegisterPage() {
 
   function update(k: string, v: string) { setForm(p => ({ ...p, [k]: v })) }
 
-  // Real-time availability checks
+  function fullPhone() {
+    const num = form.phone.replace(/[\s\-()]/g, '').replace(/^0+/, '')
+    return `${form.phoneDialCode}${num}`
+  }
+
   function checkEmail(val: string) {
     if (emailTimer.current) clearTimeout(emailTimer.current)
     if (!val.includes('@') || val.length < 5) { setEmailStatus('idle'); return }
@@ -150,13 +251,15 @@ export default function RegisterPage() {
     }, 500)
   }
 
-  function checkPhone(val: string) {
+  function checkPhone(rawNum: string) {
     if (phoneTimer.current) clearTimeout(phoneTimer.current)
-    if (!val || val.replace(/[\s+\-()]/g, '').length < 7) { setPhoneStatus('idle'); return }
+    const num = rawNum.replace(/[\s\-()]/g, '').replace(/^0+/, '')
+    if (!num || num.length < 5) { setPhoneStatus('idle'); return }
     setPhoneStatus('checking')
+    const combined = `${form.phoneDialCode}${num}`
     phoneTimer.current = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/auth/check-availability?field=phone&value=${encodeURIComponent(val)}`)
+        const r = await fetch(`/api/auth/check-availability?field=phone&value=${encodeURIComponent(combined)}`)
         const d = await r.json()
         setPhoneStatus(d.available ? 'available' : 'taken')
       } catch { setPhoneStatus('idle') }
@@ -188,19 +291,17 @@ export default function RegisterPage() {
     finally { setPhotoUploading(false) }
   }
 
-  // 18+ max date
   const maxBirthdate = new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().slice(0, 10)
 
   async function submit() {
-    // Validate age
     if (form.birthday) {
       const dob = new Date(form.birthday)
       const ageDiff = Date.now() - dob.getTime()
-      const ageDate = new Date(ageDiff)
-      const age = Math.abs(ageDate.getUTCFullYear() - 1970)
+      const age = Math.abs(new Date(ageDiff).getUTCFullYear() - 1970)
       if (age < 18) { toast.error('You must be 18 or older to register'); return }
     }
-
+    if (!form.username.trim() || form.username.trim().length < 3) { toast.error('Username is required (min 3 characters)'); return }
+    if (!form.phone.trim() || form.phone.replace(/[\s\-()]/g, '').length < 5) { toast.error('Phone number is required'); return }
     if (emailStatus === 'taken') { toast.error('Email already registered'); return }
     if (usernameStatus === 'taken') { toast.error('Username already taken'); return }
     if (phoneStatus === 'taken') { toast.error('Phone number already registered'); return }
@@ -211,9 +312,17 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
-          username: form.username || undefined,
-          phone: form.phone || undefined,
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          username: form.username,
+          phone: fullPhone(),
+          gender: form.gender,
+          lookingFor: form.lookingFor,
+          birthday: form.birthday,
+          city: form.city,
+          country: form.country,
+          countryCode: form.countryCode,
         }),
       })
       const data = await res.json()
@@ -239,14 +348,29 @@ export default function RegisterPage() {
     setLocation('/home')
   }
 
-  const isStep1Valid = form.name.trim().length >= 2 &&
+  const phoneDigits = form.phone.replace(/[\s\-()]/g, '').replace(/^0+/, '')
+  const isStep1Valid =
+    form.name.trim().length >= 2 &&
     form.email.includes('@') &&
     form.password.length >= 6 &&
+    form.username.trim().length >= 3 &&
+    phoneDigits.length >= 5 &&
     emailStatus !== 'taken' &&
     usernameStatus !== 'taken' &&
+    usernameStatus !== 'invalid' &&
     phoneStatus !== 'taken'
+
   const isStep2Valid = !!form.birthday && !!form.gender
   const steps = ['Account', 'About You', 'Location', 'Photo']
+
+  const filteredDials = DIAL_CODES.filter(d =>
+    d.name.toLowerCase().includes(dialSearch.toLowerCase()) ||
+    d.code.toLowerCase().includes(dialSearch.toLowerCase()) ||
+    d.dial.includes(dialSearch)
+  )
+  const selectedDial = DIAL_CODES.find(d => d.dial === form.phoneDialCode && d.code === form.countryCode?.toUpperCase()) ||
+    DIAL_CODES.find(d => d.dial === form.phoneDialCode) ||
+    DIAL_CODES[0]
 
   return (
     <div className="min-h-screen flex">
@@ -391,8 +515,8 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2 block">
-                  Username <span className="text-gray-400 font-normal text-xs">(optional — get a unique profile URL)</span>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Username <span className="text-red-400 text-xs">*required — your unique profile link</span>
                 </label>
                 <div className="relative">
                   <AtSign size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -400,21 +524,61 @@ export default function RegisterPage() {
                     className={`w-full pl-10 pr-4 py-3.5 border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${usernameStatus === 'taken' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
                     placeholder="e.g. johndoe (letters, numbers, _)" maxLength={30} />
                 </div>
-                {form.username && <div className="mt-1 flex items-center justify-between">
+                <div className="mt-1 flex items-center justify-between">
                   <AvailBadge status={usernameStatus} field="Username" />
-                  {usernameStatus === 'available' && <span className="text-xs text-gray-400">Your URL: richdating.net/@{form.username.toLowerCase()}</span>}
-                </div>}
+                  {usernameStatus === 'available' && <span className="text-xs text-gray-400">/@{form.username.toLowerCase()}</span>}
+                </div>
               </div>
 
+              {/* Phone with country code */}
               <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2 block">
-                  Phone Number <span className="text-gray-400 font-normal text-xs">(optional — allows phone login)</span>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Phone Number <span className="text-red-400 text-xs">*required — for account security</span>
                 </label>
-                <div className="relative">
-                  <Phone size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="tel" value={form.phone} onChange={e => { update('phone', e.target.value); checkPhone(e.target.value) }}
-                    className={`w-full pl-10 pr-4 py-3.5 border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${phoneStatus === 'taken' ? 'border-red-300' : phoneStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
-                    placeholder="+1 555 000 0000" />
+                <div className="flex gap-0 relative">
+                  {/* Country code selector */}
+                  <div ref={dialRef} className="relative shrink-0">
+                    <button type="button"
+                      onClick={() => { setShowDialDropdown(v => !v); setDialSearch('') }}
+                      className="h-full flex items-center gap-1 px-3 border border-r-0 border-gray-200 rounded-l-2xl bg-gray-50 hover:bg-white text-sm font-medium text-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-w-[80px]">
+                      <span className="text-base">{selectedDial.code}</span>
+                      <span className="text-gray-500 text-xs">{form.phoneDialCode}</span>
+                      <ChevronDown size={12} className="text-gray-400" />
+                    </button>
+                    {showDialDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                        <div className="p-2 border-b">
+                          <input
+                            type="text"
+                            value={dialSearch}
+                            onChange={e => setDialSearch(e.target.value)}
+                            placeholder="Search country…"
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {filteredDials.map(d => (
+                            <button key={`${d.code}-${d.dial}`} type="button"
+                              onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
+                              <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
+                              <span className="font-medium truncate">{d.name}</span>
+                              <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
+                            </button>
+                          ))}
+                          {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative flex-1">
+                    <Phone size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="tel" value={form.phone} onChange={e => { update('phone', e.target.value); checkPhone(e.target.value) }}
+                      className={`w-full pl-10 pr-4 py-3.5 border rounded-r-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${phoneStatus === 'taken' ? 'border-red-300' : phoneStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                      placeholder="712 345 678" />
+                  </div>
                 </div>
                 <div className="mt-1"><AvailBadge status={phoneStatus} field="Phone" /></div>
               </div>
@@ -424,6 +588,11 @@ export default function RegisterPage() {
                 style={{ background: isStep1Valid ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
                 Continue <ChevronRight size={17} />
               </button>
+
+              <p className="text-center text-xs text-gray-400">
+                Already have an account?{' '}
+                <Link href="/login" className="text-brand-500 font-semibold">Sign in</Link>
+              </p>
             </div>
           )}
 
@@ -479,15 +648,17 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <p className="text-sm text-gray-500 -mt-2">Help us show you matches near you. We auto-detected your location — feel free to change it.</p>
 
-              <LocationAutocomplete
-                label="City"
-                value={form.city}
-                country={form.country}
-                onChange={(city, country, countryCode) => {
-                  setForm(p => ({ ...p, city, country: country || p.country, countryCode: countryCode || p.countryCode }))
-                }}
-                placeholder="Search your city…"
-              />
+              <div className="relative z-20">
+                <LocationAutocomplete
+                  label="City"
+                  value={form.city}
+                  country={form.country}
+                  onChange={(city, country, countryCode) => {
+                    setForm(p => ({ ...p, city, country: country || p.country, countryCode: countryCode || p.countryCode }))
+                  }}
+                  placeholder="Search your city…"
+                />
+              </div>
 
               <div>
                 <label className="text-sm font-semibold text-gray-700 mb-2 block">Country</label>

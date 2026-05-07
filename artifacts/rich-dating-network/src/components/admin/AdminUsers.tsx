@@ -109,10 +109,38 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3 text-gray-300">{u.city}, {u.country}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.admin ? "bg-yellow-500/20 text-yellow-400" : u.fake ? "bg-purple-500/20 text-purple-400" : "bg-green-500/20 text-green-400"}`}>
-                        {u.admin ? "Admin" : u.fake ? "Fake" : "User"}
-                      </span>
-                      {u.banned === 1 && <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400">Banned</span>}
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {u.fake === 1 ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">Fake</span>
+                        ) : u.admin === 2 ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">Admin</span>
+                        ) : u.admin === 1 ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">Moderator</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">User</span>
+                        )}
+                        {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400">Banned</span>}
+                        {u.fake !== 1 && (
+                          <select
+                            value={u.admin}
+                            onChange={async e => {
+                              const newLevel = parseInt(e.target.value)
+                              await authFetch(`/api/admin/users/${u.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ ...u, admin: newLevel }),
+                              })
+                              toast.success(newLevel === 2 ? "Set as Admin" : newLevel === 1 ? "Set as Moderator" : "Set as User")
+                              load()
+                            }}
+                            className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 py-0.5 cursor-pointer focus:outline-none focus:border-brand-500"
+                          >
+                            <option value="0">User</option>
+                            <option value="1">Moderator</option>
+                            <option value="2">Admin</option>
+                          </select>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
