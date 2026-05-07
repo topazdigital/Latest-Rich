@@ -1,16 +1,14 @@
-import { createHash, randomBytes } from "crypto"
+import bcrypt from "bcrypt"
 
-export function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex")
-  const hash = createHash("sha256").update(salt + password).digest("hex")
-  return `${salt}:${hash}`
+const SALT_ROUNDS = 12
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS)
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
-    const [salt, hash] = stored.split(":")
-    const expected = createHash("sha256").update(salt + password).digest("hex")
-    return hash === expected
+    return bcrypt.compare(password, hash)
   } catch {
     return false
   }

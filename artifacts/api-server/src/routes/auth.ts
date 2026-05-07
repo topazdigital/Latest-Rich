@@ -41,7 +41,7 @@ router.post("/register", async (req, res) => {
     const [user] = await db.insert(usersTable).values({
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      password: hashPassword(password),
+      password: await hashPassword(password),
       gender: parseInt(gender) || 1,
       looking: parseInt(lookingFor) || 2,
       birthday: birthday || "",
@@ -70,7 +70,7 @@ router.post("/login", async (req, res) => {
       return
     }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
-    if (!user || !verifyPassword(password, user.password)) {
+    if (!user || !(await verifyPassword(password, user.password))) {
       res.status(401).json({ error: "Invalid email or password" })
       return
     }

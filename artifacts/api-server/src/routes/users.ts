@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable } from "@workspace/db/schema"
-import { eq, and, ne, or, ilike, sql, desc, not } from "drizzle-orm"
+import { eq, and, ne, desc, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyPassword } from "../lib/password"
 
@@ -76,13 +76,13 @@ router.put("/me/password", requireAuth, async (req, res) => {
   try {
     const { current, newPass } = req.body
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!user || !verifyPassword(current, user.password)) {
+    if (!user || !(await verifyPassword(current, user.password))) {
       res.status(400).json({ error: "Current password is incorrect" }); return
     }
     if (!newPass || newPass.length < 6) {
       res.status(400).json({ error: "New password too short" }); return
     }
-    await db.update(usersTable).set({ password: hashPassword(newPass) }).where(eq(usersTable.id, user.id))
+    await db.update(usersTable).set({ password: await hashPassword(newPass) }).where(eq(usersTable.id, user.id))
     res.json({ success: true })
   } catch {
     res.status(500).json({ error: "Failed" })
