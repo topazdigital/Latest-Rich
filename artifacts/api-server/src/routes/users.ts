@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql, like, or } from "drizzle-orm"
+import { eq, and, ne, desc, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyPassword } from "../lib/password"
 
@@ -11,6 +11,18 @@ function now() { return Math.floor(Date.now() / 1000) }
 function safeUser(u: any) {
   const { password, ...rest } = u
   return rest
+}
+
+// Detect contact info in profile bio/text
+function containsContactInfo(text: string): boolean {
+  if (!text) return false
+  if (/[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}/.test(text)) return true
+  if (/(\+?[\d][\d\s\.\-\(\)]{5,}[\d])/.test(text)) return true
+  if (/(instagram|insta|ig|whatsapp|whats\s*app|wa|telegram|tg|t\.me|snapchat|snap|sc|facebook|fb|twitter|x\.com|tiktok|tt|wechat|line|kik|skype|discord|viber|signal|linktree|onlyfans)[\s:\/=@\-]*[\w.@\-]{2,}/i.test(text)) return true
+  if (/@[\w.]{3,}/.test(text)) return true
+  if (/https?:\/\/[^\s]{4,}/.test(text)) return true
+  if (/\bwww\.[a-zA-Z0-9\-]{2,}\.[a-zA-Z]{2,}/.test(text)) return true
+  return false
 }
 
 router.get("/me", requireAuth, async (req, res) => {
@@ -40,6 +52,22 @@ router.get("/me/full", requireAuth, async (req, res) => {
 router.put("/me", requireAuth, async (req, res) => {
   try {
     const { name, bio, city, country, countryCode, birthday, looking, occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship } = req.body
+
+    // Validate bio — no contact info allowed
+    if (bio && containsContactInfo(bio)) {
+      res.status(400).json({
+        error: "Your bio cannot contain email addresses, phone numbers, social media handles, or links. Please keep contact sharing inside chat (Premium members only).",
+        code: "contact_info_in_bio",
+      })
+      return
+    }
+
+    // Validate name — no contact info
+    if (name && containsContactInfo(name)) {
+      res.status(400).json({ error: "Display name cannot contain contact information.", code: "contact_info_in_name" })
+      return
+    }
+
     function calcAge(bd: string) {
       if (!bd) return 0
       const d = new Date(bd), t = new Date()
@@ -48,9 +76,10 @@ router.put("/me", requireAuth, async (req, res) => {
       if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--
       return age
     }
+
     await db.update(usersTable).set({
       name: name || undefined,
-      bio: bio || undefined,
+      bio: bio !== undefined ? bio : undefined,
       city: city || undefined,
       country: country || undefined,
       countryCode: countryCode || undefined,
@@ -109,7 +138,6 @@ router.get("/search", requireAuth, async (req, res) => {
       .orderBy(desc(usersTable.lastAccess))
       .limit(500)
 
-    // Filter
     users = users.filter(u => {
       if (q && !u.name.toLowerCase().includes(q.toLowerCase()) && !u.city?.toLowerCase().includes(q.toLowerCase())) return false
       if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
@@ -120,7 +148,6 @@ router.get("/search", requireAuth, async (req, res) => {
       return true
     })
 
-    // Sort: same city first, same country second, then rest
     users.sort((a, b) => {
       const aCity = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bCity = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
@@ -144,7 +171,6 @@ router.get("/suggested", requireAuth, async (req, res) => {
       .orderBy(desc(usersTable.lastAccess))
       .limit(100)
 
-    // Sort by location proximity
     const sorted = users.sort((a, b) => {
       const aScore = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bScore = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2

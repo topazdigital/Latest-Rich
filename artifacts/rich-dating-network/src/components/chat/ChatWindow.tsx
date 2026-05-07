@@ -8,6 +8,8 @@ import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
 
+const CONTACT_INFO_PATTERN = /(\b[\w._%+-]+@[\w.-]+\.[a-z]{2,}\b|\b\d[\d\s().-]{6,}\d\b|\b(instagram|whatsapp|telegram|snapchat|facebook|twitter|tiktok|wechat|line|viber|signal)\b|@\w{3,}|https?:\/\/|www\.)/i
+
 interface Message {
   id: number
   u1: number
@@ -99,6 +101,28 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   useWSEvent('error', (msg) => {
     if (msg.code === 'insufficient_credits') {
       toast.error('Not enough credits! Buy more to continue chatting.')
+      // Remove temp message if it was optimistic
+      if (msg.tempId) {
+        setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
+      }
+    } else if (msg.code === 'contact_info_blocked') {
+      // Remove temp message
+      if (msg.tempId) {
+        setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
+      }
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
+          <div className="text-2xl">👑</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
+            <p className="text-xs text-gray-500 mb-2">Sharing contact info, social handles, or links is a Premium-only feature.</p>
+            <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
+              Upgrade Now
+            </a>
+          </div>
+        </div>
+      ), { duration: 5000 })
     }
   })
 
@@ -171,6 +195,20 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         const data = await res.json()
         if (data.creditsNeeded) {
           toast.error(`Need ${data.creditsNeeded} credits. You have ${data.creditsHave}.`, { duration: 4000 })
+        } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
+          toast.custom((t) => (
+            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
+              <div className="text-2xl">👑</div>
+              <div className="flex-1">
+                <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
+                <p className="text-xs text-gray-500 mb-2">Sharing contact info is a Premium feature.</p>
+                <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
+                  Upgrade Now
+                </a>
+              </div>
+            </div>
+          ), { duration: 5000 })
         } else {
           toast.error(data.error || 'Failed to send')
         }
@@ -315,6 +353,12 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="mb-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
             <span className="text-xs text-amber-700">💳 {credits} credits left • {creditCost}/message</span>
             <Link href="/credits" className="text-xs font-semibold text-brand-500 hover:underline">Buy more</Link>
+          </div>
+        )}
+        {me.premium !== 1 && CONTACT_INFO_PATTERN.test(input) && (
+          <div className="mb-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+            <span className="text-xs text-amber-700">👑 Contact info requires Premium to send</span>
+            <Link href="/premium" className="text-xs font-bold text-brand-500 hover:underline">Upgrade</Link>
           </div>
         )}
         <div className="flex gap-2 items-end">

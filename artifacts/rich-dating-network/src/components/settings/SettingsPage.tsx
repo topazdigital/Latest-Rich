@@ -46,8 +46,15 @@ export default function SettingsPage({ user: initialUser }: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
       })
+      const data = await res.json()
       if (res.ok) { toast.success('Profile saved!'); await refreshUser() }
-      else toast.error('Failed to save')
+      else {
+        if (data.code === 'contact_info_in_bio' || data.code === 'contact_info_in_name') {
+          toast.error(data.error || 'Contact info not allowed in profile', { duration: 6000 })
+        } else {
+          toast.error(data.error || 'Failed to save')
+        }
+      }
     } catch { toast.error('Error saving') }
     finally { setSaving(false) }
   }
@@ -116,7 +123,10 @@ export default function SettingsPage({ user: initialUser }: Props) {
               <input type="text" value={form.name} onChange={e => update('name', e.target.value)} className="input-field" />
             </div>
             <div className="col-span-full">
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Bio</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-gray-700">Bio</label>
+                <span className="text-xs text-gray-400">No phone numbers, emails or social handles</span>
+              </div>
               <textarea value={form.bio} onChange={e => update('bio', e.target.value)}
                 rows={3} placeholder="Tell people about yourself..."
                 className="input-field resize-none" />

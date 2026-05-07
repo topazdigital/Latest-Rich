@@ -3,6 +3,7 @@ import { db } from "@workspace/db"
 import { likesTable, notificationsTable, usersTable } from "@workspace/db/schema"
 import { eq, and, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { send } from "../lib/websocket"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -88,6 +89,12 @@ router.post("/", requireAuth, async (req, res) => {
       time: now(),
     })
 
+    // Send real-time WS notification to target
+    if (me && me.fake !== 1) {
+      const fromUser = { id: me.id, name: me.name, photo: me.photoThumb || me.photo, age: me.age, city: me.city }
+      send(targetId, { type: "liked", fromUser, isMatch, superlike: !!superlike })
+    }
+
     if (isMatch) {
       await db.insert(notificationsTable).values({
         userId: myId,
@@ -97,6 +104,11 @@ router.post("/", requireAuth, async (req, res) => {
         link: `/profile/${targetId}`,
         time: now(),
       })
+      // Notify the liker too
+      const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+      if (target) {
+        send(myId, { type: "matched", otherUser: { id: target.id, name: target.name, photo: target.photoThumb || target.photo } })
+      }
     }
 
     res.json({ liked: true, isMatch })
