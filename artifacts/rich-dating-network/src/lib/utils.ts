@@ -27,7 +27,7 @@ export function formatDate(timestamp: number | string) {
 }
 
 export function getPhotoUrl(photo: string | null | undefined): string {
-  if (!photo) return '/images/default-avatar.png'
+  if (!photo) return '/images/default-avatar.svg'
   if (photo.startsWith('http')) return photo
   if (photo.startsWith('/')) return photo
   return `/api/uploads/${photo}`

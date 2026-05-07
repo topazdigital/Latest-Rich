@@ -63,7 +63,7 @@ export default function MainNav() {
             )}
             <Link href="/settings" className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-brand-200 hover:ring-brand-400 transition-all">
               <img src={getPhotoUrl(user?.photoThumb || user?.photo)} alt="avatar" className="w-full h-full object-cover"
-                onError={e => (e.currentTarget.src = '/images/default-avatar.png')} />
+                onError={e => (e.currentTarget.src = '/images/default-avatar.svg')} />
             </Link>
           </div>
         </div>

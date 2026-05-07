@@ -36,7 +36,7 @@ export default function VisitorsPage() {
             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
               <div className="relative">
                 <img src={getPhotoUrl(row.visitor?.photo)} alt="" className="w-14 h-14 rounded-full object-cover bg-gray-200"
-                  onError={e => (e.currentTarget.src = "/images/default-avatar.png")} />
+                  onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
                 {row.visitor?.online ? <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" /> : null}
               </div>
               <div className="flex-1">

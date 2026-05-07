@@ -107,7 +107,7 @@ export default function AdminFakeUsers() {
           {users.map(u => (
             <div key={u.id} className="bg-gray-900 rounded-2xl overflow-hidden border border-gray-800">
               <div className="aspect-square bg-gray-800">
-                <img src={getPhotoUrl(u.photo)} alt={u.name} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.png")} />
+                <img src={getPhotoUrl(u.photo)} alt={u.name} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
               </div>
               <div className="p-3">
                 <div className="text-white font-medium text-sm">{u.name}</div>

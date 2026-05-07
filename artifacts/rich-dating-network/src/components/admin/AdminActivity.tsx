@@ -44,7 +44,7 @@ export default function AdminActivity() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   {row.user?.photo && (
-                    <img src={getPhotoUrl(row.user.photo)} alt="" className="w-6 h-6 rounded-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.png")} />
+                    <img src={getPhotoUrl(row.user.photo)} alt="" className="w-6 h-6 rounded-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
                   )}
                   <span className="text-white text-sm font-medium">{row.user?.name || "System"}</span>
                 </div>
