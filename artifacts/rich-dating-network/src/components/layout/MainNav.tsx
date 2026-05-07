@@ -8,8 +8,8 @@ const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
   { href: '/discover', icon: Search, label: 'Discover' },
   { href: '/meet', icon: Flame, label: 'Meet' },
+  { href: '/likes', icon: Heart, label: 'Likes' },
   { href: '/chat', icon: MessageCircle, label: 'Chat' },
-  { href: '/profile', icon: User, label: 'Profile' },
 ]
 
 export default function MainNav() {
@@ -48,6 +48,10 @@ export default function MainNav() {
             <Link href="/gifts"
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${location.startsWith('/gifts') ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
               <Gift size={18} />Gifts
+            </Link>
+            <Link href="/profile"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${location === '/profile' ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <User size={18} />Profile
             </Link>
           </div>
 

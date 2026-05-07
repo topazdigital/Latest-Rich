@@ -42,7 +42,7 @@ export default function VisitorsPage() {
               <div className="flex-1">
                 <div className="font-semibold text-gray-900">{row.visitor?.name}</div>
                 <div className="text-sm text-gray-500">{row.visitor?.age} · {row.visitor?.city}, {row.visitor?.country}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{timeAgo(row.visit?.time * 1000)}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{timeAgo(row.visit?.time)}</div>
               </div>
               <button onClick={() => setLocation(`/profile/${row.visitor?.id}`)}
                 className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-colors">

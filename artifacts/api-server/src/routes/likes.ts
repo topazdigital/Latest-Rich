@@ -1,11 +1,57 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { likesTable, notificationsTable, usersTable } from "@workspace/db/schema"
-import { eq, and } from "drizzle-orm"
+import { eq, and, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+
+function safeUser(u: any) {
+  if (!u) return null
+  const { password, ...rest } = u
+  return rest
+}
+
+// GET /api/likes — who liked me, I liked, and mutual matches
+router.get("/", requireAuth, async (req, res) => {
+  try {
+    const myId = req.userId!
+
+    const likedMeRows = await db.select({
+      like: likesTable,
+      user: usersTable,
+    }).from(likesTable)
+      .leftJoin(usersTable, eq(likesTable.userId, usersTable.id))
+      .where(eq(likesTable.targetId, myId))
+      .orderBy(desc(likesTable.created))
+      .limit(100)
+
+    const iLikedRows = await db.select({
+      like: likesTable,
+      user: usersTable,
+    }).from(likesTable)
+      .leftJoin(usersTable, eq(likesTable.targetId, usersTable.id))
+      .where(eq(likesTable.userId, myId))
+      .orderBy(desc(likesTable.created))
+      .limit(100)
+
+    const likedMeIds = new Set(likedMeRows.map(r => r.like.userId))
+    const iLikedIds = new Set(iLikedRows.map(r => r.like.targetId))
+    const matchIds = [...likedMeIds].filter(id => iLikedIds.has(id))
+
+    const matches = likedMeRows.filter(r => matchIds.includes(r.like.userId))
+
+    res.json({
+      likedMe: likedMeRows.map(r => ({ ...r.like, user: safeUser(r.user) })),
+      iLiked: iLikedRows.map(r => ({ ...r.like, user: safeUser(r.user) })),
+      matches: matches.map(r => ({ ...r.like, user: safeUser(r.user) })),
+    })
+  } catch (err: any) {
+    console.error(err)
+    res.status(500).json({ error: err.message })
+  }
+})
 
 router.post("/", requireAuth, async (req, res) => {
   try {

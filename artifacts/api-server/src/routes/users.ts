@@ -147,6 +147,15 @@ router.get("/:id/photos", requireAuth, async (req, res) => {
   }
 })
 
+router.delete("/me", requireAuth, async (req, res) => {
+  try {
+    await db.delete(usersTable).where(eq(usersTable.id, req.userId!))
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 router.get("/:id/liked-status", requireAuth, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id)

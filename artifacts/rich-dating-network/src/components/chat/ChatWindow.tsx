@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { getPhotoUrl, isOnline, timeAgo } from '../../lib/utils'
 import { Link } from 'wouter'
-import { ArrowLeft, Send, BadgeCheck, Crown } from 'lucide-react'
+import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+
+const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹']
 
 interface Props { me: any; other: any; initialMessages: any[] }
 
@@ -11,6 +13,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const { token } = useAuth()
 
@@ -104,9 +107,25 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         <div ref={bottomRef} />
       </div>
 
+      {showEmoji && (
+        <div className="px-4 pt-2 pb-1 bg-white border-t border-gray-100 flex gap-2 overflow-x-auto flex-shrink-0">
+          {QUICK_EMOJIS.map(e => (
+            <button key={e} onClick={() => { setInput(prev => prev + e); setShowEmoji(false) }}
+              className="text-2xl hover:scale-125 transition-transform flex-shrink-0 leading-none">{e}</button>
+          ))}
+        </div>
+      )}
       <div className="px-4 py-3 bg-white border-t border-gray-100 flex-shrink-0">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-3">
+        <div className="flex gap-2 items-end">
+          <button onClick={() => setShowEmoji(!showEmoji)}
+            className={`w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center transition-colors ${showEmoji ? 'bg-brand-100 text-brand-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+            <Smile size={18} />
+          </button>
+          <Link href={`/gifts?toId=${other.id}`}
+            className="w-9 h-9 flex-shrink-0 bg-gray-100 text-amber-500 hover:bg-amber-50 rounded-full flex items-center justify-center transition-colors" title="Send a gift">
+            <Gift size={17} />
+          </Link>
+          <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2.5">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}

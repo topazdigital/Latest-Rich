@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getPhotoUrl, timeAgo, isOnline } from '../../lib/utils'
 import { Link } from 'wouter'
-import { Heart, MessageCircle, Plus, Crown, BadgeCheck, ThumbsUp } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -17,6 +17,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
   const [newPost, setNewPost] = useState('')
   const [posting, setPosting] = useState(false)
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set())
+  const [activeStory, setActiveStory] = useState<{ story: any; idx: number } | null>(null)
   const { token, user } = useAuth()
 
   async function submitPost() {
@@ -57,6 +58,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
   }
 
   return (
+    <>
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -70,13 +72,14 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
                   </div>
                   <span className="text-xs text-gray-500">Add</span>
                 </div>
-                {stories.map((story: any) => (
-                  <div key={story.id} className="flex-shrink-0 flex flex-col items-center gap-1">
+                {stories.map((story: any, idx: number) => (
+                  <button key={story.id} onClick={() => setActiveStory({ story, idx })}
+                    className="flex-shrink-0 flex flex-col items-center gap-1">
                     <div className="w-14 h-14 rounded-full ring-2 ring-brand-500 ring-offset-2 overflow-hidden">
                       <img src={getPhotoUrl(story.user?.photo)} alt={story.user?.name} className="w-full h-full object-cover" />
                     </div>
                     <span className="text-xs text-gray-600 w-14 text-center truncate">{story.user?.name?.split(' ')[0]}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -176,5 +179,42 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
         </div>
       </div>
     </div>
+
+      {activeStory && (
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={() => setActiveStory(null)}>
+          <button className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+            onClick={() => setActiveStory(null)}>
+            <X size={20} />
+          </button>
+          {stories.length > 1 && <>
+            <button className="absolute left-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+              onClick={e => { e.stopPropagation(); const prev = (activeStory.idx - 1 + stories.length) % stories.length; setActiveStory({ story: stories[prev], idx: prev }) }}>
+              <ChevronLeft size={20} />
+            </button>
+            <button className="absolute right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+              onClick={e => { e.stopPropagation(); const next = (activeStory.idx + 1) % stories.length; setActiveStory({ story: stories[next], idx: next }) }}>
+              <ChevronRight size={20} />
+            </button>
+          </>}
+          <div className="w-full max-w-sm h-full max-h-[80vh] relative rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <img src={getPhotoUrl(activeStory.story.photo || activeStory.story.user?.photo)} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+            <div className="absolute top-4 left-4 flex items-center gap-2 text-white">
+              <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white">
+                <img src={getPhotoUrl(activeStory.story.user?.photo)} alt="" className="w-full h-full object-cover" />
+              </div>
+              <p className="text-sm font-semibold">{activeStory.story.user?.name}</p>
+            </div>
+            <div className="absolute bottom-4 left-4 right-4">
+              <Link href={`/profile/${activeStory.story.user?.id}`}
+                className="block w-full text-center py-2.5 bg-white text-gray-900 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors"
+                onClick={() => setActiveStory(null)}>
+                View Profile
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

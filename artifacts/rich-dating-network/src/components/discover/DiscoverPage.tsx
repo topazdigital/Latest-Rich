@@ -13,6 +13,8 @@ export default function DiscoverPage({ userId, users }: Props) {
   const [filterCountry, setFilterCountry] = useState('')
   const [filterAgeMin, setFilterAgeMin] = useState(18)
   const [filterAgeMax, setFilterAgeMax] = useState(99)
+  const [filterOnline, setFilterOnline] = useState(false)
+  const [filterPremium, setFilterPremium] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [likedUsers, setLikedUsers] = useState<Set<number>>(new Set())
   const { token } = useAuth()
@@ -23,9 +25,11 @@ export default function DiscoverPage({ userId, users }: Props) {
       if (filterGender !== '0' && String(u.gender) !== filterGender) return false
       if (filterCountry && u.country !== filterCountry) return false
       if (u.age < filterAgeMin || u.age > filterAgeMax) return false
+      if (filterOnline && !isOnline(u.lastAccess)) return false
+      if (filterPremium && u.premium !== 1) return false
       return true
     })
-  }, [users, search, filterGender, filterCountry, filterAgeMin, filterAgeMax])
+  }, [users, search, filterGender, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium])
 
   const countries = useMemo(() => [...new Set(users.map((u: any) => u.country).filter(Boolean))].sort(), [users])
 
@@ -81,10 +85,20 @@ export default function DiscoverPage({ userId, users }: Props) {
               <input type="range" min={18} max={99} value={filterAgeMax} onChange={e => setFilterAgeMax(+e.target.value)} className="w-full" />
             </div>
           </div>
-          {(filterGender !== '0' || filterCountry || filterAgeMin > 18 || filterAgeMax < 99) && (
-            <button onClick={() => { setFilterGender('0'); setFilterCountry(''); setFilterAgeMin(18); setFilterAgeMax(99) }}
+          <div className="flex gap-4 mt-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={filterOnline} onChange={e => setFilterOnline(e.target.checked)} className="rounded" />
+              <span className="text-xs text-gray-600 flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full inline-block" /> Online now</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={filterPremium} onChange={e => setFilterPremium(e.target.checked)} className="rounded" />
+              <span className="text-xs text-gray-600">👑 VIP only</span>
+            </label>
+          </div>
+          {(filterGender !== '0' || filterCountry || filterAgeMin > 18 || filterAgeMax < 99 || filterOnline || filterPremium) && (
+            <button onClick={() => { setFilterGender('0'); setFilterCountry(''); setFilterAgeMin(18); setFilterAgeMax(99); setFilterOnline(false); setFilterPremium(false) }}
               className="flex items-center gap-1 text-sm text-brand-500 mt-3">
-              <X size={14} /> Clear filters
+              <X size={14} /> Clear all filters
             </button>
           )}
         </div>

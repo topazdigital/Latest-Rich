@@ -21,10 +21,11 @@ import PrivacyPage from "./pages/PrivacyPage"
 import AdminPage from "./pages/AdminPage"
 import GiftsPage from "./pages/GiftsPage"
 import VisitorsPage from "./pages/VisitorsPage"
+import LikesPage from "./pages/LikesPage"
 import MainNav from "./components/layout/MainNav"
 import NotFound from "./pages/not-found"
 
-const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors"]
+const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes"]
 const AUTH_ONLY = ["/", "/login", "/register"]
 const ADMIN_PREFIXES = ["/admin"]
 
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/credits" component={CreditsPageWrapper} />
           <Route path="/gifts" component={GiftsPage} />
           <Route path="/visitors" component={VisitorsPage} />
+          <Route path="/likes" component={LikesPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/admin" component={AdminPage} />

@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
-import { User, Camera, Lock, LogOut, Save, Loader2, X, Check } from 'lucide-react'
-import { getPhotoUrl, genderLabel } from '../../lib/utils'
+import { User, Camera, Lock, LogOut, Save, Loader2, X, Shield, Trash2, Bell } from 'lucide-react'
+import { getPhotoUrl } from '../../lib/utils'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 
 interface Props { user: any }
-const TABS = ['Profile', 'Photos', 'Password']
+const TABS = ['Profile', 'Photos', 'Password', 'Privacy']
 
 export default function SettingsPage({ user: initialUser }: Props) {
   const [tab, setTab] = useState('Profile')
@@ -208,9 +208,73 @@ export default function SettingsPage({ user: initialUser }: Props) {
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
             Change Password
           </button>
-          <button onClick={logout} className="flex items-center gap-2 text-red-500 text-sm font-medium mt-4 hover:text-red-600">
+          <hr className="border-gray-100 my-2" />
+          <button onClick={logout} className="flex items-center gap-2 text-red-500 text-sm font-medium hover:text-red-600">
             <LogOut size={16} /> Sign Out
           </button>
+        </div>
+      )}
+
+      {tab === 'Privacy' && (
+        <div className="space-y-4">
+          <div className="card p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Shield size={18} className="text-brand-500" /> Privacy Settings</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'Show online status', desc: 'Let others see when you are active', key: 'showOnline' },
+                { label: 'Show profile visitors', desc: 'Allow others to see that you viewed their profile', key: 'showVisits' },
+                { label: 'Allow messages from non-matches', desc: 'Let any member send you messages', key: 'openMessages' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                    <p className="text-xs text-gray-500">{item.desc}</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500" />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Bell size={18} className="text-brand-500" /> Notification Preferences</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'New messages', key: 'notifMessages' },
+                { label: 'New likes', key: 'notifLikes' },
+                { label: 'Profile visitors', key: 'notifVisits' },
+                { label: 'Matches', key: 'notifMatches' },
+                { label: 'Gifts received', key: 'notifGifts' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between py-1.5">
+                  <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500" />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card p-6 border-red-100">
+            <h3 className="font-semibold text-red-600 flex items-center gap-2 mb-3"><Trash2 size={18} /> Danger Zone</h3>
+            <p className="text-sm text-gray-500 mb-4">Permanently delete your account and all associated data. This action cannot be undone.</p>
+            <button onClick={async () => {
+              if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) return
+              if (!confirm('Final confirmation: Delete account permanently?')) return
+              try {
+                await fetch('/api/users/me', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+                logout()
+                toast.success('Account deleted')
+              } catch { toast.error('Failed to delete account') }
+            }} className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors border border-red-200">
+              <Trash2 size={16} /> Delete My Account
+            </button>
+          </div>
         </div>
       )}
     </div>
