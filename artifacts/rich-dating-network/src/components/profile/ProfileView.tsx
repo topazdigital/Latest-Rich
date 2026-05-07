@@ -42,7 +42,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   }
 
   async function submitReport() {
-    if (!reportReason) return toast.error('Please select a reason')
+    if (!reportReason) { toast.error('Please select a reason'); return }
     try {
       await fetch(`/api/report/${user.id}`, {
         method: 'POST',

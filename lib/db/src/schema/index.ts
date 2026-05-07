@@ -245,6 +245,37 @@ export const fakeVideoCallsTable = pgTable("fake_video_calls", {
   dismissed: integer("dismissed").default(0),
 })
 
+export const customPaymentsTable = pgTable("custom_payments", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  logo: text("logo").default(""),
+  description: text("description").default(""),
+  status: integer("status").default(1),
+  reviewTime: integer("review_time").default(24),
+  externalUrl: text("external_url").default(""),
+  country: text("country").default(""),
+  type: integer("type").default(1),
+  proofLabel: text("proof_label").default("Transaction ID / Screenshot"),
+  createdAt: integer("created_at").default(0),
+})
+
+export const customPaymentOrdersTable = pgTable("custom_payment_orders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  gatewayId: integer("gateway_id").notNull().references(() => customPaymentsTable.id, { onDelete: "cascade" }),
+  type: text("type").default("credits"),
+  packageId: integer("package_id").default(0),
+  amount: real("amount").default(0),
+  currency: text("currency").default("USD"),
+  proof: text("proof").default(""),
+  proofImage: text("proof_image").default(""),
+  status: text("status").default("pending"),
+  reviewedBy: integer("reviewed_by").default(0),
+  reviewNote: text("review_note").default(""),
+  time: integer("time").default(0),
+  reviewedAt: integer("reviewed_at").default(0),
+})
+
 export const chatLocksTable = pgTable("chat_locks", {
   id: serial("id").primaryKey(),
   conversationKey: text("conversation_key").notNull().unique(),

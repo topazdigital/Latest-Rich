@@ -168,7 +168,7 @@ router.get("/search", requireAuth, async (req, res) => {
       if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
       if (country && u.country !== country) return false
       if (gender > 0 && u.gender !== gender) return false
-      if (u.age < ageMin || u.age > ageMax) return false
+      if ((u.age ?? 0) < ageMin || (u.age ?? 0) > ageMax) return false
       if (onlineOnly && u.online !== 1) return false
       return true
     })
@@ -239,7 +239,7 @@ router.get("/meet", requireAuth, async (req, res) => {
 
 router.get("/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
@@ -255,7 +255,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 router.get("/:id/photos", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const photos = await db.select().from(photosTable).where(and(eq(photosTable.userId, id), eq(photosTable.approved, 1)))
     res.json(photos)
   } catch {
@@ -274,7 +274,7 @@ router.delete("/me", requireAuth, async (req, res) => {
 
 router.get("/:id/liked-status", requireAuth, async (req, res) => {
   try {
-    const targetId = parseInt(req.params.id)
+    const targetId = parseInt(req.params.id as string)
     const myId = req.userId!
     const [iLiked] = await db.select().from(likesTable).where(and(eq(likesTable.userId, myId), eq(likesTable.targetId, targetId))).limit(1)
     const [theyLiked] = await db.select().from(likesTable).where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId))).limit(1)

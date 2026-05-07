@@ -44,8 +44,8 @@ router.post("/send", requireAuth, async (req, res) => {
     const [gift] = await db.select().from(giftsTable).where(eq(giftsTable.id, parseInt(giftId))).limit(1)
     const [recipient] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(toId))).limit(1)
 
-    if (!sender || !gift || !recipient) return res.status(404).json({ error: "Not found" })
-    if ((sender.credits || 0) < (gift.credits || 0)) return res.status(400).json({ error: "Not enough credits" })
+    if (!sender || !gift || !recipient) { res.status(404).json({ error: "Not found" }); return }
+    if ((sender.credits || 0) < (gift.credits || 0)) { res.status(400).json({ error: "Not enough credits" }); return }
 
     await db.update(usersTable).set({ credits: (sender.credits || 0) - (gift.credits || 0) }).where(eq(usersTable.id, sender.id))
     await db.insert(userGiftsTable).values({ fromId: sender.id, toId: recipient.id, giftId: gift.id, message: message || "", time: now() })

@@ -37,12 +37,12 @@ router.post("/", requireAuth, async (req, res) => {
 
 router.post("/:id/like", requireAuth, async (req, res) => {
   try {
-    const feedId = parseInt(req.params.id)
+    const feedId = parseInt(req.params.id as string)
     const userId = req.userId!
     const [existing] = await db.select().from(feedLikesTable).where(and(eq(feedLikesTable.feedId, feedId), eq(feedLikesTable.userId, userId))).limit(1)
     if (existing) {
       await db.delete(feedLikesTable).where(and(eq(feedLikesTable.feedId, feedId), eq(feedLikesTable.userId, userId)))
-      await db.update(feedTable).set({ likesCount: Math.max(0, (await db.select().from(feedTable).where(eq(feedTable.id, feedId)).limit(1))[0]?.likesCount - 1 || 0) }).where(eq(feedTable.id, feedId))
+      await db.update(feedTable).set({ likesCount: Math.max(0, ((await db.select().from(feedTable).where(eq(feedTable.id, feedId)).limit(1))[0]?.likesCount ?? 0) - 1) }).where(eq(feedTable.id, feedId))
       res.json({ liked: false })
     } else {
       await db.insert(feedLikesTable).values({ feedId, userId })

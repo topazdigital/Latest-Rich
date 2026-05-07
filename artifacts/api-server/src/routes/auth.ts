@@ -282,7 +282,7 @@ router.post("/verify-email", async (req, res) => {
     const { token } = req.body
     if (!token) { res.status(400).json({ error: "Token required" }); return }
     const [record] = await db.select().from(emailVerificationsTable).where(eq(emailVerificationsTable.token, token)).limit(1)
-    if (!record || record.used === 1 || record.expires < now()) {
+    if (!record || record.used === 1 || (record.expires ?? 0) < now()) {
       res.status(400).json({ error: "Invalid or expired verification link" }); return
     }
     await db.update(usersTable).set({ emailVerified: 1 }).where(eq(usersTable.id, record.userId))
@@ -302,7 +302,7 @@ router.get("/verify-email/:token", async (req, res) => {
   try {
     const { token } = req.params
     const [record] = await db.select().from(emailVerificationsTable).where(eq(emailVerificationsTable.token, token)).limit(1)
-    if (!record || record.used === 1 || record.expires < now()) {
+    if (!record || record.used === 1 || (record.expires ?? 0) < now()) {
       res.status(400).json({ valid: false, error: "Invalid or expired link" }); return
     }
     res.json({ valid: true })
@@ -373,7 +373,7 @@ router.post("/reset-password", async (req, res) => {
     if (newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return }
 
     const [resetRecord] = await db.select().from(passwordResetTokensTable).where(eq(passwordResetTokensTable.token, token)).limit(1)
-    if (!resetRecord || resetRecord.used === 1 || resetRecord.expires < now()) {
+    if (!resetRecord || resetRecord.used === 1 || (resetRecord.expires ?? 0) < now()) {
       res.status(400).json({ error: "Invalid or expired reset token" }); return
     }
 
@@ -403,7 +403,7 @@ router.get("/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params
     const [record] = await db.select().from(passwordResetTokensTable).where(eq(passwordResetTokensTable.token, token)).limit(1)
-    if (!record || record.used === 1 || record.expires < now()) {
+    if (!record || record.used === 1 || (record.expires ?? 0) < now()) {
       res.status(400).json({ valid: false, error: "Invalid or expired reset token" }); return
     }
     res.json({ valid: true })

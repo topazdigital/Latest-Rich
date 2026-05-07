@@ -65,7 +65,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
 router.get("/:otherId/messages", requireAuth, async (req, res) => {
   try {
     const myId = req.userId!
-    const otherId = parseInt(req.params.otherId)
+    const otherId = parseInt(req.params.otherId as string)
     const msgs = await db.select().from(messagesTable)
       .where(or(
         and(eq(messagesTable.u1, myId), eq(messagesTable.u2, otherId)),

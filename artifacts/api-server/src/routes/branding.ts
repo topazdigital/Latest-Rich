@@ -32,7 +32,7 @@ async function requireAdmin(req: any, res: any, next: any) {
 router.post("/upload/:type", requireAuth, requireAdmin, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) { res.status(400).json({ error: "No file" }); return }
-    const type = req.params.type
+    const type = req.params.type as string
     if (!["logo", "favicon"].includes(type)) { res.status(400).json({ error: "Invalid type" }); return }
     const filename = req.file.filename
     const url = `/api/branding/file/${filename}`

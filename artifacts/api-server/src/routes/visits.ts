@@ -11,8 +11,8 @@ function now() { return Math.floor(Date.now() / 1000) }
 // Record a visit
 router.post("/:id", requireAuth, async (req, res) => {
   try {
-    const targetId = parseInt(req.params.id)
-    if (targetId === req.userId) return res.json({ success: true })
+    const targetId = parseInt(req.params.id as string)
+    if (targetId === req.userId) { res.json({ success: true }); return }
 
     // Only record one visit per hour per visitor
     const oneHourAgo = now() - 3600

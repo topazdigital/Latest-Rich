@@ -106,9 +106,9 @@ export default function MainNav() {
             {/* Notification bell with dropdown */}
             <NotificationDropdown />
 
-            {user?.admin === 1 && (
-              <Link href="/admin" style={{ width: '2.25rem', height: '2.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', color: '#6b7280', textDecoration: 'none', transition: 'all 0.15s' }}
-                title="Admin Panel">
+            {(user?.admin ?? 0) >= 1 && (
+              <Link href={(user?.admin ?? 0) >= 2 ? "/admin" : "/moderator"} style={{ width: '2.25rem', height: '2.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', color: '#6b7280', textDecoration: 'none', transition: 'all 0.15s' }}
+                title={(user?.admin ?? 0) >= 2 ? "Admin Panel" : "Moderator Panel"}>
                 <Settings size={17} />
               </Link>
             )}

@@ -11,7 +11,7 @@ const LOCK_DURATION = 10 * 60 // 10 minutes
 function requireModerator(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
   db.select().from(usersTable).where(eq(usersTable.id, req.userId)).limit(1).then(([user]) => {
-    if (!user || user.admin < 1) return res.status(403).json({ error: "Moderator access required" })
+    if (!user || (user.admin ?? 0) < 1) return res.status(403).json({ error: "Moderator access required" })
     req.moderatorUser = user
     next()
   }).catch(() => res.status(500).json({ error: "Server error" }))
@@ -40,7 +40,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
     const limit = 50
     const offset = (page - 1) * limit
 
-    const rows = await db.execute(sql`
+    const rows = (await db.execute(sql`
       WITH pairs AS (
         SELECT
           LEAST(u1, u2) AS uid1,
@@ -63,9 +63,9 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
       ORDER BY pairs.last_time DESC
       LIMIT ${limit} OFFSET ${offset}
-    `) as any[]
+    `) as unknown) as any[]
 
-    const countResult = await db.execute(sql`
+    const countResult = ((await db.execute(sql`
       WITH pairs AS (
         SELECT LEAST(u1, u2) AS uid1, GREATEST(u1, u2) AS uid2
         FROM messages
@@ -76,7 +76,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       JOIN users u1t ON u1t.id = pairs.uid1
       JOIN users u2t ON u2t.id = pairs.uid2
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-    `) as any[]
+    `)) as unknown) as any[]
 
     const total = Number((countResult[0] as any)?.count || 0)
 
@@ -132,7 +132,7 @@ router.post("/conversations/:key/lock", requireAuth, requireModerator, async (re
     const key = req.params.key
     const existing = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
     if (existing.length > 0 && existing[0].moderatorId !== req.userId) {
-      return res.status(409).json({ error: "Conversation is locked by another moderator" })
+      res.status(409).json({ error: "Conversation is locked by another moderator" }); return
     }
     const expiresAt = now() + LOCK_DURATION
     await db.insert(chatLocksTable).values({
@@ -155,9 +155,9 @@ router.post("/conversations/:key/unlock", requireAuth, requireModerator, async (
   try {
     const key = req.params.key
     const [lock] = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
-    if (!lock) return res.json({ success: true })
-    if (lock.moderatorId !== req.userId && req.moderatorUser.admin < 2) {
-      return res.status(403).json({ error: "Cannot unlock another moderator's conversation" })
+    if (!lock) { res.json({ success: true }); return }
+    if (lock.moderatorId !== req.userId && (req.moderatorUser.admin ?? 0) < 2) {
+      res.status(403).json({ error: "Cannot unlock another moderator's conversation" }); return
     }
     await db.delete(chatLocksTable).where(eq(chatLocksTable.conversationKey, key))
     res.json({ success: true })
@@ -171,7 +171,7 @@ router.post("/conversations/:key/keepalive", requireAuth, requireModerator, asyn
   try {
     const key = req.params.key
     const [lock] = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
-    if (!lock || lock.moderatorId !== req.userId) return res.status(403).json({ error: "Not your lock" })
+    if (!lock || lock.moderatorId !== req.userId) { res.status(403).json({ error: "Not your lock" }); return }
     await db.update(chatLocksTable).set({ expiresAt: now() + LOCK_DURATION }).where(eq(chatLocksTable.conversationKey, key))
     res.json({ success: true, expiresAt: now() + LOCK_DURATION })
   } catch (err: any) {
@@ -182,10 +182,10 @@ router.post("/conversations/:key/keepalive", requireAuth, requireModerator, asyn
 // GET /api/moderator/conversations/:key/messages
 router.get("/conversations/:key/messages", requireAuth, requireModerator, async (req, res) => {
   try {
-    const parts = req.params.key.split("_")
-    if (parts.length !== 2) return res.status(400).json({ error: "Invalid conversation key" })
+    const parts = (req.params.key as string).split("_")
+    if (parts.length !== 2) { res.status(400).json({ error: "Invalid conversation key" }); return }
     const [a, b] = parts.map(Number)
-    if (isNaN(a) || isNaN(b)) return res.status(400).json({ error: "Invalid user IDs" })
+    if (isNaN(a) || isNaN(b)) { res.status(400).json({ error: "Invalid user IDs" }); return }
 
     const msgs = await db.select().from(messagesTable)
       .where(or(
@@ -214,20 +214,20 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     await cleanExpiredLocks()
     const key = req.params.key
     const { message } = req.body
-    if (!message?.trim()) return res.status(400).json({ error: "Message is required" })
+    if (!message?.trim()) { res.status(400).json({ error: "Message is required" }); return }
 
     const [lock] = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
-    if (!lock) return res.status(403).json({ error: "Lock this conversation first" })
-    if (lock.moderatorId !== req.userId) return res.status(403).json({ error: "Conversation is locked by another moderator" })
+    if (!lock) { res.status(403).json({ error: "Lock this conversation first" }); return }
+    if (lock.moderatorId !== req.userId) { res.status(403).json({ error: "Conversation is locked by another moderator" }); return }
 
     const parts = key.split("_").map(Number)
-    if (parts.length !== 2) return res.status(400).json({ error: "Invalid key" })
+    if (parts.length !== 2) { res.status(400).json({ error: "Invalid key" }); return }
     const [a, b] = parts
 
     const users = await db.select().from(usersTable).where(sql`${usersTable.id} IN (${a}, ${b})`)
     const fakeUser = users.find(u => u.fake === 1)
     const realUser = users.find(u => u.fake !== 1)
-    if (!fakeUser || !realUser) return res.status(400).json({ error: "Could not identify fake/real users" })
+    if (!fakeUser || !realUser) { res.status(400).json({ error: "Could not identify fake/real users" }); return }
 
     const [msg] = await db.insert(messagesTable).values({
       u1: fakeUser.id,
@@ -270,10 +270,10 @@ router.get("/stats", requireAuth, requireModerator, async (req, res) => {
   try {
     await cleanExpiredLocks()
 
-    const lockCountResult = await db.execute(sql`SELECT COUNT(*) AS count FROM chat_locks`) as any[]
+    const lockCountResult = ((await db.execute(sql`SELECT COUNT(*) AS count FROM chat_locks`)) as unknown) as any[]
     const activeLocks = Number((lockCountResult[0] as any)?.count || 0)
 
-    const convCountResult = await db.execute(sql`
+    const convCountResult = ((await db.execute(sql`
       WITH pairs AS (
         SELECT LEAST(u1, u2) AS uid1, GREATEST(u1, u2) AS uid2
         FROM messages
@@ -284,7 +284,7 @@ router.get("/stats", requireAuth, requireModerator, async (req, res) => {
       JOIN users u1t ON u1t.id = pairs.uid1
       JOIN users u2t ON u2t.id = pairs.uid2
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-    `) as any[]
+    `)) as unknown) as any[]
     const totalConversations = Number((convCountResult[0] as any)?.count || 0)
 
     res.json({ activeLocks, totalConversations })

@@ -26,7 +26,7 @@ router.post("/google", async (req, res) => {
     const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`)
     if (!verifyRes.ok) { res.status(401).json({ error: "Invalid Google token" }); return }
 
-    const profile = await verifyRes.json()
+    const profile = await verifyRes.json() as Record<string, string>
     if (profile.aud !== googleClientId && !googleClientId.includes(profile.aud)) {
       res.status(401).json({ error: "Token audience mismatch" }); return
     }
@@ -85,12 +85,12 @@ router.post("/facebook", async (req, res) => {
 
     // Verify the token with Facebook
     const debugRes = await fetch(`https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${fbAppId}|${fbAppSecret}`)
-    const debug = await debugRes.json()
+    const debug = await debugRes.json() as any
     if (!debug.data?.is_valid) { res.status(401).json({ error: "Invalid Facebook token" }); return }
 
     // Get user profile
     const profileRes = await fetch(`https://graph.facebook.com/${fbUserId}?fields=id,name,email,picture&access_token=${accessToken}`)
-    const profile = await profileRes.json()
+    const profile = await profileRes.json() as any
     if (!profile.id) { res.status(401).json({ error: "Failed to get Facebook profile" }); return }
 
     const email = profile.email || `fb_${profile.id}@facebook.com`

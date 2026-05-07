@@ -11,6 +11,7 @@ import AdminFakeUsers from "../components/admin/AdminFakeUsers"
 import AdminBoost from "../components/admin/AdminBoost"
 import AdminPayments from "../components/admin/AdminPayments"
 import AdminPhotos from "../components/admin/AdminPhotos"
+import AdminCustomPayments from "../components/admin/AdminCustomPayments"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -20,6 +21,7 @@ const MENU = [
   { key: "photos", label: "Photo Moderation", icon: "🖼️" },
   { key: "boost", label: "Boost Config", icon: "⚡" },
   { key: "payments", label: "Payment Providers", icon: "💳" },
+  { key: "custom-payments", label: "Manual Gateways", icon: "🏦" },
   { key: "activity", label: "Activity Log", icon: "📋" },
   { key: "orders", label: "Orders / Revenue", icon: "💰" },
   { key: "settings", label: "Settings", icon: "⚙️" },
@@ -129,6 +131,7 @@ export default function AdminPage() {
           {tab === "photos" && <AdminPhotos />}
           {tab === "boost" && <AdminBoost />}
           {tab === "payments" && <AdminPayments />}
+          {tab === "custom-payments" && <AdminCustomPayments />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "settings" && <AdminSettings />}

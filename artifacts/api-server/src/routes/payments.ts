@@ -203,8 +203,8 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
     const response = await fetch(`https://api.payhero.co.ke/v2/transaction-status/${req.params.ref}`, {
       headers: { Authorization: `Basic ${credentials}` },
     })
-    const data = await response.json()
-    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, req.params.ref)).limit(1)
+    const data = await response.json() as Record<string, unknown>
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, req.params.ref as string)).limit(1)
     res.json({ ...data, orderStatus: order?.status || "pending" })
   } catch (err: any) {
     res.status(500).json({ error: "Failed to check status" })
@@ -343,7 +343,7 @@ router.get("/paymongo/success", async (req, res) => {
 /* ─── Admin: get/set payment config ─── */
 router.get("/config", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-  if (user?.admin !== 1) { res.status(403).json({ error: "Forbidden" }); return }
+  if ((user?.admin ?? 0) < 2) { res.status(403).json({ error: "Forbidden" }); return }
 
   const keys = ["stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate"]
   const rows = await db.select().from(siteConfigTable)
@@ -363,7 +363,7 @@ router.get("/config", requireAuth, async (req, res) => {
 
 router.post("/config", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-  if (user?.admin !== 1) { res.status(403).json({ error: "Forbidden" }); return }
+  if ((user?.admin ?? 0) < 2) { res.status(403).json({ error: "Forbidden" }); return }
   const updates = req.body as Record<string, string>
   for (const [key, value] of Object.entries(updates)) {
     if (!value || value.startsWith("••")) continue // skip masked values

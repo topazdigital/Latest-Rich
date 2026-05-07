@@ -10,7 +10,7 @@ function now() { return Math.floor(Date.now() / 1000) }
 // Block user
 router.post("/block/:id", requireAuth, async (req, res) => {
   try {
-    const blockedId = parseInt(req.params.id)
+    const blockedId = parseInt(req.params.id as string)
     await db.insert(blockedUsersTable).values({ userId: req.userId!, blockedId, time: now() }).onConflictDoNothing()
     res.json({ success: true })
   } catch (err: any) {
@@ -21,7 +21,7 @@ router.post("/block/:id", requireAuth, async (req, res) => {
 // Unblock user
 router.delete("/block/:id", requireAuth, async (req, res) => {
   try {
-    await db.delete(blockedUsersTable).where(and(eq(blockedUsersTable.userId, req.userId!), eq(blockedUsersTable.blockedId, parseInt(req.params.id))))
+    await db.delete(blockedUsersTable).where(and(eq(blockedUsersTable.userId, req.userId!), eq(blockedUsersTable.blockedId, parseInt(req.params.id as string))))
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
@@ -48,7 +48,7 @@ router.get("/blocked", requireAuth, async (req, res) => {
 router.post("/report/:id", requireAuth, async (req, res) => {
   try {
     const { reason } = req.body
-    await db.insert(reportedUsersTable).values({ userId: req.userId!, reportedId: parseInt(req.params.id), reason: reason || "inappropriate", time: now() })
+    await db.insert(reportedUsersTable).values({ userId: req.userId!, reportedId: parseInt(req.params.id as string), reason: reason || "inappropriate", time: now() })
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

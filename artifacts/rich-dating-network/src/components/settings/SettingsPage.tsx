@@ -60,8 +60,8 @@ export default function SettingsPage({ user: initialUser }: Props) {
   }
 
   async function changePassword() {
-    if (pass.newPass !== pass.confirm) return toast.error('Passwords do not match')
-    if (pass.newPass.length < 6) return toast.error('Password must be at least 6 characters')
+    if (pass.newPass !== pass.confirm) { toast.error('Passwords do not match'); return }
+    if (pass.newPass.length < 6) { toast.error('Password must be at least 6 characters'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/users/me/password', {

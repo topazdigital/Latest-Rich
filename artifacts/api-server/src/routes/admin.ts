@@ -6,7 +6,7 @@ import {
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
   chatLocksTable
 } from "@workspace/db/schema"
-import { eq, desc, sql, and, ne, gte, count, SQL } from "drizzle-orm"
+import { eq, desc, sql, and, ne, gte, count, SQL, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -15,7 +15,7 @@ function now() { return Math.floor(Date.now() / 1000) }
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
   db.select().from(usersTable).where(eq(usersTable.id, req.userId)).limit(1).then(([user]) => {
-    if (!user || user.admin < 2) return res.status(403).json({ error: "Admin access required" })
+    if (!user || (user.admin ?? 0) < 2) return res.status(403).json({ error: "Admin access required" })
     next()
   }).catch(() => res.status(500).json({ error: "Server error" }))
 }
@@ -73,7 +73,7 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
       filter === "real"    ? eq(usersTable.fake, 0)    :
       filter === "premium" ? eq(usersTable.premium, 1) :
       filter === "banned"  ? eq(usersTable.banned, 1)  :
-      filter === "admin"   ? eq(usersTable.admin, 1)   :
+      filter === "admin"   ? gte(usersTable.admin, 1)   :
       undefined
 
     let users = await db.select().from(usersTable)
@@ -101,7 +101,7 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
 // Get single user
 router.get("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
@@ -116,7 +116,7 @@ router.get("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 // Update user
 router.put("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const { name, email, city, country, bio, credits, premium, premiumExpiry, fake, admin, banned, verified, gender, looking, age } = req.body
     const adminLevel = parseInt(admin)
@@ -143,7 +143,7 @@ router.put("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 // Delete user
 router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     await db.delete(usersTable).where(eq(usersTable.id, id))
     res.json({ success: true })
@@ -156,7 +156,7 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 // Ban/unban user
 router.post("/users/:id/ban", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
@@ -178,7 +178,7 @@ router.post("/users/:id/ban", requireAuth, requireAdmin, async (req, res) => {
 // Add credits to user
 router.post("/users/:id/credits", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const amount = parseInt(req.body.amount)
     if (isNaN(amount)) { res.status(400).json({ error: "Invalid amount" }); return }
@@ -196,7 +196,7 @@ router.post("/users/:id/credits", requireAuth, requireAdmin, async (req, res) =>
 // Send notification to user
 router.post("/users/:id/notify", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const { message } = req.body
     if (!message) { res.status(400).json({ error: "Message required" }); return }
     await db.insert(notificationsTable).values({
@@ -334,7 +334,7 @@ router.post("/fake-messages", requireAuth, requireAdmin, async (req, res) => {
 
 router.delete("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return }
     await db.delete(fakeMessageTemplatesTable).where(eq(fakeMessageTemplatesTable.id, id))
     res.json({ success: true })
@@ -347,7 +347,7 @@ router.delete("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) 
 // Toggle template active status
 router.patch("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const { active } = req.body
     await db.update(fakeMessageTemplatesTable).set({ active: active ? 1 : 0 }).where(eq(fakeMessageTemplatesTable.id, id))
     res.json({ success: true })

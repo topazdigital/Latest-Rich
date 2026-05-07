@@ -12,7 +12,7 @@ export default function CreditsPage({ user, packages, orders }: Props) {
   const { token } = useAuth()
 
   async function buyCredits() {
-    if (!selected) return toast.error('Select a package first')
+    if (!selected) { toast.error('Select a package first'); return }
     setLoading(true)
     try {
       const res = await fetch('/api/payments/stripe/checkout', {

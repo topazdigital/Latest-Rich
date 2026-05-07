@@ -47,7 +47,7 @@ const CONTACT_KEYWORDS = /\b(whatsapp|telegram|signal|snapchat|instagram|faceboo
 function detectContactInfo(text: string): { detected: boolean; reason: string } {
   if (PHONE_PATTERN.test(text)) {
     const matches = text.match(PHONE_PATTERN)
-    const phones = (matches || []).filter(m => m.replace(/\D/g, "").length >= 7)
+    const phones = (matches || [] as string[]).filter((m: string) => m.replace(/\D/g, "").length >= 7)
     if (phones.length > 0) return { detected: true, reason: "Phone number detected in filename" }
   }
   if (CONTACT_KEYWORDS.test(text)) {
@@ -119,7 +119,7 @@ router.post("/upload", requireAuth, upload.single("photo"), async (req, res) => 
 
 router.post("/set-main/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const [photo] = await db.select().from(photosTable)
       .where(and(eq(photosTable.id, id), eq(photosTable.userId, req.userId!)))
       .limit(1)
@@ -135,7 +135,7 @@ router.post("/set-main/:id", requireAuth, async (req, res) => {
 
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const [photo] = await db.select().from(photosTable).where(and(eq(photosTable.id, id), eq(photosTable.userId, req.userId!))).limit(1)
     if (!photo) { res.status(404).json({ error: "Not found" }); return }
     await db.delete(photosTable).where(eq(photosTable.id, id))
@@ -154,7 +154,7 @@ router.get("/mine", requireAuth, async (req, res) => {
 
 router.put("/admin/approve/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     if (!me || me.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
     await db.update(photosTable).set({ approved: 1 }).where(eq(photosTable.id, id))
@@ -164,7 +164,7 @@ router.put("/admin/approve/:id", requireAuth, async (req, res) => {
 
 router.delete("/admin/reject/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     if (!me || me.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
     const [photo] = await db.select().from(photosTable).where(eq(photosTable.id, id)).limit(1)

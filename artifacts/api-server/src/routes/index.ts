@@ -22,6 +22,7 @@ import boostRouter from "./boost"
 import brandingRouter from "./branding"
 import videoCallsRouter from "./video-calls"
 import moderatorRouter from "./moderator"
+import customPaymentsRouter from "./custom-payments"
 
 const router: IRouter = Router()
 
@@ -47,6 +48,7 @@ router.use("/boost", boostRouter)
 router.use("/branding", brandingRouter)
 router.use("/video-calls", videoCallsRouter)
 router.use("/moderator", moderatorRouter)
+router.use("/custom-payments", customPaymentsRouter)
 router.use("/", blockRouter)
 
 export default router
