@@ -81,7 +81,7 @@ ALTER TABLE `users`
 -- Populate phone from old telephone column (with country code prefix)
 UPDATE `users`
 SET `phone` = CONCAT(
-  COALESCE((SELECT `value` FROM `config` WHERE `name` = 'phone_code' LIMIT 1), ''),
+  COALESCE((SELECT `title` FROM `config` WHERE `name` = 'phone_code' LIMIT 1), ''),
   COALESCE(`telephone`, '')
 )
 WHERE (`phone` IS NULL OR `phone` = '')
