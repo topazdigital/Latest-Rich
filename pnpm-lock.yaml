@@ -217,6 +217,9 @@ importers:
       stripe:
         specifier: ^17.7.0
         version: 17.7.0
+      unix-crypt-td-js:
+        specifier: ^1.1.4
+        version: 1.1.4
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -3297,6 +3300,9 @@ packages:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
 
+  unix-crypt-td-js@1.1.4:
+    resolution: {integrity: sha512-8rMeVYWSIyccIJscb9NdCfZKSRBKYTeVnwmiRYT2ulE3qd1RaDQ0xQDP+rI3ccIWbhu/zuo5cgN8z73belNZgw==}
+
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
@@ -6081,6 +6087,8 @@ snapshots:
   unicorn-magic@0.4.0: {}
 
   universalify@2.0.1: {}
+
+  unix-crypt-td-js@1.1.4: {}
 
   unpipe@1.0.0: {}
 

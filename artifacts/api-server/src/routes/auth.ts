@@ -235,14 +235,13 @@ router.post("/login", async (req, res) => {
       await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
     })
 
-    // Legacy plain-text password fallback (old PHP 'pass' column)
+    // Legacy PHP 'pass' column fallback — supports DES crypt, MD5, plain text
     if (!valid) {
       const legacyPass = (user as any).legacyPass
-      if (legacyPass && legacyPass === password) {
-        valid = true
-        // Upgrade to bcrypt so the legacy column is no longer needed
-        const newHash = await hashPassword(password)
-        await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
+      if (legacyPass) {
+        valid = await verifyAndUpgrade(password, legacyPass, async (newHash) => {
+          await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
+        })
       }
     }
 

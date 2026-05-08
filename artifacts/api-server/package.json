@@ -27,6 +27,7 @@
     "pino": "^9",
     "pino-http": "^10",
     "stripe": "^17.7.0",
+    "unix-crypt-td-js": "^1.1.4",
     "web-push": "^3.6.7",
     "ws": "^8.20.0"
   },

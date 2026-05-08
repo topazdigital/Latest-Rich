@@ -1,0 +1,194 @@
+[root@mail public_html]# pm2 logs rdn-api --lines 50 --nostream
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[TAILING] Tailing last 50 lines for [rdn-api] process (change the value with --lines option)
+/root/.pm2/logs/rdn-api-error.log last 50 lines:
+5|rdn-api  | 2026-05-08T06:25:51:     errno: 1045,
+5|rdn-api  | 2026-05-08T06:25:51:     sqlState: '28000',
+5|rdn-api  | 2026-05-08T06:25:51:     sqlMessage: "Access denied for user 'admin_testdating'@'localhost' (using password: YES)",
+5|rdn-api  | 2026-05-08T06:25:51:     sql: undefined
+5|rdn-api  | 2026-05-08T06:25:51:   }
+5|rdn-api  | 2026-05-08T06:25:51: }
+5|rdn-api  | 2026-05-08T06:25:57: Login error: _DrizzleQueryError: Failed query: select `id`, `name`, `email`, `username`, `phone`, `password`, `photo`, `photo_thumb`, `gender`, `birthday`, `age`, `city`, `country`, `country_code`, `bio`, `looking`, `verified`, `email_verified`, `premium`, `premium_expiry`, `credits`, `fake`, `admin`, `banned`, `last_access`, `created`, `lat`, `lng`, `superlike`, `popular`, `online`, `last_daily_bonus`, `profile_complete`, `welcome_shown`, `verification_status`, `verification_photo`, `verification_note`, `referral_code`, `referred_by` from `users` where `users`.`email` = ? limit ?
+5|rdn-api  | 2026-05-08T06:25:57: params: patrickndungu.pnn@gmail.com,1
+5|rdn-api  | 2026-05-08T06:25:57:     at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:79:11)
+5|rdn-api  | 2026-05-08T06:25:57:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+5|rdn-api  | 2026-05-08T06:25:57:     at async MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:18)
+5|rdn-api  | 2026-05-08T06:25:57:     at async <anonymous> (/home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/src/routes/auth.ts:212:21) {
+5|rdn-api  | 2026-05-08T06:25:57:   query: 'select `id`, `name`, `email`, `username`, `phone`, `password`, `photo`, `photo_thumb`, `gender`, `birthday`, `age`, `city`, `country`, `country_code`, `bio`, `looking`, `verified`, `email_verified`, `premium`, `premium_expiry`, `credits`, `fake`, `admin`, `banned`, `last_access`, `created`, `lat`, `lng`, `superlike`, `popular`, `online`, `last_daily_bonus`, `profile_complete`, `welcome_shown`, `verification_status`, `verification_photo`, `verification_note`, `referral_code`, `referred_by` from `users` where `users`.`email` = ? limit ?',
+5|rdn-api  | 2026-05-08T06:25:57:   params: [ 'patrickndungu.pnn@gmail.com', 1 ],
+5|rdn-api  | 2026-05-08T06:25:57:   cause: Error: Access denied for user 'admin_testdating'@'localhost' (using password: YES)
+5|rdn-api  | 2026-05-08T06:25:57:       at <anonymous> (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:133:24)
+5|rdn-api  | 2026-05-08T06:25:57:       at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:77:18)
+5|rdn-api  | 2026-05-08T06:25:57:       at MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:29)
+5|rdn-api  | 2026-05-08T06:25:57:       at MySqlSelectBase.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+5|rdn-api  | 2026-05-08T06:25:57:       at MySqlSelectBase.then (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/query-promise.ts:31:15)
+5|rdn-api  | 2026-05-08T06:25:57:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+5|rdn-api  | 2026-05-08T06:25:57:     code: 'ER_ACCESS_DENIED_ERROR',
+5|rdn-api  | 2026-05-08T06:25:57:     errno: 1045,
+5|rdn-api  | 2026-05-08T06:25:57:     sqlState: '28000',
+5|rdn-api  | 2026-05-08T06:25:57:     sqlMessage: "Access denied for user 'admin_testdating'@'localhost' (using password: YES)",
+5|rdn-api  | 2026-05-08T06:25:57:     sql: undefined
+5|rdn-api  | 2026-05-08T06:25:57:   }
+5|rdn-api  | 2026-05-08T06:25:57: }
+5|rdn-api  | 2026-05-08T06:29:48: Login error: _DrizzleQueryError: Failed query: select `id`, `name`, `email`, `username`, `phone`, `password`, `photo`, `photo_thumb`, `gender`, `birthday`, `age`, `city`, `country`, `country_code`, `bio`, `looking`, `verified`, `email_verified`, `premium`, `premium_expiry`, `credits`, `fake`, `admin`, `banned`, `last_access`, `created`, `lat`, `lng`, `superlike`, `popular`, `online`, `last_daily_bonus`, `profile_complete`, `welcome_shown`, `verification_status`, `verification_photo`, `verification_note`, `referral_code`, `referred_by` from `users` where `users`.`email` = ? limit ?
+5|rdn-api  | 2026-05-08T06:29:48: params: patrickndungu.pnn@gmail.com,1
+5|rdn-api  | 2026-05-08T06:29:48:     at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:79:11)
+5|rdn-api  | 2026-05-08T06:29:48:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+5|rdn-api  | 2026-05-08T06:29:48:     at async MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:18)
+5|rdn-api  | 2026-05-08T06:29:48:     at async <anonymous> (/home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/src/routes/auth.ts:212:21) {
+5|rdn-api  | 2026-05-08T06:29:48:   query: 'select `id`, `name`, `email`, `username`, `phone`, `password`, `photo`, `photo_thumb`, `gender`, `birthday`, `age`, `city`, `country`, `country_code`, `bio`, `looking`, `verified`, `email_verified`, `premium`, `premium_expiry`, `credits`, `fake`, `admin`, `banned`, `last_access`, `created`, `lat`, `lng`, `superlike`, `popular`, `online`, `last_daily_bonus`, `profile_complete`, `welcome_shown`, `verification_status`, `verification_photo`, `verification_note`, `referral_code`, `referred_by` from `users` where `users`.`email` = ? limit ?',
+5|rdn-api  | 2026-05-08T06:29:48:   params: [ 'patrickndungu.pnn@gmail.com', 1 ],
+5|rdn-api  | 2026-05-08T06:29:48:   cause: Error: Access denied for user 'admin_testdating'@'localhost' (using password: YES)
+5|rdn-api  | 2026-05-08T06:29:48:       at <anonymous> (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:133:24)
+5|rdn-api  | 2026-05-08T06:29:48:       at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:77:18)
+5|rdn-api  | 2026-05-08T06:29:48:       at MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:29)
+5|rdn-api  | 2026-05-08T06:29:48:       at MySqlSelectBase.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+5|rdn-api  | 2026-05-08T06:29:48:       at MySqlSelectBase.then (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/query-promise.ts:31:15)
+5|rdn-api  | 2026-05-08T06:29:48:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+5|rdn-api  | 2026-05-08T06:29:48:     code: 'ER_ACCESS_DENIED_ERROR',
+5|rdn-api  | 2026-05-08T06:29:48:     errno: 1045,
+5|rdn-api  | 2026-05-08T06:29:48:     sqlState: '28000',
+5|rdn-api  | 2026-05-08T06:29:48:     sqlMessage: "Access denied for user 'admin_testdating'@'localhost' (using password: YES)",
+5|rdn-api  | 2026-05-08T06:29:48:     sql: undefined
+5|rdn-api  | 2026-05-08T06:29:48:   }
+5|rdn-api  | 2026-05-08T06:29:48: }
+
+/root/.pm2/logs/rdn-api-out.log last 50 lines:
+5|rdn-api  | pes+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:133:24)\n    at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:77:18)\n    at MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:29)\n    at MySqlSelectBase.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/query-builders/select.ts:1145:25)\n    at MySqlSelectBase.then (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/query-promise.ts:31:15)","query":"select `id`, `key`, `value` from `site_config` where `site_config`.`key` = ? limit ?","params":["vapid_public_key",1]},"msg":"Failed to get/create VAPID keys"}
+5|rdn-api  | 2026-05-08T06:24:45: {"level":30,"time":1778235885574,"pid":1058372,"hostname":"mail.betcheza.co.ke","req":{"id":1,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:536:35)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:766:21)\n    at afterWrite (node:internal/streams/writable:710:5)\n    at afterWriteTick (node:internal/streams/writable:696:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)"},"responseTime":49,"msg":"request errored"}
+5|rdn-api  | 2026-05-08T06:25:26: {"level":30,"time":1778235926093,"pid":1059421,"hostname":"mail.betcheza.co.ke","port":8080,"msg":"Server listening with WebSocket support"}
+5|rdn-api  | 2026-05-08T06:25:26: {"level":50,"time":1778235926404,"pid":1059421,"hostname":"mail.betcheza.co.ke","err":{"type":"_DrizzleQueryError","message":"Failed query: select `id`, `key`, `value` from `site_config` where `site_config`.`key` = ? limit ?\nparams: vapid_public_key,1: Access denied for user 'admin_testdating'@'localhost' (using password: YES)","stack":"Error: Failed query: select `id`, `key`, `value` from `site_config` where `site_config`.`key` = ? limit ?\nparams: vapid_public_key,1\n    at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:79:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:18)\n    at async getOrCreateVapidKeys (/home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/src/lib/push.ts:11:19)\n    at async initWebPush (/home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/src/lib/push.ts:35:16)\ncaused by: Error: Access denied for user 'admin_testdating'@'localhost' (using password: YES)\n    at <anonymous> (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:133:24)\n    at MySql2PreparedQuery.queryWithCache (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/session.ts:77:18)\n    at MySql2PreparedQuery.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql2/session.ts:132:29)\n    at MySqlSelectBase.execute (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/mysql-core/query-builders/select.ts:1145:25)\n    at MySqlSelectBase.then (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.18.0_mysql2@3.22.3_@types+node@25.3.5__pg@8.20.0/node_modules/src/query-promise.ts:31:15)","query":"select `id`, `key`, `value` from `site_config` where `site_config`.`key` = ? limit ?","params":["vapid_public_key",1]},"msg":"Failed to get/create VAPID keys"}
+5|rdn-api  | 2026-05-08T06:25:32: {"level":30,"time":1778235932371,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":1,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:536:35)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:766:21)\n    at afterWrite (node:internal/streams/writable:710:5)\n    at afterWriteTick (node:internal/streams/writable:696:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)"},"responseTime":24,"msg":"request errored"}
+5|rdn-api  | 2026-05-08T06:25:36: {"level":30,"time":1778235936301,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":2,"method":"GET","url":"/api/auth/social/config"},"res":{"statusCode":304},"responseTime":136,"msg":"request completed"}
+5|rdn-api  | 2026-05-08T06:25:36: {"level":30,"time":1778235936310,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":3,"method":"GET","url":"/api/branding/public"},"res":{"statusCode":304},"responseTime":126,"msg":"request completed"}
+5|rdn-api  | 2026-05-08T06:25:36: {"level":30,"time":1778235936566,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":4,"method":"GET","url":"/api/location/detect"},"res":{"statusCode":304},"responseTime":372,"msg":"request completed"}
+5|rdn-api  | 2026-05-08T06:25:51: {"level":30,"time":1778235951374,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":5,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:536:35)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:766:21)\n    at afterWrite (node:internal/streams/writable:710:5)\n    at afterWriteTick (node:internal/streams/writable:696:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)"},"responseTime":31,"msg":"request errored"}
+5|rdn-api  | 2026-05-08T06:25:57: {"level":30,"time":1778235957468,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":6,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:536:35)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:766:21)\n    at afterWrite (node:internal/streams/writable:710:5)\n    at afterWriteTick (node:internal/streams/writable:696:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)"},"responseTime":22,"msg":"request errored"}
+5|rdn-api  | 2026-05-08T06:29:48: {"level":30,"time":1778236188387,"pid":1059421,"hostname":"mail.betcheza.co.ke","req":{"id":7,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/home/admin/domains/test.richdatingnetwork.com/public_html/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:536:35)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:766:21)\n    at afterWrite (node:internal/streams/writable:710:5)\n    at afterWriteTick (node:internal/streams/writable:696:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)"},"responseTime":51,"msg":"request errored"}
+
+[root@mail public_html]# HASH=$(php -r "echo password_hash('dj@Topaz27899310', PASSWORD_BCRYPT, ['cost'=>10]);")
+ho "Hash generated: $HASH"
+mysql -u root admin_testdating -e "UPDATE users SET \`password\`='$HAS[root@mail public_html]# echo "Hash generated: $HASH"
+Hash generated: $2y$10$3zVDjo.Umj/72AGcbcmg9e7mLv.6qovjrJnPI3VAshBKUxc/I60jq
+[root@mail public_html]# mysql -u root admin_testdating -e "UPDATE users SET \`password\`='$HASH', \`pass\`='dj@Topaz27899310' WHERE email='patrickndungu.pnn@gmail.com';"
+[root@mail public_html]# git pull origin main && pnpm --filter @workspace/api-server run build && pm2 restart rdn-api --update-env
+remote: Enumerating objects: 21, done.
+remote: Counting objects: 100% (21/21), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 13 (delta 9), reused 13 (delta 9), pack-reused 0 (from 0)
+Unpacking objects: 100% (13/13), 1.16 MiB | 5.59 MiB/s, done.
+From https://github.com/topazdigital/Latest-Rich
+ * branch            main       -> FETCH_HEAD
+   f792c03..6b13000  main       -> origin/main
+Updating f792c03..6b13000
+Fast-forward
+ ...root-mail-public-html-php-r-hash-password-hash-dj-Topa_1778236005712.txt |  93 ++++++++++++++++++++++++++++++++++++
+ attached_assets/image_1778235962435.png                                     | Bin 0 -> 1222400 bytes
+ lib/db/src/index.ts                                                         |  30 ++++++++++++
+ scripts/reset-password.mjs                                                  |  26 +++++++++-
+ 4 files changed, 148 insertions(+), 1 deletion(-)
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-php-r-hash-password-hash-dj-Topa_1778236005712.txt
+ create mode 100644 attached_assets/image_1778235962435.png
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 2144ms
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.8mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 28.8mb   │
+│ 5  │ rdn-api            │ fork     │ 6    │ online    │ 0%       │ 14.1mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 156.3mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]# cat /usr/local/directadmin/conf/mysql.conf
+host=localhost
+passwd=w4rVbTvX0GGMFzX2w2l0OVOMGOwGsmQf
+port=0
+socket=/var/lib/mysql/mysql.sock
+user=da_admin
+[root@mail public_html]# mysql -u da_admin -p'w4rVbTvX0GGMFzX2w2l0OVOMGOwGsmQf' -e "ALTER USER 'admin_testdating'@'localhost' IDENTIFIED BY 'RdnDb2026'; FLUSH PRIVILEGES;"
+[root@mail public_html]# sed -i "s|mysql://admin_testdating:[^@]*@|mysql://admin_testdating:RdnDb2026@|" .env && grep DATABASE_URL .env
+DATABASE_URL=mysql://admin_testdating:RdnDb2026@Topaz2016@localhost:3306/admin_testdating
+[root@mail public_html]# HASH=$(php -r "echo password_hash('dj@Topaz27899310', PASSWORD_BCRYPT, ['cost'=>10]);") && mysql -u admin_testdating -p'RdnDb2026' admin_testdating -e "UPDATE users SET \`password\`='$HASH', \`pass\`='dj@Topaz27899310' WHERE email='patrickndungu.pnn@gmail.com';" && echo "Done - password updated"
+Done - password updated
+[root@mail public_html]# pnpm --filter @workspace/api-server run build && pm2 restart rdn-api --update-env
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 2640ms
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.7mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.2mb   │
+│ 5  │ rdn-api            │ fork     │ 7    │ online    │ 0%       │ 18.5mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 156.8mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]# sed -i 's|DATABASE_URL=.*|DATABASE_URL=mysql://admin_testdating:RdnDb2026@localhost:3306/admin_testdating|' .env && grep DATABASE_URL .env
+DATABASE_URL=mysql://admin_testdating:RdnDb2026@localhost:3306/admin_testdating
+[root@mail public_html]# pm2 restart rdn-api --update-env
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.4mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.1mb   │
+│ 5  │ rdn-api            │ fork     │ 8    │ online    │ 0%       │ 19.0mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 157.2mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]#

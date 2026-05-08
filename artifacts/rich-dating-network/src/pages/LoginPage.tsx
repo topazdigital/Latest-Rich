@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'wouter'
-import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star } from 'lucide-react'
+import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star, Mail, AtSign, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 declare global {
@@ -10,7 +10,6 @@ declare global {
   }
 }
 
-// Geo-aware profile pools: matched by user's detected country/region
 const PROFILE_POOLS: Record<string, { name: string; age: number; city: string; img: string; tag: string }[]> = {
   KE: [
     { name: 'Amara', age: 26, city: 'Nairobi', img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face', tag: 'Looking for successful men' },
@@ -54,31 +53,34 @@ const PROFILE_POOLS: Record<string, { name: string; age: number; city: string; i
 
 function getProfiles(countryCode: string) {
   const pool = PROFILE_POOLS[countryCode] || PROFILE_POOLS.DEFAULT
-  // Rotate based on time so it feels dynamic
   const offset = Math.floor(Date.now() / 60000) % pool.length
   const rotated = [...pool.slice(offset), ...pool.slice(0, offset)]
   return rotated.slice(0, 3)
 }
 
+type LoginTab = 'email' | 'username' | 'phone'
+
+const TABS: { id: LoginTab; label: string; icon: React.ReactNode; placeholder: string; type: string; autoComplete: string }[] = [
+  { id: 'email', label: 'Email', icon: <Mail size={14} />, placeholder: 'you@example.com', type: 'email', autoComplete: 'email' },
+  { id: 'username', label: 'Username', icon: <AtSign size={14} />, placeholder: '@yourusername', type: 'text', autoComplete: 'username' },
+  { id: 'phone', label: 'Phone', icon: <Phone size={14} />, placeholder: '+254 700 000 000', type: 'tel', autoComplete: 'tel' },
+]
+
 export default function LoginPage() {
   const [, setLocation] = useLocation()
+  const [activeTab, setActiveTab] = useState<LoginTab>('email')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
-  const [countryCode, setCountryCode] = useState('DEFAULT')
   const [profiles, setProfiles] = useState(PROFILE_POOLS.DEFAULT.slice(0, 3))
 
   useEffect(() => {
     fetch('/api/auth/social/config').then(r => r.json()).then(d => setSocialConfig(d)).catch(() => {})
-    // Auto-detect country for profile selection
     fetch('/api/location/detect').then(r => r.json()).then(d => {
-      if (d.countryCode) {
-        setCountryCode(d.countryCode)
-        setProfiles(getProfiles(d.countryCode))
-      }
+      if (d.countryCode) setProfiles(getProfiles(d.countryCode))
     }).catch(() => {})
   }, [])
 
@@ -116,14 +118,23 @@ export default function LoginPage() {
     return () => window.google?.accounts?.id?.cancel()
   }, [socialConfig.googleClientId])
 
+  function handleTabChange(tab: LoginTab) {
+    setActiveTab(tab)
+    setIdentifier('')
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (!identifier.trim()) {
+      toast.error(`Please enter your ${activeTab}`)
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Login failed')
@@ -134,6 +145,8 @@ export default function LoginPage() {
       toast.error(err.message || 'Invalid credentials')
     } finally { setLoading(false) }
   }
+
+  const activeTabConfig = TABS.find(t => t.id === activeTab)!
 
   return (
     <div className="min-h-screen flex">
@@ -169,7 +182,6 @@ export default function LoginPage() {
               Join thousands of successful, verified singles. Real-time matching based on your location, lifestyle, and preferences.
             </p>
 
-            {/* Geo-smart rotating profiles */}
             <div className="flex flex-col gap-3 max-w-xs">
               {profiles.map((p, i) => (
                 <div key={`${p.name}-${i}`}
@@ -219,7 +231,7 @@ export default function LoginPage() {
 
           <div className="mb-8">
             <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome back 👋</h1>
-            <p className="text-gray-500">Sign in with email, username or phone</p>
+            <p className="text-gray-500">Sign in to your account</p>
           </div>
 
           {socialConfig.googleClientId && (
@@ -246,13 +258,47 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Login method tabs */}
+          <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 gap-1">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email, username or phone</label>
-              <input type="text" value={identifier} onChange={e => setIdentifier(e.target.value)}
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
-                placeholder="e.g. john@email.com or @johndoe or +254700..." required autoComplete="username" />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {activeTabConfig.label}
+              </label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  {activeTabConfig.icon}
+                </div>
+                <input
+                  key={activeTab}
+                  type={activeTabConfig.type}
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
+                  placeholder={activeTabConfig.placeholder}
+                  required
+                  autoComplete={activeTabConfig.autoComplete}
+                  autoFocus
+                />
+              </div>
             </div>
+
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-gray-700">Password</label>
@@ -261,15 +307,22 @@ export default function LoginPage() {
                 </Link>
               </div>
               <div className="relative">
-                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                   className="w-full px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white pr-12 placeholder-gray-400"
-                  placeholder="Enter your password" required />
+                  placeholder="Enter your password"
+                  required
+                  autoComplete="current-password"
+                />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
+
             <button type="submit" disabled={loading}
               className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25"
               style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
