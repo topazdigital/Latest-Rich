@@ -1,0 +1,39 @@
+[root@mail ~]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]#
+[root@mail public_html]# # Pull the latest code (this gets the new deploy script too)
+[root@mail public_html]# git pull origin main
+ake the script executable and run it
+bash scripts/deploy-server.shremote: Enumerating objects: 40, done.
+remote: Counting objects: 100% (40/40), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 26 (delta 18), reused 26 (delta 18), pack-reused 0 (from 0)
+Unpacking objects: 100% (26/26), 1.67 MiB | 10.47 MiB/s, done.
+From https://github.com/topazdigital/Latest-Rich
+ * branch            main       -> FETCH_HEAD
+   dfe8041..da4c1d7  main       -> origin/main
+Updating dfe8041..da4c1d7
+Fast-forward
+ .gitattributes                                                       |   1 +
+ .replit                                                              |   5 +-
+ artifacts/rich-dating-network/src/components/landing/LandingPage.tsx | 100 +++++++-------
+ attached_assets/admin_testdating_1778227955847.sql                   |   3 +
+ attached_assets/image_1778228547830.png                              | Bin 0 -> 386547 bytes
+ attached_assets/image_1778228679670.png                              | Bin 0 -> 722036 bytes
+ attached_assets/image_1778228698361.png                              | Bin 0 -> 353780 bytes
+ attached_assets/image_1778228779794.png                              | Bin 0 -> 367514 bytes
+ scripts/deploy-test-server.ps1                                       | 312 ++++++++++++++++++++++++-------------------
+ scripts/hash-passwords.mjs                                           |   3 +-
+ scripts/migrate-photos.mjs                                           |   4 +-
+ scripts/set-admin-password.mjs                                       |  82 ++++++++++++
+ 12 files changed, 325 insertions(+), 185 deletions(-)
+ create mode 100644 attached_assets/admin_testdating_1778227955847.sql
+ create mode 100644 attached_assets/image_1778228547830.png
+ create mode 100644 attached_assets/image_1778228679670.png
+ create mode 100644 attached_assets/image_1778228698361.png
+ create mode 100644 attached_assets/image_1778228779794.png
+ create mode 100644 scripts/set-admin-password.mjs
+[root@mail public_html]#
+[root@mail public_html]# # Make the script executable and run it
+[root@mail public_html]# bash scripts/deploy-server.sh
+bash: scripts/deploy-server.sh: No such file or directory
+[root@mail public_html]#
