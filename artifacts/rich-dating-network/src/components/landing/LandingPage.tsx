@@ -325,52 +325,53 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-20 px-4 bg-gray-50">
+      {/* Features — compact horizontal scroll on mobile, 3-col on desktop */}
+      <section className="py-10 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-3">
               <Star size={14} /> Why Choose Us
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Everything You Need to Find Love</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">A premium dating experience built for successful people who know what they want.</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Everything You Need to Find Love</h2>
+            <p className="text-gray-500 text-sm max-w-xl mx-auto">A premium dating experience built for successful people who know what they want.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* horizontal scroll on mobile */}
+          <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible" style={{ scrollSnapType: 'x mandatory' }}>
             {FEATURES.map((f, i) => (
-              <div key={i} className="card p-6 hover:shadow-lg transition-all hover:-translate-y-1 group border border-gray-100">
-                <div className="w-12 h-12 rounded-2xl gradient-brand flex items-center justify-center text-white mb-5 group-hover:scale-110 transition-transform shadow-md">
-                  <f.icon className="w-6 h-6" />
+              <div key={i} className="card p-5 hover:shadow-lg transition-all hover:-translate-y-1 group border border-gray-100 flex-shrink-0 w-64 md:w-auto" style={{ scrollSnapAlign: 'start' }}>
+                <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform shadow-md">
+                  <f.icon className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{f.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-1">{f.title}</h3>
+                <p className="text-gray-500 text-xs leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-20 px-4 bg-white">
+      {/* How it works — compact */}
+      <section className="py-10 px-4 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-3">
             <Zap size={14} /> Simple Process
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12">Find Love in 3 Easy Steps</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">Find Love in 3 Easy Steps</h2>
+          <div className="grid grid-cols-3 gap-4 md:gap-8">
             {[
-              { step: '01', title: 'Create Your Profile', desc: 'Sign up free and tell us about yourself — your interests, location, and what you\'re looking for.', icon: '📝' },
-              { step: '02', title: 'Discover Matches', desc: 'See compatible singles near you first, or explore profiles worldwide with smart filters.', icon: '🔍' },
-              { step: '03', title: 'Connect & Meet', desc: 'Chat in real-time, send gifts, and plan your first date. Love is just a message away!', icon: '❤️' },
+              { step: '01', title: 'Create Profile', desc: 'Sign up free and tell us about yourself.', icon: '📝' },
+              { step: '02', title: 'Discover Matches', desc: 'See compatible singles near you or worldwide.', icon: '🔍' },
+              { step: '03', title: 'Connect & Meet', desc: 'Chat, send gifts, and plan your first date!', icon: '❤️' },
             ].map((s, i) => (
               <div key={i} className="relative">
                 {i < 2 && (
-                  <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-brand-200 to-transparent z-0 -translate-y-1/2" />
+                  <div className="hidden md:block absolute top-6 left-full w-full h-0.5 bg-gradient-to-r from-brand-200 to-transparent z-0 -translate-y-1/2" />
                 )}
                 <div className="relative z-10">
-                  <div className="text-4xl mb-4">{s.icon}</div>
-                  <div className="text-xs font-bold text-brand-500 mb-2 tracking-widest">STEP {s.step}</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{s.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
+                  <div className="text-3xl mb-3">{s.icon}</div>
+                  <div className="text-xs font-bold text-brand-500 mb-1 tracking-widest">STEP {s.step}</div>
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">{s.title}</h3>
+                  <p className="text-gray-500 text-xs leading-relaxed hidden sm:block">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -378,24 +379,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20 px-4 bg-gray-50">
+      {/* Testimonials — horizontal scroll carousel */}
+      <section className="py-10 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Real Success Stories</h2>
-            <p className="text-gray-500">Join thousands who found their perfect match</p>
+          <div className="text-center mb-6 px-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Real Success Stories</h2>
+            <p className="text-gray-500 text-sm">Join thousands who found their perfect match</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="card p-6 border border-gray-100">
-                <div className="flex items-center gap-1 mb-4">
+          {/* Horizontally scrollable row, cards snap into place */}
+          <div className="flex gap-4 overflow-x-auto px-4 pb-4" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+            {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
+              <div key={i} className="flex-shrink-0 w-72 md:w-80 card p-5 border border-gray-100 rounded-3xl" style={{ scrollSnapAlign: 'start' }}>
+                <div className="flex items-center gap-1 mb-3">
                   {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} size={14} className="text-yellow-400 fill-yellow-400" />
+                    <Star key={j} size={12} className="text-yellow-400 fill-yellow-400" />
                   ))}
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-5">"{t.text}"</p>
+                <p className="text-gray-600 text-sm leading-relaxed mb-4">"{t.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-lg font-bold text-brand-600">
+                  <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-base font-bold text-brand-600 flex-shrink-0">
                     {t.name[0]}
                   </div>
                   <div>
@@ -408,24 +410,30 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          {/* Scroll hint dots */}
+          <div className="flex justify-center gap-2 mt-3">
+            {TESTIMONIALS.map((_, i) => (
+              <div key={i} className={`h-1.5 rounded-full bg-brand-300 transition-all ${i === 0 ? 'w-5' : 'w-1.5 opacity-40'}`} />
+            ))}
+          </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-4 gradient-brand text-white relative overflow-hidden">
+      <section className="py-10 px-4 gradient-brand text-white relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-10 right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 left-20 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+          <div className="absolute top-6 right-20 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-6 left-20 w-36 h-36 bg-white/5 rounded-full blur-3xl" />
         </div>
         <div className="max-w-2xl mx-auto text-center relative z-10">
-          <div className="text-5xl mb-6">💝</div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Find Your Perfect Match?</h2>
-          <p className="text-white/80 mb-8 text-lg">Join the most exclusive dating network for successful singles. Free to join, always.</p>
+          <div className="text-4xl mb-4">💝</div>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Find Your Perfect Match?</h2>
+          <p className="text-white/80 mb-6 text-sm md:text-base">Join the most exclusive dating network for successful singles. Free to join, always.</p>
           <Link href="/register"
-            className="bg-white text-brand-600 font-bold text-lg px-10 py-4 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-3">
-            Create Free Account <ChevronRight size={20} />
+            className="bg-white text-brand-600 font-bold px-8 py-3 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
+            Create Free Account <ChevronRight size={18} />
           </Link>
-          <p className="text-white/60 text-sm mt-5">No credit card required • Join in 30 seconds</p>
+          <p className="text-white/60 text-xs mt-4">No credit card required • Join in 30 seconds</p>
         </div>
       </section>
 
