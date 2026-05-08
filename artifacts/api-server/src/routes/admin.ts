@@ -6,7 +6,7 @@ import {
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
   chatLocksTable, userExtendedTable
 } from "@workspace/db/schema"
-import { eq, desc, sql, and, ne, gte, count, SQL, or } from "drizzle-orm"
+import { eq, desc, sql, and, ne, gte, count, SQL, or, isNull } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -441,8 +441,8 @@ router.get("/featured-users", async (req, res) => {
       gender: usersTable.gender,
       verified: usersTable.verified,
     }).from(usersTable)
-      .where(and(eq(usersTable.fake, 1), eq(usersTable.banned, 0), ne(usersTable.photo, "")))
-      .orderBy(sql`RANDOM()`)
+      .where(and(eq(usersTable.fake, 1), or(eq(usersTable.banned, 0), isNull(usersTable.banned)), ne(usersTable.photo, "")))
+      .orderBy(sql`RAND()`)
       .limit(12)
     res.json(users)
   } catch { res.json([]) }

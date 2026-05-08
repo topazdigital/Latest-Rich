@@ -1,10 +1,12 @@
 import { Router } from "express"
 import path from "path"
 import fs from "fs"
-import { createReadStream } from "fs"
 
 const router = Router()
-const uploadDir = path.join(process.cwd(), "uploads")
+// Primary: assets/sources/uploads (old-site migrated photos)
+// Fallback: uploads/ (new uploads from this app)
+const uploadDir = path.join(process.cwd(), "assets", "sources", "uploads")
+const fallbackDir = path.join(process.cwd(), "uploads")
 
 router.get("/:filename", (req, res) => {
   const { filename } = req.params
@@ -12,12 +14,17 @@ router.get("/:filename", (req, res) => {
     res.status(400).send("Invalid filename")
     return
   }
-  const filePath = path.join(uploadDir, filename)
-  if (!fs.existsSync(filePath)) {
-    res.status(404).send("Not found")
+  const primary = path.join(uploadDir, filename)
+  if (fs.existsSync(primary)) {
+    res.sendFile(primary)
     return
   }
-  res.sendFile(filePath)
+  const fallback = path.join(fallbackDir, filename)
+  if (fs.existsSync(fallback)) {
+    res.sendFile(fallback)
+    return
+  }
+  res.status(404).send("Not found")
 })
 
 export default router

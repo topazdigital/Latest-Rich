@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql, gt } from "drizzle-orm"
+import { eq, and, ne, desc, sql, gt, or, isNull } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 
@@ -160,7 +160,7 @@ router.get("/search", requireAuth, async (req, res) => {
     const boostedIds = new Set(boostedRows.map(b => b.userId))
 
     let users = await db.select().from(usersTable)
-      .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
+      .where(and(ne(usersTable.id, req.userId!), or(eq(usersTable.banned, 0), isNull(usersTable.banned))))
       .orderBy(desc(usersTable.lastAccess))
       .limit(500)
 
@@ -207,7 +207,7 @@ router.get("/suggested", requireAuth, async (req, res) => {
     const boostedIds = new Set(boostedRows.map(b => b.userId))
 
     const users = await db.select().from(usersTable)
-      .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0)))
+      .where(and(ne(usersTable.id, req.userId!), or(eq(usersTable.banned, 0), isNull(usersTable.banned))))
       .orderBy(desc(usersTable.lastAccess))
       .limit(100)
 
@@ -229,8 +229,12 @@ router.get("/suggested", requireAuth, async (req, res) => {
 router.get("/meet", requireAuth, async (req, res) => {
   try {
     const users = await db.select().from(usersTable)
-      .where(and(ne(usersTable.id, req.userId!), eq(usersTable.banned, 0), eq(usersTable.fake, 0)))
-      .orderBy(sql`RANDOM()`)
+      .where(and(
+        ne(usersTable.id, req.userId!),
+        or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        eq(usersTable.fake, 0),
+      ))
+      .orderBy(sql`RAND()`)
       .limit(50)
     res.json(users.map(safeUser))
   } catch {
