@@ -6,9 +6,30 @@
  *
  * Example:
  *   node scripts/reset-password.mjs patrickndungu.pnn@gmail.com dj@Topaz27899310
+ *
+ * DATABASE_URL is auto-loaded from .env if present.
  */
-import { createHash } from "crypto"
+import { readFileSync, existsSync } from "fs"
 import { createPool } from "mysql2/promise"
+
+// Auto-load .env file if it exists (no dotenv dependency needed)
+function loadDotEnv(path = ".env") {
+  if (!existsSync(path)) return
+  const lines = readFileSync(path, "utf8").split("\n")
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line || line.startsWith("#") || !line.includes("=")) continue
+    const eqIdx = line.indexOf("=")
+    const key = line.slice(0, eqIdx).trim()
+    let val = line.slice(eqIdx + 1).trim()
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1)
+    }
+    if (!process.env[key]) process.env[key] = val
+  }
+}
+
+loadDotEnv()
 
 const [,, email, newPassword] = process.argv
 
@@ -24,11 +45,11 @@ if (newPassword.length < 6) {
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
-  console.error("DATABASE_URL environment variable is required")
+  console.error("ERROR: DATABASE_URL not found. Make sure .env exists in the current directory.")
   process.exit(1)
 }
 
-// Dynamically import bcrypt (compiled native module)
+// Dynamically import bcrypt
 let bcrypt
 try {
   bcrypt = (await import("bcrypt")).default
@@ -43,7 +64,7 @@ async function run() {
   if (isMysql) {
     const pool = createPool(DATABASE_URL)
     const [rows] = await pool.query("SELECT id, email, name FROM users WHERE email = ? LIMIT 1", [email.toLowerCase()])
-    if (!rows.length) {
+    if (!Array.isArray(rows) || !rows.length) {
       console.error(`No user found with email: ${email}`)
       await pool.end()
       process.exit(1)
@@ -55,7 +76,6 @@ async function run() {
     console.log(`✅ Password reset for: ${user.name} <${user.email}> (id=${user.id})`)
     console.log(`   You can now login with: ${email} / ${newPassword}`)
   } else {
-    // PostgreSQL
     const pg = await import("pg")
     const Pool = pg.default?.Pool ?? pg.Pool
     const pool = new Pool({ connectionString: DATABASE_URL })

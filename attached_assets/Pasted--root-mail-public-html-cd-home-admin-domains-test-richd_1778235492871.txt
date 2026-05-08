@@ -1,0 +1,68 @@
+[root@mail public_html]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# git pull origin main
+remote: Enumerating objects: 69, done.
+remote: Counting objects: 100% (69/69), done.
+remote: Compressing objects: 100% (19/19), done.
+remote: Total 47 (delta 28), reused 46 (delta 27), pack-reused 0 (from 0)
+Unpacking objects: 100% (47/47), 4.30 MiB | 6.05 MiB/s, done.
+From https://github.com/topazdigital/Latest-Rich
+ * branch            main       -> FETCH_HEAD
+   0b51500..464af6b  main       -> origin/main
+Updating 0b51500..464af6b
+Fast-forward
+ .gitattributes                                                              |   1 +
+ artifacts/api-server/src/lib/password.ts                                    |   4 +-
+ artifacts/api-server/src/routes/auth.ts                                     |  14 +-
+ artifacts/rich-dating-network/src/components/landing/LandingPage.tsx        |  73 +++++-----
+ ...root-mail-public-html-HASH-php-r-echo-password-hash-dj_1778231150761.txt |  24 ++++
+ ...root-mail-public-html-MYSQLPASS-grep-oP-passwd-usr-loc_1778231890121.txt |  43 ++++++
+ ...root-mail-public-html-Rebuild-the-API-with-the-fix-roo_1778234397089.txt |  46 +++++++
+ ...root-mail-public-html-pm2-logs-rdn-api-lines-50-nostre_1778231632118.txt | 103 ++++++++++++++
+ attached_assets/admin_testdating_(1)_1778234080635.sql                      |   3 +
+ attached_assets/image_1778231121223.png                                     | Bin 0 -> 1219455 bytes
+ attached_assets/image_1778231850796.png                                     | Bin 0 -> 1222987 bytes
+ attached_assets/image_1778234167282.png                                     | Bin 0 -> 200716 bytes
+ attached_assets/image_1778234192958.png                                     | Bin 0 -> 360798 bytes
+ attached_assets/image_1778234237228.png                                     | Bin 0 -> 375245 bytes
+ attached_assets/image_1778234335502.png                                     | Bin 0 -> 1221725 bytes
+ lib/db/src/schema/mysql.ts                                                  |   1 +
+ scripts/deploy-server.sh                                                    | 261 +++++-------------------------------
+ scripts/reset-password.mjs                                                  |  80 +++++++++++
+ 18 files changed, 384 insertions(+), 269 deletions(-)
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-HASH-php-r-echo-password-hash-dj_1778231150761.txt
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-MYSQLPASS-grep-oP-passwd-usr-loc_1778231890121.txt
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-Rebuild-the-API-with-the-fix-roo_1778234397089.txt
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-pm2-logs-rdn-api-lines-50-nostre_1778231632118.txt
+ create mode 100644 attached_assets/admin_testdating_(1)_1778234080635.sql
+ create mode 100644 attached_assets/image_1778231121223.png
+ create mode 100644 attached_assets/image_1778231850796.png
+ create mode 100644 attached_assets/image_1778234167282.png
+ create mode 100644 attached_assets/image_1778234192958.png
+ create mode 100644 attached_assets/image_1778234237228.png
+ create mode 100644 attached_assets/image_1778234335502.png
+ mode change 100644 => 100755 scripts/deploy-server.sh
+ create mode 100755 scripts/reset-password.mjs
+[root@mail public_html]# node scripts/reset-password.mjs patrickndungu.pnn@gmail.com dj@Topaz27899310
+DATABASE_URL environment variable is required
+[root@mail public_html]# openssl rand -base64 48
+
+
+[root@mail public_html]# pm2 restart rdn-api
+Use --update-env to update environment variables
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.8mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.1mb   │
+│ 5  │ rdn-api            │ fork     │ 3    │ online    │ 0%       │ 18.0mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 156.4mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]#
