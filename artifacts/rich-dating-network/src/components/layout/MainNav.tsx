@@ -1,16 +1,28 @@
 import { Link, useLocation } from 'wouter'
-import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, Users } from 'lucide-react'
+import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, Users, LogOut, User } from 'lucide-react'
 import { getPhotoUrl } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
 import NotificationDropdown from './NotificationDropdown'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export default function MainNav() {
   const [location] = useLocation()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { chatUnread } = useNotifications()
   const [feedEnabled, setFeedEnabled] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   useEffect(() => {
     fetch('/api/branding/public').then(r => r.json()).then((d: Record<string, string>) => {
@@ -124,14 +136,42 @@ export default function MainNav() {
               </Link>
             )}
 
-            <Link href="/profile" style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', overflow: 'hidden', outline: '2px solid #ffc5c9', outlineOffset: '1px', flexShrink: 0, display: 'block' }}>
-              <img
-                src={getPhotoUrl(user?.photoThumb || user?.photo)}
-                alt="Profile"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={e => { (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.svg' }}
-              />
-            </Link>
+            <div ref={profileMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowProfileMenu(v => !v)}
+                style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', overflow: 'hidden', outline: '2px solid #ffc5c9', outlineOffset: '1px', flexShrink: 0, display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none' }}>
+                <img
+                  src={getPhotoUrl(user?.photoThumb || user?.photo)}
+                  alt="Profile"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={e => { (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.svg' }}
+                />
+              </button>
+              {showProfileMenu && (
+                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', borderRadius: '0.875rem', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid #f3f4f6', minWidth: '160px', zIndex: 100, overflow: 'hidden', padding: '0.375rem' }}>
+                  <Link href="/profile" onClick={() => setShowProfileMenu(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.82rem', fontWeight: 600, color: '#374151', textDecoration: 'none', transition: 'background 0.1s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f9fafb'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <User size={14} /> My Profile
+                  </Link>
+                  <Link href="/settings" onClick={() => setShowProfileMenu(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.82rem', fontWeight: 600, color: '#374151', textDecoration: 'none', transition: 'background 0.1s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f9fafb'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <Settings size={14} /> Settings
+                  </Link>
+                  <div style={{ height: '1px', background: '#f3f4f6', margin: '0.25rem 0' }} />
+                  <button
+                    onClick={() => { logout(); setShowProfileMenu(false); window.location.href = '/login' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.82rem', fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'background 0.1s', fontFamily: 'inherit' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fef2f2'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <LogOut size={14} /> Log Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

@@ -23,8 +23,8 @@ export default function GiftsPage() {
   const [, setLocation] = useLocation()
 
   useEffect(() => {
-    authFetch("/api/gifts").then(r => r.json()).then(setGifts)
-    authFetch("/api/gifts/received").then(r => r.json()).then(setReceived)
+    authFetch("/api/gifts").then(r => r.json()).then(d => { if (Array.isArray(d)) setGifts(d) }).catch(() => {})
+    authFetch("/api/gifts/received").then(r => r.json()).then(d => { if (Array.isArray(d)) setReceived(d) }).catch(() => {})
   }, [])
 
   useEffect(() => {

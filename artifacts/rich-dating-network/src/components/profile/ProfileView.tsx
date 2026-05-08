@@ -204,10 +204,9 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-white/80 text-sm flex-wrap">
-                  <span>{displayAge} years</span>
+                  {displayAge && displayAge > 0 && <span>{displayAge} years</span>}
                   {zodiac && <><span>•</span><span>{zodiac}</span></>}
-                  <span>•</span>
-                  <span>{genderLabel(user.gender)}</span>
+                  {genderLabel(user.gender) && genderLabel(user.gender) !== 'Unknown' && <><span>•</span><span>{genderLabel(user.gender)}</span></>}
                   {user.city && <><span>•</span><span className="flex items-center gap-1"><MapPin size={12} />{user.city}</span></>}
                 </div>
                 {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (

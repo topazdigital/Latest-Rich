@@ -32,12 +32,20 @@ const MENU = [
 export default function AdminPage() {
   const [tab, setTab] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const [, setLocation] = useLocation()
 
   useEffect(() => {
+    if (loading) return
     if (user && (user.admin ?? 0) < 2) setLocation("/discover")
-  }, [user])
+    if (!user) setLocation("/login")
+  }, [user, loading])
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '2rem', height: '2rem', border: '2px solid #FF192C', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  )
 
   if (!user || (user.admin ?? 0) < 2) return null
 
