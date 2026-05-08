@@ -1,0 +1,41 @@
+[root@mail ~]# npm install -g pnpm pm2
+Create the site folder and clone the repo
+mkdir -p /home/admin/domains/test.richdatingnetwork.com/public_html
+cd /home/admin/domains/test.richdatingnetwork.com/public_html
+
+added 1 package, removed 45 packages, and changed 90 packages in 15s
+
+9 packages are looking for funding
+  run `npm fund` for details
+[root@mail ~]#
+[root@mail ~]# # Create the site folder and clone the repo
+[root@mail ~]# mkdir -p /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail ~]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# git clone https://github.com/topazdigital/Latest-Rich.git .
+fatal: destination path '.' already exists and is not an empty directory.
+[root@mail public_html]# cat > .env << 'ENVEOF'
+> DATABASE_URL=mysql://admin_testdating:YOUR_DB_PASSWORD@localhost/admin_testdating
+> JWT_SECRET=rdn_jwt_secret_replace_with_something_long_and_random
+> APP_URL=https://test.richdatingnetwork.com
+> NODE_ENV=production
+> PORT=3100
+> LOG_LEVEL=info
+> ENVEOF
+[root@mail public_html]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# pnpm install
+ --filter @workspace/api-server run build
+PORT=5000 BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 10.33.4 → 11.0.8.   │
+   │   Changelog: https://pnpm.io/v/11.0.8   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+ ERR_PNPM_NO_PKG_MANIFEST  No package.json found in /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# pnpm --filter @workspace/api-server run build
+No projects found in "/home/admin/domains/test.richdatingnetwork.com/public_html"
+[root@mail public_html]# PORT=5000 BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+No projects found in "/home/admin/domains/test.richdatingnetwork.com/public_html"
+[root@mail public_html]#
