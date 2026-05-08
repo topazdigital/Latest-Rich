@@ -1,5 +1,35 @@
+import { readFileSync, existsSync } from "fs"
+import { resolve } from "path"
 import * as pgSchemaModule from "./schema/pg"
 import * as mysqlSchemaModule from "./schema/mysql"
+
+// Auto-load .env before reading DATABASE_URL.
+// This runs before any top-level code that reads env vars,
+// so PM2 does not need DATABASE_URL pre-configured.
+function loadEnv() {
+  const candidates = [
+    resolve(process.cwd(), ".env"),
+    resolve(process.cwd(), "../../.env"),
+    resolve(process.cwd(), "../../../.env"),
+  ]
+  for (const p of candidates) {
+    if (!existsSync(p)) continue
+    for (const raw of readFileSync(p, "utf8").split("\n")) {
+      const line = raw.trim()
+      if (!line || line.startsWith("#") || !line.includes("=")) continue
+      const eqIdx = line.indexOf("=")
+      const key = line.slice(0, eqIdx).trim()
+      let val = line.slice(eqIdx + 1).trim()
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) val = val.slice(1, -1)
+      if (!process.env[key]) process.env[key] = val
+    }
+    break
+  }
+}
+loadEnv()
 
 const url = process.env.DATABASE_URL || ""
 const isMysql = url.startsWith("mysql://") || url.startsWith("mysql2://")
