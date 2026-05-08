@@ -231,9 +231,21 @@ router.post("/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" })
       return
     }
-    const valid = await verifyAndUpgrade(password, user.password, async (newHash) => {
+    let valid = await verifyAndUpgrade(password, user.password, async (newHash) => {
       await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
     })
+
+    // Legacy plain-text password fallback (old PHP 'pass' column)
+    if (!valid) {
+      const legacyPass = (user as any).legacyPass
+      if (legacyPass && legacyPass === password) {
+        valid = true
+        // Upgrade to bcrypt so the legacy column is no longer needed
+        const newHash = await hashPassword(password)
+        await db.update(usersTable).set({ password: newHash }).where(eq(usersTable.id, user!.id))
+      }
+    }
+
     if (!valid) {
       res.status(401).json({ error: "Invalid credentials" })
       return

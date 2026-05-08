@@ -241,13 +241,13 @@ export default function LandingPage() {
             </div>
           )}
 
-          <div className="relative z-10 p-8 sm:p-12 lg:p-16 xl:p-20 pt-28 lg:pt-16">
+          <div className="relative z-10 p-6 sm:p-10 lg:p-14 xl:p-16 pt-24 lg:pt-14">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-6 text-sm text-white">
               <Crown className="w-3.5 h-3.5 text-yellow-300" />
               <span>Exclusive Luxury Dating Platform</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-bold text-white mb-6 leading-[1.1]">
+            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-bold text-white mb-4 leading-[1.1]">
               Where Affluent<br />Singles Find{' '}
               <span className="text-yellow-300 relative">
                 Real Love
@@ -257,22 +257,22 @@ export default function LandingPage() {
               </span>
             </h1>
 
-            <p className="text-lg text-white/80 max-w-lg mb-10 leading-relaxed">
+            <p className="text-base text-white/80 max-w-lg mb-6 leading-relaxed">
               Join thousands of successful, verified singles. Real-time matching based on your location, lifestyle, and preferences.
             </p>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/70 mb-10">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/70 mb-6">
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> 100% Free to Join</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Verified Profiles</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> 180+ Countries</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Real-Time Messaging</span>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 max-w-md">
+            <div className="grid grid-cols-4 gap-3 max-w-sm">
               {STATS.map((s, i) => (
                 <div key={i} className="text-center">
-                  <div className="text-2xl font-bold text-white">{s.n}</div>
-                  <div className="text-white/50 text-xs mt-0.5">{s.l}</div>
+                  <div className="text-xl font-bold text-white">{s.n}</div>
+                  <div className="text-white/50 text-[11px] mt-0.5">{s.l}</div>
                 </div>
               ))}
             </div>
@@ -326,23 +326,22 @@ export default function LandingPage() {
       </section>
 
       {/* Features — compact horizontal scroll on mobile, 3-col on desktop */}
-      <section className="py-10 px-4 bg-gray-50">
+      <section className="py-8 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-3">
-              <Star size={14} /> Why Choose Us
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-3 py-1 text-xs font-medium mb-2">
+              <Star size={12} /> Why Choose Us
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Everything You Need to Find Love</h2>
-            <p className="text-gray-500 text-sm max-w-xl mx-auto">A premium dating experience built for successful people who know what they want.</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Everything You Need to Find Love</h2>
+            <p className="text-gray-500 text-xs max-w-xl mx-auto">A premium dating experience built for successful people who know what they want.</p>
           </div>
-          {/* horizontal scroll on mobile */}
-          <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible" style={{ scrollSnapType: 'x mandatory' }}>
+          <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible" style={{ scrollSnapType: 'x mandatory' }}>
             {FEATURES.map((f, i) => (
-              <div key={i} className="card p-5 hover:shadow-lg transition-all hover:-translate-y-1 group border border-gray-100 flex-shrink-0 w-64 md:w-auto" style={{ scrollSnapAlign: 'start' }}>
-                <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform shadow-md">
-                  <f.icon className="w-5 h-5" />
+              <div key={i} className="card p-4 hover:shadow-lg transition-all hover:-translate-y-1 group border border-gray-100 flex-shrink-0 w-56 md:w-auto" style={{ scrollSnapAlign: 'start' }}>
+                <div className="w-8 h-8 rounded-xl gradient-brand flex items-center justify-center text-white mb-3 group-hover:scale-110 transition-transform shadow-md">
+                  <f.icon className="w-4 h-4" />
                 </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">{f.title}</h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-0.5">{f.title}</h3>
                 <p className="text-gray-500 text-xs leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -351,12 +350,12 @@ export default function LandingPage() {
       </section>
 
       {/* How it works — compact */}
-      <section className="py-10 px-4 bg-white">
+      <section className="py-8 px-4 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-4 py-1.5 text-sm font-medium mb-3">
-            <Zap size={14} /> Simple Process
+          <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-600 rounded-full px-3 py-1 text-xs font-medium mb-2">
+            <Zap size={12} /> Simple Process
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">Find Love in 3 Easy Steps</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Find Love in 3 Easy Steps</h2>
           <div className="grid grid-cols-3 gap-4 md:gap-8">
             {[
               { step: '01', title: 'Create Profile', desc: 'Sign up free and tell us about yourself.', icon: '📝' },
@@ -380,11 +379,11 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials — horizontal scroll carousel */}
-      <section className="py-10 bg-gray-50">
+      <section className="py-8 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-6 px-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Real Success Stories</h2>
-            <p className="text-gray-500 text-sm">Join thousands who found their perfect match</p>
+          <div className="text-center mb-5 px-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Real Success Stories</h2>
+            <p className="text-gray-500 text-xs">Join thousands who found their perfect match</p>
           </div>
           {/* Horizontally scrollable row, cards snap into place */}
           <div className="flex gap-4 overflow-x-auto px-4 pb-4" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
@@ -420,27 +419,27 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-10 px-4 gradient-brand text-white relative overflow-hidden">
+      <section className="py-8 px-4 gradient-brand text-white relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-6 right-20 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute bottom-6 left-20 w-36 h-36 bg-white/5 rounded-full blur-3xl" />
         </div>
         <div className="max-w-2xl mx-auto text-center relative z-10">
-          <div className="text-4xl mb-4">💝</div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ready to Find Your Perfect Match?</h2>
-          <p className="text-white/80 mb-6 text-sm md:text-base">Join the most exclusive dating network for successful singles. Free to join, always.</p>
+          <div className="text-3xl mb-3">💝</div>
+          <h2 className="text-xl md:text-2xl font-bold mb-2">Ready to Find Your Perfect Match?</h2>
+          <p className="text-white/80 mb-5 text-sm">Join the most exclusive dating network for successful singles. Free to join, always.</p>
           <Link href="/register"
-            className="bg-white text-brand-600 font-bold px-8 py-3 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
-            Create Free Account <ChevronRight size={18} />
+            className="bg-white text-brand-600 font-bold px-7 py-2.5 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
+            Create Free Account <ChevronRight size={16} />
           </Link>
-          <p className="text-white/60 text-xs mt-4">No credit card required • Join in 30 seconds</p>
+          <p className="text-white/60 text-xs mt-3">No credit card required • Join in 30 seconds</p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-10 px-4 bg-gray-950 text-gray-400">
+      <footer className="py-7 px-4 bg-gray-950 text-gray-400">
         <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg gradient-brand flex items-center justify-center">
                 <Heart className="w-3.5 h-3.5 text-white fill-white" />
@@ -454,7 +453,7 @@ export default function LandingPage() {
               <Link href="/register" className="hover:text-white transition-colors">Join Free</Link>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
+          <div className="border-t border-gray-800 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-600">
             <p>© {new Date().getFullYear()} Rich Dating Network. All rights reserved.</p>
             <p>Built with ❤️ for successful singles worldwide</p>
           </div>

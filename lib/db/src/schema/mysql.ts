@@ -9,6 +9,7 @@ export const usersTable = mysqlTable("users", {
   username: varchar("username", { length: 100 }),
   phone: text("phone").default(""),
   password: text("password").notNull(),
+  legacyPass: text("pass").default(""),
   photo: text("photo").default(""),
   photoThumb: text("photo_thumb").default(""),
   gender: int("gender").default(1),
