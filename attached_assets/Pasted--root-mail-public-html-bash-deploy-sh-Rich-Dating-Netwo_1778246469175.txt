@@ -1,0 +1,143 @@
+[root@mail public_html]# bash deploy.sh
+===============================
+  Rich Dating Network Deploy
+===============================
+[1/8] Node.js v20.20.2 found ✓
+[2/8] pnpm 10.33.4 found ✓
+[3/8] PM2 7.0.1 found ✓
+[4/8] Installing dependencies...
+Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+└─ Done in 49ms
+Done in 12.1s using pnpm v10.33.4
+[5/8] Building API server...
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 5083ms
+[6/8] Building frontend...
+
+> @workspace/rich-dating-network@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network
+> vite build --config vite.config.ts
+
+vite v7.3.2 building client environment for production...
+✓ 2051 modules transformed.
+[plugin vite:reporter]
+(!) /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/lib/auth.ts is dynamically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/landing/LandingPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx but also statically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/App.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminActivity.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminBoost.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminCustomPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminDashboard.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeMessages.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminOrders.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPhotos.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminSettings.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUserDetail.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminVerifications.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/common/ProfileQuestionsModal.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/discover/DiscoverPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/layout/NotificationDropdown.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/ui/LocationAutocomplete.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/hooks/useAuth.ts, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/BoostPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/CreditsPageWrapper.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/GiftsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ModeratorPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ReferralsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ResetPasswordPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VerifyEmailPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VisitorsPage.tsx, dynamic import will not move module into another chunk.
+
+dist/public/index.html                   1.83 kB │ gzip:   0.79 kB
+dist/public/assets/index-BfvkGcS3.css  133.47 kB │ gzip:  22.08 kB
+dist/public/assets/index-PL_0BZhz.js   692.23 kB │ gzip: 183.10 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 27.30s
+[7/8] Deploying frontend to public_html...
+[8/8] Starting/restarting with PM2...
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action stopProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 28.7mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.9mb   │
+│ 5  │ rdn-api            │ fork     │ 1602 │ stopped   │ 0%       │ 0b       │
+│ 3  │ rdn-test           │ fork     │ 718  │ online    │ 0%       │ 50.3mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action deleteProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 29.1mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 30.3mb   │
+│ 3  │ rdn-test           │ fork     │ 718  │ online    │ 0%       │ 50.7mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Starting /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/dist/index.mjs in fork_mode (1 instance)
+[PM2] Done.
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 28.5mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.8mb   │
+│ 6  │ rdn-api            │ fork     │ 0    │ online    │ 0%       │ 23.1mb   │
+│ 3  │ rdn-test           │ fork     │ 718  │ online    │ 0%       │ 50.2mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[PM2] Saving current process list...
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+
+===============================
+  Deployment Complete! ✓
+===============================
+  API: http://localhost:8080
+  Site: https://test.richdatingnetwork.com
+
+  Check status: pm2 status
+  View logs: pm2 logs rdn-api
+===============================
+[root@mail public_html]# BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+-r artifacts/rich-dating-network/dist/. ~/domains/test.richdatingnetwork.com/public_html/
+pm2 restart rdn-api
+> @workspace/rich-dating-network@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network
+> vite build --config vite.config.ts
+
+vite v7.3.2 building client environment for production...
+✓ 2051 modules transformed.
+[plugin vite:reporter]
+(!) /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/lib/auth.ts is dynamically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/landing/LandingPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx but also statically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/App.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminActivity.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminBoost.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminCustomPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminDashboard.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeMessages.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminOrders.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPhotos.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminSettings.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUserDetail.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminVerifications.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/common/ProfileQuestionsModal.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/discover/DiscoverPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/layout/NotificationDropdown.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/ui/LocationAutocomplete.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/hooks/useAuth.ts, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/BoostPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/CreditsPageWrapper.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/GiftsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ModeratorPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ReferralsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ResetPasswordPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VerifyEmailPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VisitorsPage.tsx, dynamic import will not move module into another chunk.
+
+dist/public/index.html                   1.83 kB │ gzip:   0.79 kB
+dist/public/assets/index-BfvkGcS3.css  133.47 kB │ gzip:  22.08 kB
+dist/public/assets/index-PL_0BZhz.js   692.23 kB │ gzip: 183.10 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 20.63s
+[root@mail public_html]# cp -r artifacts/rich-dating-network/dist/. ~/domains/test.richdatingnetwork.com/public_html/
+cp: overwrite '/root/domains/test.richdatingnetwork.com/public_html/./public/favicon.svg'?
+cp: overwrite '/root/domains/test.richdatingnetwork.com/public_html/./public/icons/icon-128.svg'?
+cp: overwrite '/root/domains/test.richdatingnetwork.com/public_html/./public/icons/icon-144.svg'?
+cp: overwrite '/root/domains/test.richdatingnetwork.com/public_html/./public/icons/icon-152.svg'?
