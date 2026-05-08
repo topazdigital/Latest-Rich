@@ -1,0 +1,49 @@
+[root@mail ~]# # Fix 1: Re-run the phone update with the correct column name
+[root@mail ~]# mysql -u admin_testdating -p admin_testdating -e "
+> UPDATE \`users\`
+> SET \`phone\` = CONCAT(
+>   COALESCE((SELECT \`title\` FROM \`config\` WHERE \`name\` = 'phone_code' LIMIT 1), ''),
+>   COALESCE(\`telephone\`, '')
+> )
+> WHERE (\`phone\` IS NULL OR \`phone\` = '')
+>   AND \`telephone\` IS NOT NULL
+>   AND \`telephone\` != '';"
+Enter password:
+[root@mail ~]# # Fix 2: Check which key new tables exist
+[root@mail ~]# mysql -u admin_testdating -p admin_testdating -e "SHOW TABLES;" | grep -E "^messages$|fake_message_templates|^likes$|reported_users|user_extended|site_config"
+Enter password:
+[root@mail ~]# # Fix 1: Re-run the phone update with the correct column name
+[root@mail ~]# mysql -u admin_testdating -p admin_testdating -e "
+> UPDATE \`users\`
+> SET \`phone\` = CONCAT(
+>   COALESCE((SELECT \`title\` FROM \`config\` WHERE \`name\` = 'phone_code' LIMIT 1), ''),
+>   COALESCE(\`telephone\`, '')
+> )
+> WHERE (\`phone\` IS NULL OR \`phone\` = '')
+>   AND \`telephone\` IS NOT NULL
+>   AND \`telephone\` != '';"
+Enter password:
+[root@mail ~]# # Fix 2: Check which key new tables exist
+[root@mail ~]# mysql -u admin_testdating -p admin_testdating -e "SHOW TABLES;" | grep -E "^messages$|fake_message_templates|^likes$|reported_users|user_extended|site_config"
+Enter password:
+[root@mail ~]# mysql -u admin_testdating -p admin_testdating << 'EOF'
+> CREATE TABLE IF NOT EXISTS `messages` (
+>   `id` INT(11) NOT NULL AUTO_INCREMENT,
+>   `u1` INT(11) NOT NULL, `u2` INT(11) NOT NULL,
+>   `message` LONGTEXT NOT NULL, `time` INT(11) DEFAULT 0, `read` INT(11) DEFAULT 0,
+>   PRIMARY KEY (`id`), KEY `idx_u1` (`u1`), KEY `idx_u2` (`u2`)
+> ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+> INSERT IGNORE INTO `messages` (id,u1,u2,message,time,`read`)
+> SELECT id,s_id,r_id,message,CAST(time AS SIGNED),seen FROM old_chat
+> WHERE s_id>0 AND r_id>0 AND s_id IN (SELECT id FROM users) AND r_id IN (SELECT id FROM users);
+> CREATE TABLE IF NOT EXISTS `fake_message_templates` (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, message TEXT NOT NULL, active TINYINT DEFAULT 1) ENGINE=InnoDB;
+> INSERT IGNORE INTO `fake_message_templates` (id,message,active) SELECT id,fake_msg,1 FROM fake_messages WHERE fake_msg IS NOT NULL AND fake_msg!='';
+> SELECT 'messages count:', COUNT(*) FROM messages;
+> SELECT 'templates count:', COUNT(*) FROM fake_message_templates;
+> EOF
+Enter password:
+messages count: COUNT(*)
+messages count: 34149
+templates count:        COUNT(*)
+templates count:        216
+[root@mail ~]#
