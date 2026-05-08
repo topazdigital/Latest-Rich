@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'wouter'
 import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star, Mail, AtSign, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
