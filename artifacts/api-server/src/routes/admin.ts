@@ -357,6 +357,97 @@ router.patch("/fake-messages/:id", requireAuth, requireAdmin, async (req, res) =
   }
 })
 
+// Change user password (admin)
+router.post("/users/:id/password", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const { password } = req.body
+    if (!password || password.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return }
+    const { hashPassword } = await import("../lib/password")
+    const hashed = await hashPassword(password)
+    await db.update(usersTable).set({ password: hashed }).where(eq(usersTable.id, id))
+    await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: "Password changed", message: `User id: ${id}`, time: now() })
+    res.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Give/revoke premium (admin)
+router.post("/users/:id/premium", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const { days } = req.body
+    const daysNum = parseInt(days) || 30
+    const expiry = daysNum > 0 ? now() + daysNum * 86400 : 0
+    await db.update(usersTable).set({ premium: daysNum > 0 ? 1 : 0, premiumExpiry: expiry }).where(eq(usersTable.id, id))
+    await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: daysNum > 0 ? "Premium granted" : "Premium revoked", message: `User id: ${id}, days: ${daysNum}`, time: now() })
+    res.json({ success: true, premium: daysNum > 0 ? 1 : 0, premiumExpiry: expiry })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Get user chats summary (admin)
+router.get("/users/:id/chats", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const conversations = await db.select({
+      other: { id: usersTable.id, name: usersTable.name, photo: usersTable.photo },
+      lastMsg: messagesTable.message,
+      lastTime: messagesTable.time,
+    })
+      .from(messagesTable)
+      .innerJoin(usersTable, sql`(${messagesTable.u1} = ${id} AND ${usersTable.id} = ${messagesTable.u2}) OR (${messagesTable.u2} = ${id} AND ${usersTable.id} = ${messagesTable.u1})`)
+      .where(sql`${messagesTable.u1} = ${id} OR ${messagesTable.u2} = ${id}`)
+      .orderBy(desc(messagesTable.time))
+      .limit(20)
+    res.json(conversations)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Get user orders (admin)
+router.get("/users/:id/orders", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const orders = await db.select().from(ordersTable).where(eq(ordersTable.userId, id)).orderBy(desc(ordersTable.id)).limit(50)
+    res.json(orders)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Public featured users (no auth — for landing page)
+router.get("/featured-users", async (req, res) => {
+  try {
+    const users = await db.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      age: usersTable.age,
+      city: usersTable.city,
+      country: usersTable.country,
+      countryCode: usersTable.countryCode,
+      photo: usersTable.photo,
+      gender: usersTable.gender,
+      verified: usersTable.verified,
+    }).from(usersTable)
+      .where(and(eq(usersTable.fake, 1), eq(usersTable.banned, 0), ne(usersTable.photo, "")))
+      .orderBy(sql`RANDOM()`)
+      .limit(12)
+    res.json(users)
+  } catch { res.json([]) }
+})
+
 // Orders/revenue
 router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
   try {

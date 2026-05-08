@@ -338,14 +338,14 @@ export default function RegisterPage() {
   async function finishRegistration() {
     if (!uploadedPhoto) { toast.error('Please upload a profile photo to continue'); return }
     const auth = getStoredAuth()
-    if (!auth?.user) { setLocation('/login'); return }
+    if (!auth?.user) { window.location.href = '/login'; return }
     if (auth.user.emailVerified === 0) {
       const requireVerify = await fetch('/api/admin/config/public').then(r => r.json()).then(d => d.require_email_verification === '1').catch(() => false)
-      if (requireVerify) { setLocation('/verify-email'); return }
+      if (requireVerify) { window.location.href = '/verify-email'; return }
     }
     localStorage.setItem('show_welcome', '1')
     localStorage.setItem('show_profile_questions', '1')
-    setLocation('/home')
+    window.location.href = '/home'
   }
 
   const phoneDigits = form.phone.replace(/[\s\-()]/g, '').replace(/^0+/, '')

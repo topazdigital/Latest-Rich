@@ -129,7 +129,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error || 'Login failed')
       const { setStoredAuth } = await import('../lib/auth')
       setStoredAuth({ user: data.user, token: data.token })
-      setLocation('/home')
+      window.location.href = '/home'
     } catch (err: any) {
       toast.error(err.message || 'Invalid credentials')
     } finally { setLoading(false) }

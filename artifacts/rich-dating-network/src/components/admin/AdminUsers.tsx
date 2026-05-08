@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
+import AdminUserDetail from "./AdminUserDetail"
 
 interface AdminUser {
   id: number; name: string; email: string; city: string; country: string
@@ -17,6 +18,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [detailUserId, setDetailUserId] = useState<number | null>(null)
   const [creditsAmount, setCreditsAmount] = useState("100")
 
   const load = async () => {
@@ -156,6 +158,7 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button onClick={() => setDetailUserId(u.id)} className="px-2 py-1 rounded text-xs bg-brand-600 hover:bg-brand-700 text-white transition-colors">View</button>
                         <button onClick={() => banUser(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white"}`}>
                           {u.banned ? "Unban" : "Ban"}
                         </button>
@@ -176,6 +179,14 @@ export default function AdminUsers() {
         <span className="text-gray-400 text-sm">Page {page}</span>
         <button disabled={users.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
       </div>
+
+      {detailUserId !== null && (
+        <AdminUserDetail
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
+          onUpdate={load}
+        />
+      )}
     </div>
   )
 }

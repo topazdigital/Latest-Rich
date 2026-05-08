@@ -29,6 +29,10 @@ export function formatDate(timestamp: number | string) {
 export function getPhotoUrl(photo: string | null | undefined): string {
   if (!photo) return '/images/default-avatar.svg'
   if (photo.startsWith('http')) return photo
+  // Old site stored paths like /assets/sources/uploads/filename.jpg — remap to new uploads endpoint
+  if (photo.startsWith('/assets/sources/uploads/')) {
+    return `/api/uploads/${photo.replace('/assets/sources/uploads/', '')}`
+  }
   if (photo.startsWith('/')) return photo
   return `/api/uploads/${photo}`
 }
