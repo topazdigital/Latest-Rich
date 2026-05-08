@@ -83,6 +83,7 @@ PORT = "5000"
 LOG_LEVEL = "info"
 NODE_ENV = "development"
 APP_URL = "https://cada19a6-680b-468c-81a1-f4c0ba582af9-00-3d5hb8jolzgeu.worf.replit.dev"
+JWT_SECRET = "df20ab86c535baac6875730b5314aaa8491a486922d0c81f0d2ad71032bb5876b631998cdb34e679a2808059c0ce60721a4599e38ab8039d29b17713bcef0d6b"
 
 [nix]
 channel = "stable-25_05"
