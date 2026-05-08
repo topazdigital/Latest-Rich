@@ -24,6 +24,7 @@ import videoCallsRouter from "./video-calls"
 import moderatorRouter from "./moderator"
 import customPaymentsRouter from "./custom-payments"
 import verificationRouter from "./verification"
+import referralsRouter from "./referrals"
 
 const router: IRouter = Router()
 
@@ -51,6 +52,7 @@ router.use("/video-calls", videoCallsRouter)
 router.use("/moderator", moderatorRouter)
 router.use("/custom-payments", customPaymentsRouter)
 router.use("/verification", verificationRouter)
+router.use("/referrals", referralsRouter)
 router.use("/", blockRouter)
 
 export default router

@@ -625,7 +625,7 @@ router.post("/verifications/:id/reject", requireAuth, requireAdmin, async (req, 
 router.get("/config/public", async (req, res) => {
   try {
     const rows = await db.select().from(siteConfigTable)
-    const publicKeys = ["require_email_verification", "site_name", "site_tagline", "hero_bg_url"]
+    const publicKeys = ["require_email_verification", "site_name", "site_tagline", "hero_bg_url", "feed_enabled", "site_url"]
     const config: Record<string, string> = {}
     for (const row of rows) {
       if (publicKeys.includes(row.key)) config[row.key] = row.value || ""

@@ -96,7 +96,7 @@ export default function LoginPage() {
         if (!res.ok) throw new Error(data.error || 'Google login failed')
         const { setStoredAuth } = await import('../lib/auth')
         setStoredAuth({ user: data.user, token: data.token })
-        window.location.href = '/home'
+        window.location.href = '/discover'
       } catch (err: any) {
         toast.error(err.message || 'Google login failed')
       } finally { setSocialLoading(null) }
@@ -129,7 +129,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error || 'Login failed')
       const { setStoredAuth } = await import('../lib/auth')
       setStoredAuth({ user: data.user, token: data.token })
-      window.location.href = '/home'
+      window.location.href = '/discover'
     } catch (err: any) {
       toast.error(err.message || 'Invalid credentials')
     } finally { setLoading(false) }

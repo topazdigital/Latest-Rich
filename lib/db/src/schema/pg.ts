@@ -40,6 +40,8 @@ export const usersTable = pgTable("users", {
   verificationStatus: text("verification_status").default("none"),
   verificationPhoto: text("verification_photo").default(""),
   verificationNote: text("verification_note").default(""),
+  referralCode: text("referral_code").default(""),
+  referredBy: integer("referred_by").default(0),
 })
 
 export const userExtendedTable = pgTable("user_extended", {
@@ -133,6 +135,7 @@ export const ordersTable = pgTable("orders", {
   status: text("status").default("pending"),
   stripeSessionId: text("stripe_session_id").default(""),
   credits: integer("credits").default(0),
+  packageId: integer("package_id").default(0),
   time: integer("time").default(0),
 })
 
@@ -294,6 +297,15 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   createdAt: integer("created_at").default(0),
+})
+
+export const referralsTable = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  referredId: integer("referred_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  status: text("status").default("pending"),
+  reward: text("reward").default(""),
+  created: integer("created").default(0),
 })
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })

@@ -43,6 +43,7 @@ async function getConfig(key: string, fallback = ""): Promise<string> {
 router.get("/challenge", requireAuth, async (req: any, res) => {
   try {
     const gesture = await getConfig("verification_gesture", "Hold up two fingers and smile at the camera")
+    const gestureImage = await getConfig("branding_gesture", "")
     const [user] = await db.select({
       verificationStatus: usersTable.verificationStatus,
       verificationPhoto: usersTable.verificationPhoto,
@@ -52,6 +53,7 @@ router.get("/challenge", requireAuth, async (req: any, res) => {
 
     res.json({
       gesture,
+      gestureImage,
       status: user?.verificationStatus || "none",
       photo: user?.verificationPhoto || "",
       note: user?.verificationNote || "",

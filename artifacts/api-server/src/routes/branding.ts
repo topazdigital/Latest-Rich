@@ -33,7 +33,7 @@ router.post("/upload/:type", requireAuth, requireAdmin, upload.single("file"), a
   try {
     if (!req.file) { res.status(400).json({ error: "No file" }); return }
     const type = req.params.type as string
-    if (!["logo", "favicon"].includes(type)) { res.status(400).json({ error: "Invalid type" }); return }
+    if (!["logo", "favicon", "gesture"].includes(type)) { res.status(400).json({ error: "Invalid type" }); return }
     const filename = req.file.filename
     const url = `/api/branding/file/${filename}`
     await db.insert(siteConfigTable).values({ key: `branding_${type}`, value: url })
@@ -56,7 +56,7 @@ router.get("/public", async (req, res) => {
   try {
     const rows = await db.select().from(siteConfigTable)
     const config: Record<string, string> = {}
-    const keys = ["site_name", "site_tagline", "branding_logo", "branding_favicon", "site_email"]
+    const keys = ["site_name", "site_tagline", "branding_logo", "branding_favicon", "site_email", "feed_enabled", "site_url"]
     for (const row of rows) {
       if (keys.includes(row.key)) config[row.key] = row.value || ""
     }

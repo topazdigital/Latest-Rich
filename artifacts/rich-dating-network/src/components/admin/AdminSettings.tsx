@@ -11,7 +11,9 @@ const SECTIONS = [
     fields: [
       { key: "site_name", label: "Site Name", type: "text", placeholder: "Rich Dating Network" },
       { key: "site_tagline", label: "Site Tagline", type: "text", placeholder: "Find Your Perfect Match" },
+      { key: "site_url", label: "Site URL (for referral links)", type: "text", placeholder: "https://richdatingnetwork.com", help: "Used to generate referral invite links" },
       { key: "site_email", label: "Contact Email", type: "email", placeholder: "support@example.com" },
+      { key: "feed_enabled", label: "Homepage Feed (News Feed)", type: "select", options: [["0","Hidden (Discover is default home)"],["1","Visible (show Feed in nav)"]], help: "When disabled, the Feed page is hidden and Discover is the home route" },
       { key: "maintenance_mode", label: "Maintenance Mode", type: "select", options: [["0","Off"],["1","On"]], help: "When on, only admins can access the site" },
     ]
   },
@@ -56,7 +58,7 @@ const SECTIONS = [
       { key: "photo_moderation", label: "Photo Moderation (Manual Review)", type: "select", options: [["0","Auto-approve"],["1","Manual review required"]], help: "Require admin approval for all uploaded photos" },
       { key: "auto_detect_contacts", label: "Auto-Detect Contact Info in Photos", type: "select", options: [["1","Enabled (reject suspicious photos)"],["0","Disabled"]], help: "Automatically reject photos that appear to contain phone numbers or contact info in the filename" },
       { key: "verification_mode", label: "Identity Verification Mode", type: "select", options: [["manual","Manual (admin reviews each selfie)"],["auto","Auto-approve (selfie accepted instantly)"]], help: "How to handle user identity verification selfies" },
-      { key: "verification_gesture", label: "Verification Gesture / Challenge", type: "text", placeholder: "e.g. Hold up two fingers and smile", help: "The gesture users must perform in their selfie photo to prove they are real" },
+      { key: "verification_gesture", label: "Verification Gesture / Challenge Text", type: "text", placeholder: "e.g. Hold up two fingers and smile", help: "The gesture users must perform in their selfie photo to prove they are real" },
     ]
   },
   {
@@ -112,11 +114,14 @@ export default function AdminSettings() {
   const [pkgLoading, setPkgLoading] = useState(true)
   const [logoUrl, setLogoUrl] = useState("")
   const [faviconUrl, setFaviconUrl] = useState("")
+  const [gestureImageUrl, setGestureImageUrl] = useState("")
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
+  const [uploadingGesture, setUploadingGesture] = useState(false)
   const [testEmail, setTestEmail] = useState("")
   const logoRef = useRef<HTMLInputElement>(null)
   const faviconRef = useRef<HTMLInputElement>(null)
+  const gestureRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     authFetch("/api/admin/config").then(r => r.json()).then(d => {
@@ -132,6 +137,9 @@ export default function AdminSettings() {
     fetch("/api/branding/public").then(r => r.json()).then((d: any) => {
       if (d.branding_logo) setLogoUrl(d.branding_logo)
       if (d.branding_favicon) setFaviconUrl(d.branding_favicon)
+    }).catch(() => {})
+    authFetch("/api/admin/config").then(r => r.json()).then((d: any) => {
+      if (d.branding_gesture) setGestureImageUrl(d.branding_gesture)
     }).catch(() => {})
   }, [])
 
@@ -173,8 +181,8 @@ export default function AdminSettings() {
     } catch { toast.error("Failed") } finally { setTestingEmail(false) }
   }
 
-  async function uploadBranding(type: "logo" | "favicon", file: File) {
-    const setter = type === "logo" ? setUploadingLogo : setUploadingFavicon
+  async function uploadBranding(type: "logo" | "favicon" | "gesture", file: File) {
+    const setter = type === "logo" ? setUploadingLogo : type === "favicon" ? setUploadingFavicon : setUploadingGesture
     setter(true)
     try {
       const formData = new FormData()
@@ -183,8 +191,9 @@ export default function AdminSettings() {
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || "Upload failed"); return }
       if (type === "logo") setLogoUrl(data.url)
-      else setFaviconUrl(data.url)
-      toast.success(`${type === "logo" ? "Logo" : "Favicon"} updated!`)
+      else if (type === "favicon") setFaviconUrl(data.url)
+      else setGestureImageUrl(data.url)
+      toast.success(`${type === "logo" ? "Logo" : type === "favicon" ? "Favicon" : "Gesture image"} updated!`)
     } catch { toast.error("Upload failed") } finally { setter(false) }
   }
 
@@ -264,33 +273,48 @@ export default function AdminSettings() {
             <p className="text-gray-500 text-xs">Upload your site logo and favicon</p>
           </div>
         </div>
-        <div className="p-5 grid grid-cols-2 gap-6">
+        <div className="p-5 grid grid-cols-3 gap-5">
           <div>
             <label className="text-gray-300 text-sm font-medium mb-3 block">Site Logo</label>
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-24 h-24 bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center overflow-hidden">
-                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <Camera size={24} className="text-gray-600" />}
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
+                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <Camera size={22} className="text-gray-600" />}
               </div>
               <input ref={logoRef} type="file" accept="image/*" className="hidden"
                 onChange={e => e.target.files?.[0] && uploadBranding("logo", e.target.files[0])} />
               <button onClick={() => logoRef.current?.click()} disabled={uploadingLogo}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
                 {uploadingLogo ? "Uploading..." : "Upload Logo"}
               </button>
             </div>
           </div>
           <div>
-            <label className="text-gray-300 text-sm font-medium mb-3 block">Favicon (browser icon)</label>
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-24 h-24 bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center overflow-hidden">
-                {faviconUrl ? <img src={faviconUrl} alt="Favicon" className="w-12 h-12 object-contain" /> : <Camera size={24} className="text-gray-600" />}
+            <label className="text-gray-300 text-sm font-medium mb-3 block">Favicon</label>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
+                {faviconUrl ? <img src={faviconUrl} alt="Favicon" className="w-10 h-10 object-contain" /> : <Camera size={22} className="text-gray-600" />}
               </div>
               <input ref={faviconRef} type="file" accept="image/*,.ico" className="hidden"
                 onChange={e => e.target.files?.[0] && uploadBranding("favicon", e.target.files[0])} />
               <button onClick={() => faviconRef.current?.click()} disabled={uploadingFavicon}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
                 {uploadingFavicon ? "Uploading..." : "Upload Favicon"}
               </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-gray-300 text-sm font-medium mb-3 block">Verification Gesture Image</label>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
+                {gestureImageUrl ? <img src={gestureImageUrl} alt="Gesture" className="w-full h-full object-cover" /> : <Camera size={22} className="text-gray-600" />}
+              </div>
+              <input ref={gestureRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files?.[0] && uploadBranding("gesture", e.target.files[0])} />
+              <button onClick={() => gestureRef.current?.click()} disabled={uploadingGesture}
+                className="px-3 py-1.5 bg-pink-900 hover:bg-pink-800 text-pink-300 rounded-lg text-xs font-medium border border-pink-800 disabled:opacity-50">
+                {uploadingGesture ? "Uploading..." : "Upload Gesture"}
+              </button>
+              <p className="text-gray-600 text-xs text-center">Shown to users during verification</p>
             </div>
           </div>
         </div>

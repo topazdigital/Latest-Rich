@@ -36,7 +36,7 @@ export default function AdminPage() {
   const [, setLocation] = useLocation()
 
   useEffect(() => {
-    if (user && (user.admin ?? 0) < 2) setLocation("/home")
+    if (user && (user.admin ?? 0) < 2) setLocation("/discover")
   }, [user])
 
   if (!user || (user.admin ?? 0) < 2) return null
@@ -95,7 +95,7 @@ export default function AdminPage() {
           </nav>
 
           <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #1e293b' }}>
-            <button onClick={() => setLocation("/home")} style={{
+            <button onClick={() => setLocation("/discover")} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
               padding: '0.625rem 0.875rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
               background: 'transparent', color: '#94a3b8', fontSize: '0.82rem', fontFamily: 'inherit', fontWeight: 600,

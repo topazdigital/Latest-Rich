@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
         if (data.token && data.user) {
           setStoredAuth({ token: data.token, user: data.user })
           toast.success('Email verified! Welcome back 🎉')
-          setTimeout(() => setLocation('/home'), 2000)
+          setTimeout(() => setLocation('/discover'), 2000)
         }
       }
     } catch {
@@ -183,7 +183,7 @@ export default function VerifyEmailPage() {
               </form>
 
               <p className="text-center text-sm text-gray-400 mt-6">
-                <Link href="/home" className="text-brand-500 hover:text-brand-600 font-semibold">Skip for now →</Link>
+                <Link href="/discover" className="text-brand-500 hover:text-brand-600 font-semibold">Skip for now →</Link>
               </p>
             </div>
           )}

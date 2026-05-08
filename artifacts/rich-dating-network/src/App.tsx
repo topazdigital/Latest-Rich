@@ -27,6 +27,7 @@ import GiftsPage from "./pages/GiftsPage"
 import VisitorsPage from "./pages/VisitorsPage"
 import LikesPage from "./pages/LikesPage"
 import BoostPage from "./pages/BoostPage"
+import ReferralsPage from "./pages/ReferralsPage"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
 import WelcomeModal from "./components/common/WelcomeModal"
@@ -35,7 +36,7 @@ import VideoCallModal from "./components/common/VideoCallModal"
 import NotFound from "./pages/not-found"
 import { getStoredAuth } from "./lib/auth"
 
-const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost"]
+const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
 const ADMIN_PREFIXES = ["/admin"]
 const MODERATOR_PREFIXES = ["/moderator"]
 
@@ -50,9 +51,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const isModerator = MODERATOR_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
     const isUsernameProfile = location.startsWith("/@")
     if (!user && (isProtected || isAdmin || isModerator)) setLocation("/login")
-    else if (user && (location === "/" || location === "/login" || location === "/register")) setLocation("/home")
-    else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/home")
-    else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/home")
+    else if (user && (location === "/" || location === "/login" || location === "/register")) setLocation("/discover")
+    else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
+    else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
   }, [user, loading, location])
 
   if (loading) {
@@ -92,7 +93,7 @@ function WelcomeController() {
   useEffect(() => {
     if (!user) return
     const shouldShow = localStorage.getItem('show_welcome') === '1'
-    if (shouldShow && location === '/home') {
+    if (shouldShow && (location === '/home' || location === '/discover')) {
       localStorage.removeItem('show_welcome')
       setTimeout(() => setShowWelcome(true), 800)
     }
@@ -111,7 +112,7 @@ function ProfileQuestionsController() {
   useEffect(() => {
     if (!user) return
     const shouldShow = localStorage.getItem('show_profile_questions') === '1'
-    if (shouldShow && location === '/home') {
+    if (shouldShow && (location === '/home' || location === '/discover')) {
       localStorage.removeItem('show_profile_questions')
       // Small delay so welcome modal can show first
       setTimeout(() => setShow(true), 4000)
@@ -251,6 +252,8 @@ function Router() {
           <Route path="/visitors" component={VisitorsPage} />
           <Route path="/likes" component={LikesPage} />
           <Route path="/boost" component={BoostPage} />
+          <Route path="/referrals" component={ReferralsPage} />
+          <Route path="/ref/:code" component={ReferralsPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/admin" component={AdminPage} />

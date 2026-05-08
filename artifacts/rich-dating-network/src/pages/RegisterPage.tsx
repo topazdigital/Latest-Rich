@@ -183,7 +183,7 @@ export default function RegisterPage() {
         if (!res.ok) throw new Error(data.error || 'Google sign up failed')
         const { setStoredAuth } = await import('../lib/auth')
         setStoredAuth({ user: data.user, token: data.token })
-        window.location.href = '/home'
+        window.location.href = '/discover'
       } catch (err: any) {
         toast.error(err.message || 'Google sign up failed')
       } finally { setSocialLoading(false) }
@@ -345,7 +345,7 @@ export default function RegisterPage() {
     }
     localStorage.setItem('show_welcome', '1')
     localStorage.setItem('show_profile_questions', '1')
-    window.location.href = '/home'
+    window.location.href = '/discover'
   }
 
   const phoneDigits = form.phone.replace(/[\s\-()]/g, '').replace(/^0+/, '')

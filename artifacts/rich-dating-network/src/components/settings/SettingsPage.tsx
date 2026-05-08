@@ -192,6 +192,11 @@ function VerificationTab({ token, initialUser }: { token: string | null; initial
           {challenge?.gesture && (
             <div className="bg-brand-50 border border-brand-200 rounded-xl p-4">
               <p className="text-xs font-semibold text-brand-600 uppercase tracking-wide mb-1">Your Challenge</p>
+              {challenge?.gestureImage && (
+                <div className="mb-3 flex justify-center">
+                  <img src={challenge.gestureImage} alt="Gesture example" className="max-h-40 rounded-xl object-contain border border-brand-200 shadow-sm" />
+                </div>
+              )}
               <p className="text-gray-900 font-semibold text-lg">"{challenge.gesture}"</p>
               <p className="text-xs text-gray-500 mt-1">Take a clear selfie performing this exact gesture</p>
             </div>

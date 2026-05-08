@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
         setStoredAuth({ token: data.token, user: data.user })
         toast.success('Password reset! Welcome back 🎉')
         setDone(true)
-        setTimeout(() => setLocation('/home'), 2000)
+        setTimeout(() => setLocation('/discover'), 2000)
       } else {
         setDone(true)
         toast.success('Password updated! You can now sign in.')
