@@ -60,9 +60,33 @@ try {
 
 const isMysql = DATABASE_URL.startsWith("mysql://") || DATABASE_URL.startsWith("mysql2://")
 
+/**
+ * Parse a MySQL URL that may contain '@' in the password.
+ * Standard URL parsing breaks when password contains special chars like '@'.
+ * Format: mysql://user:pass@host:port/db
+ */
+function parseMysqlUrl(url) {
+  const withoutScheme = url.replace(/^mysql2?:\/\//, "")
+  // Last '@' before the host separates credentials from host
+  const lastAt = withoutScheme.lastIndexOf("@")
+  const credentials = withoutScheme.slice(0, lastAt)
+  const hostPart = withoutScheme.slice(lastAt + 1)
+  const colonInCreds = credentials.indexOf(":")
+  const user = credentials.slice(0, colonInCreds)
+  const password = credentials.slice(colonInCreds + 1)
+  const slashIdx = hostPart.indexOf("/")
+  const hostPort = slashIdx >= 0 ? hostPart.slice(0, slashIdx) : hostPart
+  const database = slashIdx >= 0 ? hostPart.slice(slashIdx + 1).split("?")[0] : ""
+  const colonInHost = hostPort.lastIndexOf(":")
+  const host = colonInHost >= 0 ? hostPort.slice(0, colonInHost) : hostPort
+  const port = colonInHost >= 0 ? parseInt(hostPort.slice(colonInHost + 1)) : 3306
+  return { host, port, user, password, database }
+}
+
 async function run() {
   if (isMysql) {
-    const pool = createPool(DATABASE_URL)
+    const config = parseMysqlUrl(DATABASE_URL)
+    const pool = createPool(config)
     const [rows] = await pool.query("SELECT id, email, name FROM users WHERE email = ? LIMIT 1", [email.toLowerCase()])
     if (!Array.isArray(rows) || !rows.length) {
       console.error(`No user found with email: ${email}`)
