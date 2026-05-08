@@ -1,0 +1,92 @@
+[root@mail public_html]# git config --global --add safe.directory /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]#
+[root@mail public_html]# git remote add origin https://github.com/topazdigital/Latest-Rich.git 2>/dev/null || \
+>   git remote set-url origin https://github.com/topazdigital/Latest-Rich.git
+ fetch o[root@mail public_html]#
+[root@mail public_html]# git fetch origin main --depth=1
+ reset --hard origin/main
+
+# Confirm code is tremote: Enumerating objects: 439, done.
+remote: Counting objects: 100% (439/439), done.
+herete: Compressing objects:  33% (116/351)
+remote: Compressing objects: 100% (351/351), done.
+remote: Total 439 (delta 98), reused 359 (delta 58), pack-reused 0 (from 0)
+Receiving objects: 100% (439/439), 22.61 MiB | 17.14 MiB/s, done.
+Resolving deltas: 100% (98/98), done.
+From https://github.com/topazdigital/Latest-Rich
+ * branch            main       -> FETCH_HEAD
+ * [new branch]      main       -> origin/main
+[root@mail public_html]# git reset --hard origin/main
+HEAD is now at cebdbb5 Add image asset for user interface elements
+[root@mail public_html]#
+[root@mail public_html]# # Confirm code is there
+[root@mail public_html]# ls package.json pnpm-workspace.yaml
+package.json  pnpm-workspace.yaml
+[root@mail public_html]# pnpm install
+m --filter @workspace/api-server run build && echo "API built OK"
+PORT=5000 BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build && echo "Frontend built OK"Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Packages: +544
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 10.33.4 → 11.0.8.   │
+   │   Changelog: https://pnpm.io/v/11.0.8   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+Downloading react-icons@5.6.0: 22.42 MB/22.42 MB, done
+Progress: resolved 544, reused 0, downloaded 544, added 544, done
+node_modules/.pnpm/bcrypt@6.0.0/node_modules/bcrypt: Running install script, done in 369ms
+node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinstall script, done in 203ms
+
+devDependencies:
++ prettier 3.8.1
++ typescript 5.9.3
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+└─ Done in 31ms
+Done in 33.2s using pnpm v10.33.4
+[root@mail public_html]# pnpm --filter @workspace/api-server run build && echo "API built OK"
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 2097ms
+API built OK
+[root@mail public_html]# PORT=5000 BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build && echo "Frontend built OK"
+
+> @workspace/rich-dating-network@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network
+> vite build --config vite.config.ts
+
+vite v7.3.2 building client environment for production...
+✓ 2051 modules transformed.
+[plugin vite:reporter]
+(!) /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/lib/auth.ts is dynamically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/landing/LandingPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx but also statically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/App.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminActivity.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminBoost.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminCustomPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminDashboard.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeMessages.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminOrders.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPhotos.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminSettings.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUserDetail.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminVerifications.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/common/ProfileQuestionsModal.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/discover/DiscoverPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/layout/NotificationDropdown.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/ui/LocationAutocomplete.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/hooks/useAuth.ts, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/BoostPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/CreditsPageWrapper.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/GiftsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ModeratorPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ReferralsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ResetPasswordPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VerifyEmailPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VisitorsPage.tsx, dynamic import will not move module into another chunk.
+
+dist/public/index.html                   1.83 kB │ gzip:   0.79 kB
+dist/public/assets/index-DrJQw0xu.css  133.22 kB │ gzip:  22.02 kB
+dist/public/assets/index-ijlPBsjJ.js   690.79 kB │ gzip: 182.67 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 27.90s
+Frontend built OK
+[root@mail public_html]#
