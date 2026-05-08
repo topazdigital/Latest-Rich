@@ -56,7 +56,7 @@ BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
 echo "[7/8] Deploying frontend to public_html..."
 DOMAIN_DIR="/home/admin/domains/test.richdatingnetwork.com/public_html"
 mkdir -p "$DOMAIN_DIR"
-\cp -rf artifacts/rich-dating-network/dist/. "$DOMAIN_DIR/"
+\cp -rf artifacts/rich-dating-network/dist/public/. "$DOMAIN_DIR/"
 
 # Create .htaccess for SPA routing
 cat > "$DOMAIN_DIR/.htaccess" << 'HTACCESS'
