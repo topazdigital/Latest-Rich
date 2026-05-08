@@ -683,7 +683,17 @@ importers:
         version: 0.31.9
 
   scripts:
+    dependencies:
+      bcrypt:
+        specifier: ^6.0.0
+        version: 6.0.0
+      mysql2:
+        specifier: ^3.22.3
+        version: 3.22.3(@types/node@25.3.5)
     devDependencies:
+      '@types/bcrypt':
+        specifier: ^6.0.0
+        version: 6.0.0
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5

@@ -1,0 +1,134 @@
+[root@mail public_html]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# git pull origin main
+ scripts/deploy-server.shremote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 7 (delta 5), reused 7 (delta 5), pack-reused 0 (from 0)
+Unpacking objects: 100% (7/7), 2.63 KiB | 224.00 KiB/s, done.
+From https://github.com/topazdigital/Latest-Rich
+ * branch            main       -> FETCH_HEAD
+   e6cfe9c..b21591d  main       -> origin/main
+Updating e6cfe9c..b21591d
+Fast-forward
+ artifacts/rich-dating-network/vite.config.ts                                | 23 +++-------
+ ...root-mail-public-html-git-pull-origin-main-h-scripts-d_1778229731530.txt | 85 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 92 insertions(+), 16 deletions(-)
+ create mode 100644 attached_assets/Pasted--root-mail-public-html-git-pull-origin-main-h-scripts-d_1778229731530.txt
+[root@mail public_html]# bash scripts/deploy-server.sh
+
+=====================================================
+  Rich Dating Network — Server Deploy
+=====================================================
+  Site dir : /home/admin/domains/test.richdatingnetwork.com/public_html
+  DB       : mysql://admin_testdating:EEhm0XRgtewBSUBditW7@localhost:3306/admin_testdating
+  API port : 8080
+=====================================================
+
+[1/8] Checking Node.js, pnpm, PM2...
+  Node.js: v20.20.2
+  pnpm: 10.33.4
+  PM2: 7.0.1
+
+[2/8] Pulling latest code from GitHub...
+HEAD is now at b21591d Make port and base path optional during production build
+  Code updated from GitHub.
+  Installing dependencies...
+Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+└─ Done in 32ms
+Done in 4.6s using pnpm v10.33.4
+
+[3/8] Writing .env...
+  .env written.
+
+[4/8] Building API server and frontend (takes 2-4 minutes)...
+  Building API server...
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 1982ms
+  Building frontend...
+
+> @workspace/rich-dating-network@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network
+> vite build --config vite.config.ts
+
+vite v7.3.2 building client environment for production...
+✓ 2051 modules transformed.
+[plugin vite:reporter]
+(!) /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/lib/auth.ts is dynamically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/landing/LandingPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx but also statically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/App.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminActivity.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminBoost.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminCustomPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminDashboard.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeMessages.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminOrders.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPhotos.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminSettings.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUserDetail.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminVerifications.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/common/ProfileQuestionsModal.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/discover/DiscoverPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/layout/NotificationDropdown.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/ui/LocationAutocomplete.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/hooks/useAuth.ts, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/BoostPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/CreditsPageWrapper.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/GiftsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ModeratorPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ReferralsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ResetPasswordPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VerifyEmailPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VisitorsPage.tsx, dynamic import will not move module into another chunk.
+
+dist/public/index.html                   1.83 kB │ gzip:   0.79 kB
+dist/public/assets/index-D4vjh45U.css  133.42 kB │ gzip:  22.09 kB
+dist/public/assets/index-BCOx3qAD.js   691.15 kB │ gzip: 182.78 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 15.65s
+  Copying frontend to public_html...
+  Build complete.
+
+[5/8] Writing Apache .htaccess...
+  .htaccess written.
+
+[6/8] Copying uploads from old site...
+  Starting rsync (may take a few minutes for 15,000+ files)...
+  7,611,779,983 100%   56.38MB/s    0:02:08 (xfr#15981, to-chk=0/15982)
+  Done. Files in new location: 15981
+
+[7/8] Running photo migration, password hashing, and admin password setup...
+  Phase A: Linking photos to user profiles...
+node:internal/modules/esm/resolve:873
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mysql2' imported from /home/admin/domains/test.richdatingnetwork.com/public_html/scripts/migrate-photos.mjs
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v20.20.2
+  WARNING: Photo migration had issues (old_activity may not exist yet) — continuing.
+
+  Phase B: Hashing remaining plaintext passwords...
+node:internal/modules/esm/resolve:873
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'mysql2' imported from /home/admin/domains/test.richdatingnetwork.com/public_html/scripts/hash-passwords.mjs
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v20.20.2
+[root@mail public_html]#

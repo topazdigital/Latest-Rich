@@ -7,7 +7,7 @@
 #   bash scripts/deploy-server.sh
 # =============================================================================
 
-set -e
+# Critical steps use set -e; migration steps use || true so PM2 always starts
 
 # ─── CONFIGURATION ────────────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ echo ""
 
 # ─── STEP 1: Ensure Node.js, pnpm, PM2 ────────────────────────────────────────
 
+set -e
 echo "[1/8] Checking Node.js, pnpm, PM2..."
 
 # NVM (most DirectAdmin setups use NVM)
@@ -167,26 +168,35 @@ echo ""
 
 # ─── STEP 7: Photo migration + password hashing + admin password ───────────────
 
+# Turn off exit-on-error for migrations — PM2 must start regardless
+set +e
+
 echo "[7/8] Running photo migration, password hashing, and admin password setup..."
 cd "$SITE_DIR"
 export DATABASE_URL
 
 echo "  Phase A: Linking photos to user profiles..."
-node scripts/migrate-photos.mjs && echo "  Photo migration done." || echo "  WARNING: Photo migration had issues (old_activity may not exist yet) — continuing."
+node scripts/migrate-photos.mjs \
+  && echo "  Photo migration done." \
+  || echo "  WARNING: Photo migration had issues — continuing."
 
 echo ""
 echo "  Phase B: Hashing remaining plaintext passwords..."
-node scripts/hash-passwords.mjs
-echo "  Password hashing done."
+node scripts/hash-passwords.mjs \
+  && echo "  Password hashing done." \
+  || echo "  WARNING: Password hashing had issues — continuing."
 
 echo ""
 echo "  Phase C: Setting admin password for $ADMIN_EMAIL..."
-node scripts/set-admin-password.mjs "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
-echo "  Admin password set."
+node scripts/set-admin-password.mjs "$ADMIN_EMAIL" "$ADMIN_PASSWORD" \
+  && echo "  Admin password set." \
+  || echo "  WARNING: Admin password step failed — you can set it manually later."
 echo ""
 
 
 # ─── STEP 8: Start with PM2 ───────────────────────────────────────────────────
+
+set -e
 
 echo "[8/8] Starting API server with PM2..."
 cd "$SITE_DIR"
