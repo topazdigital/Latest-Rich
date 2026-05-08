@@ -1,0 +1,60 @@
+[root@mail public_html]# # Kill whatever zombie is holding port 8080
+[root@mail public_html]# fuser -k 8080/tcp 2>/dev/null
+ep 2
+
+# Now restart PM2's process (port is free, new .env loads correctly)
+pm2 restart rdn 1192950-api --u[root@mail public_html]# sleep 2
+pdate-env
+sleep 3
+
+# Verify it started clean (should show low restart count from now)
+pm2 list
+
+# Test login immediately
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"identifier":"patrickndungu.pnn@gmail.com","password":"dj@Topaz27899310"}' | head -c 300[root@mail public_html]#
+[root@mail public_html]# # Now restart PM2's process (port is free, new .env loads correctly)
+[root@mail public_html]# pm2 restart rdn-api --update-env
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 28.0mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.4mb   │
+│ 5  │ rdn-api            │ fork     │ 1054 │ online    │ 0%       │ 22.9mb   │
+│ 3  │ rdn-test           │ fork     │ 715  │ online    │ 58.8%    │ 69.5mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]# sleep 3
+
+[root@mail public_html]#
+[root@mail public_html]# # Verify it started clean (should show low restart count from now)
+[root@mail public_html]# pm2 list
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 28.1mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.9mb   │
+│ 5  │ rdn-api            │ fork     │ 1056 │ online    │ 50%      │ 44.9mb   │
+│ 3  │ rdn-test           │ fork     │ 715  │ online    │ 0%       │ 167.0mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]#
+[root@mail public_html]# # Test login immediately
+[root@mail public_html]# curl -s -X POST http://localhost:8080/api/auth/login \
+>   -H 'Content-Type: application/json' \
+>   -d '{"identifier":"patrickndungu.pnn@gmail.com","password":"dj@Topaz27899310"}' | head -c 300
+{"error":"Login failed"}[root@mail public_html]#
+[root@mail public_html]#
