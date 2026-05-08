@@ -19,7 +19,9 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   if (!password || !hash) return false
   try {
     if (isBcryptHash(hash)) {
-      return bcrypt.compare(password, hash)
+      // Normalize PHP's $2y$ prefix to $2b$ — identical algorithm, different prefix
+      const normalizedHash = hash.startsWith("$2y$") ? "$2b$" + hash.slice(4) : hash
+      return bcrypt.compare(password, normalizedHash)
     }
     // Legacy MD5 (common PHP dating scripts)
     if (hash.length === 32 && /^[a-f0-9]+$/.test(hash)) {

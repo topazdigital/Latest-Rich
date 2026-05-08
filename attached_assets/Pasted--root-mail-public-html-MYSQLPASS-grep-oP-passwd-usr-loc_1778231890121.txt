@@ -1,0 +1,43 @@
+[root@mail public_html]# MYSQLPASS=$(grep -oP '(?<=passwd=).+' /usr/local/directadmin/conf/mysql.conf | head -1)
+[root@mail public_html]# mysql -u root -p"$MYSQLPASS" -e "
+>   GRANT ALL PRIVILEGES ON \`admin_testdating\`.* TO 'admin_testdating'@'localhost' IDENTIFIED BY 'EEhm0XRgtewBSUBditW7';
+>   FLUSH PRIVILEGES;
+>   SHOW GRANTS FOR 'admin_testdating'@'localhost';
+> "
++-------------------------------------------------------------------------------------------------------------------------+
+| Grants for admin_testdating@localhost                                                                                   |
++-------------------------------------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `admin_testdating`@`localhost` IDENTIFIED BY PASSWORD '*F06D6930C387E8DF2E3F2BE13F530AB9D7030581' |
+| GRANT ALL PRIVILEGES ON `admin\_testdating`.* TO `admin_testdating`@`localhost`                                         |
+| GRANT ALL PRIVILEGES ON `admin_testdating`.* TO `admin_testdating`@`localhost`                                          |
++-------------------------------------------------------------------------------------------------------------------------+
+[root@mail public_html]# pm2 restart rdn-api
+p 3
+
+# Confirm it works — this should now return a user row or "Invalid credentials", NOT a 500 error
+curl -s -X POST http:Use --update-env to update environment variables
+//127.0
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+.0.1:80[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+80/api/auth/login \
+  -H "Content-Type: app[PM2] [rdn-api](5) ✓
+lication┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.2mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 28.6mb   │
+│ 5  │ rdn-api            │ fork     │ 1    │ online    │ 0%       │ 22.1mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 159.4mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+/json" [root@mail public_html]# sleep 3
+\
+  -d '{"email":"patrickndungu.pnn@gmail.com","password":"dj@Topaz27899310"}'[root@mail public_html]#
+[root@mail public_html]# # Confirm it works — this should now return a user row or "Invalid credentials", NOT a 500 error
+[root@mail public_html]# curl -s -X POST http://127.0.0.1:8080/api/auth/login \
+>   -H "Content-Type: application/json" \
+>   -d '{"email":"patrickndungu.pnn@gmail.com","password":"dj@Topaz27899310"}'
+{"error":"Invalid credentials"}[root@mail public_html]#
