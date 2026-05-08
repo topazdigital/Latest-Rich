@@ -3,31 +3,39 @@
 # Deploys the new Node.js app to test.richdatingnetwork.com
 #
 # HOW TO USE:
-#   1. Fill in the variables in the CONFIGURATION section below
-#   2. Open PowerShell (Windows) and run:
+#   1. Review the CONFIGURATION section below — DB credentials are pre-filled
+#   2. Set JWT_SECRET to any long random string (or generate one)
+#   3. Open PowerShell (Windows) and run:
 #        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 #        .\scripts\deploy-test-server.ps1
-#   3. Follow the step prompts
 # =============================================================================
 
-# ─── CONFIGURATION — FILL THESE IN ──────────────────────────────────────────
+# ─── CONFIGURATION ───────────────────────────────────────────────────────────
 
 $SERVER_IP       = "157.250.205.180"
-$SSH_USER        = "admin"                         # Your DirectAdmin SSH username
-$SSH_PORT        = 22                              # Usually 22
+$SSH_USER        = "admin"                         # DirectAdmin SSH username
+$SSH_PORT        = 22
 $GITHUB_REPO     = "https://github.com/topazdigital/Latest-Rich.git"
 $SITE_DIR        = "/home/admin/domains/test.richdatingnetwork.com/public_html"
+$PUBLIC_HTML     = $SITE_DIR                       # frontend served from here
 $OLD_UPLOADS_DIR = "/home/admin/domains/richdatingnetwork.com/public_html/assets/sources/uploads"
 $NEW_UPLOADS_DIR = "$SITE_DIR/assets/sources/uploads"
 
 $DB_HOST         = "localhost"
 $DB_NAME         = "admin_testdating"
-$DB_USER         = ""                              # Your MySQL username (e.g. admin_testuser)
-$DB_PASS         = ""                              # Your MySQL password
-$JWT_SECRET      = ""                              # Any long random string, e.g. use: openssl rand -hex 32
+$DB_USER         = "admin_testdating"
+$DB_PASS         = "EEhm0XRgtewBSUBditW7"
+$JWT_SECRET      = "rdn-jwt-secret-change-this-to-something-long-and-random"
 $APP_URL         = "https://test.richdatingnetwork.com"
+$API_PORT        = 8080
+
+# Admin account to set/confirm after deployment
+$ADMIN_EMAIL     = "patrickndungu.pnn@gmail.com"
+$ADMIN_PASSWORD  = "dj@Topaz27899310"
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+$DATABASE_URL = "mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:3306/${DB_NAME}"
 
 Write-Host ""
 Write-Host "=====================================================" -ForegroundColor Cyan
@@ -36,227 +44,261 @@ Write-Host "=====================================================" -ForegroundCo
 Write-Host ""
 Write-Host "Server : $SERVER_IP" -ForegroundColor Yellow
 Write-Host "Site   : $APP_URL" -ForegroundColor Yellow
-Write-Host "DB     : $DB_NAME" -ForegroundColor Yellow
+Write-Host "DB     : $DATABASE_URL" -ForegroundColor Yellow
 Write-Host ""
 
-if (-not $DB_USER -or -not $DB_PASS -or -not $JWT_SECRET) {
-    Write-Host "ERROR: Please fill in DB_USER, DB_PASS, and JWT_SECRET in the script before running." -ForegroundColor Red
-    exit 1
-}
 
-$DATABASE_URL = "mysql://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}"
+# ─── STEP 1: Pull latest code from GitHub ────────────────────────────────────
 
+Write-Host "STEP 1: Pulling latest code from GitHub..." -ForegroundColor Green
 
-# ─── STEP 1: Deploy code via SSH ─────────────────────────────────────────────
-
-Write-Host "STEP 1: Deploying code to $SITE_DIR ..." -ForegroundColor Green
-
-$deployCommands = @"
+$step1 = @"
 set -e
+echo '--- Node.js version ---'
+node --version 2>/dev/null || (curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs)
 
-# Install Node.js 20 if not present
-if ! command -v node &>/dev/null; then
-  echo 'Installing Node.js 20...'
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-  sudo apt-get install -y nodejs 2>/dev/null || true
-fi
-node --version
-
-# Install pnpm if not present
-if ! command -v pnpm &>/dev/null; then
-  echo 'Installing pnpm...'
-  npm install -g pnpm
-fi
+echo '--- pnpm ---'
+if ! command -v pnpm &>/dev/null; then npm install -g pnpm; fi
 pnpm --version
 
-# Install PM2 if not present
-if ! command -v pm2 &>/dev/null; then
-  echo 'Installing PM2...'
-  npm install -g pm2
-fi
+echo '--- PM2 ---'
+if ! command -v pm2 &>/dev/null; then npm install -g pm2; fi
+pm2 --version
 
-# Remove old code and clone fresh
-rm -rf $SITE_DIR/Latest-Rich 2>/dev/null || true
+echo '--- Code ---'
 mkdir -p $SITE_DIR
 cd $SITE_DIR
-
-# Clone repo if not exists, else pull latest
 if [ -d '.git' ]; then
-  echo 'Pulling latest code...'
-  git pull origin main
+  git fetch origin && git reset --hard origin/main
+  echo 'Code updated from GitHub.'
 else
-  echo 'Cloning repository...'
   git clone $GITHUB_REPO .
+  echo 'Repository cloned.'
 fi
 
-# Install dependencies
+echo '--- Dependencies ---'
 pnpm install --frozen-lockfile
-
-echo 'Code deployed successfully.'
+echo 'Dependencies installed.'
 "@
 
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $deployCommands
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Code deployment failed." -ForegroundColor Red
-    exit 1
-}
-Write-Host "Code deployed." -ForegroundColor Green
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step1
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Step 1 failed." -ForegroundColor Red; exit 1 }
+Write-Host "Step 1 done." -ForegroundColor Green
 
 
 # ─── STEP 2: Write .env file on server ───────────────────────────────────────
 
 Write-Host ""
-Write-Host "STEP 2: Writing environment configuration..." -ForegroundColor Green
+Write-Host "STEP 2: Writing .env configuration..." -ForegroundColor Green
 
-$envContent = @"
+$step2 = @"
+cat > $SITE_DIR/.env << 'ENVEOF'
 DATABASE_URL=$DATABASE_URL
 JWT_SECRET=$JWT_SECRET
 APP_URL=$APP_URL
 NODE_ENV=production
-PORT=3100
-LOG_LEVEL=info
+PORT=$API_PORT
+ENVEOF
+echo '.env written.'
+cat $SITE_DIR/.env
 "@
 
-$writeEnvCmd = "cat > $SITE_DIR/.env << 'ENVEOF'" + "`n" + $envContent + "`nENVEOF"
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $writeEnvCmd
-
-Write-Host ".env written." -ForegroundColor Green
-
-
-# ─── STEP 3: Build the app ───────────────────────────────────────────────────
-
-Write-Host ""
-Write-Host "STEP 3: Building the application (this may take 2-3 minutes)..." -ForegroundColor Green
-
-$buildCommands = @"
-set -e
-cd $SITE_DIR
-export `$(cat .env | grep -v '^#' | xargs)
-pnpm --filter @workspace/api-server run build
-echo 'Build complete.'
-"@
-
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $buildCommands
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Build failed." -ForegroundColor Red
-    exit 1
-}
-Write-Host "Build complete." -ForegroundColor Green
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step2
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Step 2 failed." -ForegroundColor Red; exit 1 }
+Write-Host "Step 2 done." -ForegroundColor Green
 
 
-# ─── STEP 4: Copy uploads folder from old site ───────────────────────────────
+# ─── STEP 3: Build API server + frontend ─────────────────────────────────────
 
 Write-Host ""
-Write-Host "STEP 4: Copying uploads folder from old site..." -ForegroundColor Green
-Write-Host "  From: $OLD_UPLOADS_DIR" -ForegroundColor Yellow
-Write-Host "  To  : $NEW_UPLOADS_DIR" -ForegroundColor Yellow
+Write-Host "STEP 3: Building API server and frontend (takes 2-4 minutes)..." -ForegroundColor Green
 
-$copyUploadsCmd = @"
-set -e
-mkdir -p $NEW_UPLOADS_DIR
-echo 'Copying uploads (this may take several minutes for 15000+ files)...'
-rsync -a --progress $OLD_UPLOADS_DIR/ $NEW_UPLOADS_DIR/
-echo "Upload copy complete. Files in new location:"
-ls $NEW_UPLOADS_DIR | wc -l
-"@
-
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $copyUploadsCmd
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "WARNING: Upload copy had issues. Check manually." -ForegroundColor Yellow
-} else {
-    Write-Host "Uploads copied." -ForegroundColor Green
-}
-
-
-# ─── STEP 5: Run password hash migration ─────────────────────────────────────
-
-Write-Host ""
-Write-Host "STEP 5: Hashing user passwords..." -ForegroundColor Green
-
-$hashCmd = @"
+$step3 = @"
 set -e
 cd $SITE_DIR
 export DATABASE_URL=$DATABASE_URL
-node scripts/hash-passwords.mjs
+export JWT_SECRET=$JWT_SECRET
+export NODE_ENV=production
+
+echo '--- Building API server ---'
+pnpm --filter @workspace/api-server run build
+
+echo '--- Building frontend ---'
+BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+
+echo '--- Copying frontend to public_html ---'
+cp -r $SITE_DIR/artifacts/rich-dating-network/dist/. $PUBLIC_HTML/
+
+echo 'Build complete.'
+ls -la $PUBLIC_HTML/index.html
 "@
 
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $hashCmd
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step3
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Step 3 (build) failed." -ForegroundColor Red; exit 1 }
+Write-Host "Step 3 done." -ForegroundColor Green
 
-Write-Host "Password hashing complete." -ForegroundColor Green
 
-
-# ─── STEP 6: Start the API server with PM2 ───────────────────────────────────
+# ─── STEP 4: Create .htaccess for Apache reverse proxy ───────────────────────
 
 Write-Host ""
-Write-Host "STEP 6: Starting the application with PM2..." -ForegroundColor Green
+Write-Host "STEP 4: Writing Apache .htaccess for API proxy + SPA routing..." -ForegroundColor Green
 
-$pm2Commands = @"
+$step4 = @"
+cat > $PUBLIC_HTML/.htaccess << 'HTEOF'
+Options -MultiViews
+RewriteEngine On
+
+# Proxy /api/* and /ws/* to the Node.js API on port $API_PORT
+RewriteCond %{REQUEST_URI} ^/(api|ws)(/|$)
+RewriteRule ^(.*)$ http://127.0.0.1:${API_PORT}/`$1 [P,L]
+
+# SPA fallback — serve index.html for all other routes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [QSA,L]
+HTEOF
+echo '.htaccess written.'
+cat $PUBLIC_HTML/.htaccess
+"@
+
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step4
+if ($LASTEXITCODE -ne 0) { Write-Host "WARNING: .htaccess step had issues." -ForegroundColor Yellow }
+Write-Host "Step 4 done." -ForegroundColor Green
+
+
+# ─── STEP 5: Copy uploads folder from old site ───────────────────────────────
+
+Write-Host ""
+Write-Host "STEP 5: Copying uploads folder from old site (may take several minutes)..." -ForegroundColor Green
+Write-Host "  From: $OLD_UPLOADS_DIR" -ForegroundColor Yellow
+Write-Host "  To  : $NEW_UPLOADS_DIR" -ForegroundColor Yellow
+
+$step5 = @"
+set -e
+mkdir -p $NEW_UPLOADS_DIR
+if [ -d "$OLD_UPLOADS_DIR" ]; then
+  echo 'Starting rsync of uploads...'
+  rsync -a --info=progress2 $OLD_UPLOADS_DIR/ $NEW_UPLOADS_DIR/
+  COUNT=`$(ls "$NEW_UPLOADS_DIR" | wc -l)
+  echo "rsync complete. Files in new location: `$COUNT"
+else
+  echo 'WARNING: Old uploads folder not found at $OLD_UPLOADS_DIR'
+  echo 'You may need to manually copy files later.'
+fi
+"@
+
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step5
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "WARNING: Upload copy had issues — check manually." -ForegroundColor Yellow
+} else {
+    Write-Host "Step 5 done." -ForegroundColor Green
+}
+
+
+# ─── STEP 6: Run photo migration + password hashing ──────────────────────────
+
+Write-Host ""
+Write-Host "STEP 6: Running photo migration and password hashing..." -ForegroundColor Green
+
+$step6 = @"
+set -e
+cd $SITE_DIR
+export DATABASE_URL=$DATABASE_URL
+
+echo '--- Phase A: Photo migration (links uploads to user profiles) ---'
+if node scripts/migrate-photos.mjs; then
+  echo 'Photo migration complete.'
+else
+  echo 'WARNING: migrate-photos.mjs failed or old_activity missing. Running hash-passwords only.'
+fi
+
+echo '--- Phase B: Hash remaining plaintext passwords ---'
+node scripts/hash-passwords.mjs
+echo 'Password hashing complete.'
+"@
+
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step6
+if ($LASTEXITCODE -ne 0) { Write-Host "WARNING: Step 6 had issues — check logs." -ForegroundColor Yellow }
+Write-Host "Step 6 done." -ForegroundColor Green
+
+
+# ─── STEP 7: Set admin account password ──────────────────────────────────────
+
+Write-Host ""
+Write-Host "STEP 7: Setting admin account password for $ADMIN_EMAIL ..." -ForegroundColor Green
+
+$step7 = @"
+set -e
+cd $SITE_DIR
+export DATABASE_URL=$DATABASE_URL
+node scripts/set-admin-password.mjs "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+"@
+
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step7
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "WARNING: Admin password step had issues." -ForegroundColor Yellow
+} else {
+    Write-Host "Admin password set." -ForegroundColor Green
+}
+
+
+# ─── STEP 8: Start API server with PM2 ───────────────────────────────────────
+
+Write-Host ""
+Write-Host "STEP 8: Starting API server with PM2 on port $API_PORT ..." -ForegroundColor Green
+
+$step8 = @"
 set -e
 cd $SITE_DIR
 
-# Stop existing instance if running
+pm2 stop rdn-api 2>/dev/null || true
 pm2 delete rdn-api 2>/dev/null || true
 
-# Start the API server
-pm2 start dist/index.mjs \
+PORT=$API_PORT \
+DATABASE_URL=$DATABASE_URL \
+JWT_SECRET=$JWT_SECRET \
+NODE_ENV=production \
+pm2 start artifacts/api-server/dist/index.mjs \
   --name rdn-api \
-  --env production \
-  --env PORT=3100 \
-  -- --env-file .env
+  --max-memory-restart 512M \
+  --log ~/.pm2/logs/rdn-api.log \
+  --time
 
 pm2 save
-pm2 startup 2>/dev/null || true
+pm2 startup 2>/dev/null | tail -1 | bash 2>/dev/null || true
 
-echo 'PM2 process started:'
+echo ''
+echo 'PM2 status:'
 pm2 list
+echo ''
+echo 'Testing API health check...'
+sleep 3
+curl -sf http://127.0.0.1:$API_PORT/api/health && echo ' API is up!' || echo ' (health endpoint not available yet - check pm2 logs)'
 "@
 
-ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $pm2Commands
+ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step8
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Step 8 (PM2 start) failed." -ForegroundColor Red; exit 1 }
+Write-Host "Step 8 done." -ForegroundColor Green
 
-Write-Host "API server started on port 3100." -ForegroundColor Green
 
+# ─── DONE ────────────────────────────────────────────────────────────────────
 
-# ─── STEP 7: Print Apache/Nginx proxy instructions ───────────────────────────
-
-Write-Host ""
-Write-Host "=====================================================" -ForegroundColor Cyan
-Write-Host "  STEP 7: Web Server Proxy Configuration" -ForegroundColor Cyan
-Write-Host "=====================================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "The Node.js API is running on port 3100." -ForegroundColor Yellow
-Write-Host "You need to configure a reverse proxy in DirectAdmin." -ForegroundColor Yellow
-Write-Host ""
-Write-Host "In DirectAdmin > test.richdatingnetwork.com > .htaccess, add:" -ForegroundColor White
-Write-Host ""
-Write-Host @"
-RewriteEngine On
-RewriteCond %{REQUEST_URI} ^/api [OR]
-RewriteCond %{REQUEST_URI} ^/ws
-RewriteRule ^(.*)$ http://127.0.0.1:3100/`$1 [P,L]
-
-# Serve the Vite-built frontend for all other routes
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /index.html [L]
-"@ -ForegroundColor Gray
-Write-Host ""
-Write-Host "OR if you have Node.js App support in DirectAdmin:" -ForegroundColor White
-Write-Host "  1. Go to DirectAdmin > Extra Features > Node.js App" -ForegroundColor Gray
-Write-Host "  2. Set startup file: artifacts/api-server/dist/index.mjs" -ForegroundColor Gray
-Write-Host "  3. Set port: 3100" -ForegroundColor Gray
-Write-Host "  4. Set document root to: artifacts/rich-dating-network/dist/public" -ForegroundColor Gray
 Write-Host ""
 Write-Host "=====================================================" -ForegroundColor Cyan
 Write-Host "  DEPLOYMENT COMPLETE" -ForegroundColor Green
 Write-Host "=====================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Test your site at: $APP_URL" -ForegroundColor Green
+Write-Host "  Site  : $APP_URL" -ForegroundColor Green
+Write-Host "  API   : $APP_URL/api/health" -ForegroundColor Green
+Write-Host "  Admin : $APP_URL/admin" -ForegroundColor Green
 Write-Host ""
-Write-Host "After confirming everything works:" -ForegroundColor Yellow
-Write-Host "  1. Point richdatingnetwork.com domain to the new code folder" -ForegroundColor Gray
-Write-Host "  2. Or swap the symlinks in DirectAdmin" -ForegroundColor Gray
-Write-Host "  3. Archive/delete the old PHP files" -ForegroundColor Gray
+Write-Host "  Admin login:" -ForegroundColor Yellow
+Write-Host "    Email    : $ADMIN_EMAIL" -ForegroundColor White
+Write-Host "    Password : $ADMIN_PASSWORD" -ForegroundColor White
 Write-Host ""
+Write-Host "  SSH to server for logs:" -ForegroundColor Yellow
+Write-Host "    ssh ${SSH_USER}@${SERVER_IP}" -ForegroundColor Gray
+Write-Host "    pm2 logs rdn-api" -ForegroundColor Gray
+Write-Host "    pm2 status" -ForegroundColor Gray
+Write-Host ""
+Write-Host "=====================================================" -ForegroundColor Cyan

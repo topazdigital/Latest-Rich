@@ -48,7 +48,8 @@ for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     let plaintext = password
 
     // If the stored password is already a bcrypt hash, skip
-    if (plaintext && (plaintext.startsWith("$2b$") || plaintext.startsWith("$2a$"))) {
+    // Handles $2b$ (Node.js), $2a$ (older bcrypt), $2y$ (PHP bcrypt — all compatible)
+    if (plaintext && (plaintext.startsWith("$2b$") || plaintext.startsWith("$2a$") || plaintext.startsWith("$2y$"))) {
       skipped++
       continue
     }

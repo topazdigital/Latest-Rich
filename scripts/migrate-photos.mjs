@@ -188,8 +188,8 @@ for (const user of users) {
   const { id, password, pass } = user
   let plaintext = password
 
-  // Skip if already bcrypt hashed
-  if (plaintext && (plaintext.startsWith("$2b$") || plaintext.startsWith("$2a$"))) {
+  // Skip if already bcrypt hashed ($2b$ Node.js, $2a$ older, $2y$ PHP — all compatible)
+  if (plaintext && (plaintext.startsWith("$2b$") || plaintext.startsWith("$2a$") || plaintext.startsWith("$2y$"))) {
     skipped++
     continue
   }
