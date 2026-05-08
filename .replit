@@ -81,3 +81,5 @@ externalPort = 3000
 [userenv.shared]
 PORT = "5000"
 LOG_LEVEL = "info"
+NODE_ENV = "development"
+APP_URL = "https://cada19a6-680b-468c-81a1-f4c0ba582af9-00-3d5hb8jolzgeu.worf.replit.dev"
