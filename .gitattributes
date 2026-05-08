@@ -7,3 +7,4 @@ attached_assets/admin_richdatingnetwork_1778220302316.sql filter=lfs diff=lfs me
 attached_assets/admin_testdating_1778227955847.sql filter=lfs diff=lfs merge=lfs -text
 attached_assets/admin_testdating_(1)_1778234080635.sql filter=lfs diff=lfs merge=lfs -text
 attached_assets/admin_testdating_(2)_1778237593006.sql filter=lfs diff=lfs merge=lfs -text
+attached_assets/admin_richdatingnetwork_(1)_1778252368044.sql filter=lfs diff=lfs merge=lfs -text
