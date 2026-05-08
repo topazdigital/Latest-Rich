@@ -1,28 +1,59 @@
 -- ==========================================================================
 -- Rich Dating Network — Old PHP → New Node.js Schema Migration
 -- Run this on `admin_testdating` AFTER the old SQL dump has been imported.
--- Run in phpMyAdmin > SQL tab, or via MySQL CLI.
--- Safe to run in order — each step is independent.
+--
+-- HOW TO RUN IN phpMyAdmin:
+--   1. Click on admin_testdating in the left panel
+--   2. Click the SQL tab at the top
+--   3. Paste this entire file and click Go
+--   4. If any RENAME errors appear, see the note at the top of Step 1
 -- ==========================================================================
 
--- STEP 1: Rename conflicting old tables to old_ prefix
--- (These have the same name but different structure in the new code)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 1: Safely rename old conflicting tables to old_ prefix
+-- Uses stored procedures so it won't fail if a table doesn't exist
+-- or was already renamed in a previous run.
+-- ==========================================================================
 
-RENAME TABLE `activity`      TO `old_activity`;
-RENAME TABLE `blocked_users` TO `old_blocked_bans`;
-RENAME TABLE `photos`        TO `old_photo_comments`;
-RENAME TABLE `feed`          TO `old_feed`;
-RENAME TABLE `gifts`         TO `old_gifts`;
-RENAME TABLE `chat`          TO `old_chat`;
-RENAME TABLE `referrals`     TO `old_referrals_config`;
+DROP PROCEDURE IF EXISTS safe_rename_table;
 
--- Rename reports if it exists (new uses reported_users)
-RENAME TABLE `reports` TO `old_reports`;
+DELIMITER //
+CREATE PROCEDURE safe_rename_table(
+  IN p_from VARCHAR(64),
+  IN p_to   VARCHAR(64)
+)
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_from
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = p_to
+  ) THEN
+    SET @sql = CONCAT('RENAME TABLE `', p_from, '` TO `', p_to, '`');
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END IF;
+END //
+DELIMITER ;
+
+CALL safe_rename_table('activity',       'old_activity');
+CALL safe_rename_table('blocked_users',  'old_blocked_bans');
+CALL safe_rename_table('photos',         'old_photo_comments');
+CALL safe_rename_table('feed',           'old_feed');
+CALL safe_rename_table('gifts',          'old_gifts');
+CALL safe_rename_table('chat',           'old_chat');
+CALL safe_rename_table('referrals',      'old_referrals_config');
+CALL safe_rename_table('reports',        'old_reports');
+
+DROP PROCEDURE IF EXISTS safe_rename_table;
 
 
--- STEP 2: Add missing columns to the `users` table
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 2: Add new columns to the `users` table
+-- ADD COLUMN IF NOT EXISTS is safe to re-run
+-- ==========================================================================
 
 ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `photo`               TEXT         DEFAULT '',
@@ -38,64 +69,76 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `verification_note`   TEXT         DEFAULT '',
   ADD COLUMN IF NOT EXISTS `banned`              TINYINT(1)   DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `referral_code`       VARCHAR(50)  DEFAULT '',
-  ADD COLUMN IF NOT EXISTS `referred_by`         INT(11)      DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS `referred_by`         INT(11)      DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `phone`               VARCHAR(30)  DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `country_code`        VARCHAR(10)  DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `username`            VARCHAR(80)  DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `birthday`            VARCHAR(20)  DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `looking`             TINYINT(1)   DEFAULT 2,
+  ADD COLUMN IF NOT EXISTS `superlike`           INT(11)      DEFAULT 3,
+  ADD COLUMN IF NOT EXISTS `popular`             TINYINT(1)   DEFAULT 0;
 
--- Map the old `pass` column to `password` if password column is empty
--- (keeps DES-crypt hashes as fallback — hash-passwords.mjs will overwrite with bcrypt)
+-- Populate phone from old telephone column (with country code prefix)
 UPDATE `users`
-SET `password` = `pass`
+SET `phone` = CONCAT(
+  COALESCE((SELECT `value` FROM `config` WHERE `name` = 'phone_code' LIMIT 1), ''),
+  COALESCE(`telephone`, '')
+)
+WHERE (`phone` IS NULL OR `phone` = '')
+  AND `telephone` IS NOT NULL
+  AND `telephone` != '';
+
+-- Copy old pass/password to new password column where empty
+UPDATE `users`
+SET `password` = COALESCE(`pass`, '')
 WHERE (`password` IS NULL OR `password` = '')
   AND `pass` IS NOT NULL AND `pass` != '';
 
--- Bump old admin=1 (was "admin") to admin=2 (new system: 2=admin, 1=moderator)
+-- Bump old admin=1 (was "admin") → admin=2 (new: 2=admin, 1=moderator)
 UPDATE `users` SET `admin` = 2 WHERE `admin` = 1 AND `fake` = 0;
 
--- Mark banned users based on old site-ban table (by email match)
+-- Mark banned users from old site-ban table (email-based)
 UPDATE `users` u
 INNER JOIN `old_blocked_bans` ob ON u.`email` = ob.`email`
-SET u.`banned` = 1;
-
--- Copy phone number into the new `phone` column (old column is `telephone`)
-UPDATE `users`
-SET `phone` = CONCAT(COALESCE(`country_code`, ''), COALESCE(`telephone`, ''))
-WHERE (`phone` IS NULL OR `phone` = '')
-  AND `telephone` IS NOT NULL AND `telephone` != '';
+SET u.`banned` = 1
+WHERE ob.`email` IS NOT NULL;
 
 
--- STEP 3: Create new `messages` table (from old `chat`)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 3: Migrate chat → messages
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `messages` (
-  `id`      INT(11)      NOT NULL AUTO_INCREMENT,
-  `u1`      INT(11)      NOT NULL,
-  `u2`      INT(11)      NOT NULL,
-  `message` LONGTEXT     NOT NULL,
-  `time`    INT(11)      DEFAULT 0,
-  `read`    INT(11)      DEFAULT 0,
+  `id`      INT(11)  NOT NULL AUTO_INCREMENT,
+  `u1`      INT(11)  NOT NULL,
+  `u2`      INT(11)  NOT NULL,
+  `message` LONGTEXT NOT NULL,
+  `time`    INT(11)  DEFAULT 0,
+  `read`    INT(11)  DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_messages_u1` (`u1`),
   KEY `idx_messages_u2` (`u2`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `messages` (`id`, `u1`, `u2`, `message`, `time`, `read`)
+INSERT IGNORE INTO `messages` (`id`, `u1`, `u2`, `message`, `time`, `read`)
 SELECT
-  `id`,
-  `s_id`,
-  `r_id`,
-  `message`,
-  CAST(`time` AS SIGNED),
-  `seen`
-FROM `old_chat`
-WHERE `s_id` > 0
-  AND `r_id` > 0
-  AND `s_id` IN (SELECT `id` FROM `users`)
-  AND `r_id` IN (SELECT `id` FROM `users`);
+  c.`id`,
+  c.`s_id`,
+  c.`r_id`,
+  c.`message`,
+  CAST(c.`time` AS SIGNED),
+  c.`seen`
+FROM `old_chat` c
+WHERE c.`s_id` > 0
+  AND c.`r_id` > 0
+  AND c.`s_id` IN (SELECT `id` FROM `users`)
+  AND c.`r_id` IN (SELECT `id` FROM `users`);
 
 
--- STEP 4: Create new `photos` table (user profile photos)
--- The old uploads folder files will be linked via the node upload routes.
--- Populate from photo URLs found in user activity JSON where possible.
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 4: Create new photos table (user profile photos, fresh start)
+-- The uploads folder files will be linked when users log in/upload
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `photos` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -112,8 +155,9 @@ CREATE TABLE IF NOT EXISTS `photos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- STEP 5: Create new `feed` table (from old `old_feed`)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 5: Migrate feed
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `feed` (
   `id`             INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -127,37 +171,25 @@ CREATE TABLE IF NOT EXISTS `feed` (
   KEY `idx_feed_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `feed` (`id`, `user_id`, `content`, `photo`, `likes_count`, `comments_count`, `time`)
+INSERT IGNORE INTO `feed` (`id`, `user_id`, `content`, `photo`, `likes_count`, `comments_count`, `time`)
 SELECT
-  `id`,
-  `uid`,
-  COALESCE(`post_meta`, ''),
-  COALESCE(`post_src`, ''),
-  COALESCE(`likes`, 0),
-  COALESCE(`comments`, 0),
-  CAST(COALESCE(`time`, '0') AS SIGNED)
-FROM `old_feed`
-WHERE `uid` IS NOT NULL
-  AND `uid` > 0
-  AND `uid` IN (SELECT `id` FROM `users`)
-  AND `visible` = 1;
+  f.`id`,
+  f.`uid`,
+  COALESCE(f.`post_meta`, ''),
+  COALESCE(f.`post_src`, ''),
+  COALESCE(f.`likes`, 0),
+  COALESCE(f.`comments`, 0),
+  CAST(COALESCE(f.`time`, '0') AS SIGNED)
+FROM `old_feed` f
+WHERE f.`uid` IS NOT NULL
+  AND f.`uid` > 0
+  AND f.`uid` IN (SELECT `id` FROM `users`)
+  AND f.`visible` = 1;
 
 
--- STEP 6: Create new `feed_likes` table
--- -------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS `feed_likes` (
-  `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `feed_id` INT(11)          NOT NULL,
-  `user_id` INT(11)          NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_feed_likes` (`feed_id`, `user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
--- STEP 7: Create new `activity` table (from old `old_activity`)
--- Only import the last 50,000 rows for performance
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 6: Migrate activity log (last 50 000 rows)
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `activity` (
   `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -170,24 +202,25 @@ CREATE TABLE IF NOT EXISTS `activity` (
   KEY `idx_activity_time` (`time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `activity` (`id`, `type`, `user_id`, `title`, `message`, `time`)
+INSERT IGNORE INTO `activity` (`id`, `type`, `user_id`, `title`, `message`, `time`)
 SELECT
-  `id`,
-  COALESCE(`a_type`, 'system'),
-  COALESCE(`uid`, 0),
-  COALESCE(`title`, ''),
-  COALESCE(`message`, ''),
+  a.`id`,
+  COALESCE(a.`a_type`, 'system'),
+  COALESCE(a.`uid`, 0),
+  COALESCE(a.`title`, ''),
+  COALESCE(a.`message`, ''),
   CASE
-    WHEN `time` REGEXP '^[0-9]+$' THEN CAST(`time` AS SIGNED)
+    WHEN a.`time` REGEXP '^[0-9]+$' THEN CAST(a.`time` AS SIGNED)
     ELSE 0
   END
-FROM `old_activity`
-ORDER BY `id` DESC
+FROM `old_activity` a
+ORDER BY a.`id` DESC
 LIMIT 50000;
 
 
--- STEP 8: Create new `gifts` table (from old `old_gifts`)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 7: Migrate gifts
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `gifts` (
   `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -198,13 +231,14 @@ CREATE TABLE IF NOT EXISTS `gifts` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `gifts` (`id`, `name`, `emoji`, `credits`, `active`)
-SELECT `id`, `gift`, '🎁', COALESCE(`price`, 10), 1
-FROM `old_gifts`;
+INSERT IGNORE INTO `gifts` (`id`, `name`, `emoji`, `credits`, `active`)
+SELECT g.`id`, g.`gift`, '🎁', COALESCE(g.`price`, 10), 1
+FROM `old_gifts` g;
 
 
--- STEP 9: Create new `likes` table (start fresh — no equivalent in old system)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 8: Create likes table (no equivalent in old system)
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `likes` (
   `id`        INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -218,8 +252,10 @@ CREATE TABLE IF NOT EXISTS `likes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- STEP 10: Create new `blocked_users` table (user-to-user blocks, fresh start)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 9: Create new blocked_users (user-to-user blocks, fresh start)
+-- The old blocked_users was email-based site bans — now saved as old_blocked_bans
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `blocked_users` (
   `id`         INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -230,8 +266,9 @@ CREATE TABLE IF NOT EXISTS `blocked_users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- STEP 11: Create new `reported_users` table (from old `old_reports`)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 10: Migrate reports → reported_users
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `reported_users` (
   `id`          INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -242,40 +279,50 @@ CREATE TABLE IF NOT EXISTS `reported_users` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `reported_users` (`user_id`, `reported_id`, `reason`, `time`)
+INSERT IGNORE INTO `reported_users` (`user_id`, `reported_id`, `reason`, `time`)
 SELECT
-  `reported_by`,
-  `reported`,
-  COALESCE(`reason`, ''),
+  r.`reported_by`,
+  r.`reported`,
+  COALESCE(r.`reason`, ''),
   CASE
-    WHEN `reported_date` REGEXP '^[0-9]+$' THEN CAST(`reported_date` AS SIGNED)
+    WHEN r.`reported_date` REGEXP '^[0-9]+$' THEN CAST(r.`reported_date` AS SIGNED)
     ELSE 0
   END
-FROM `old_reports`
-WHERE `reported_by` IS NOT NULL
-  AND `reported` IS NOT NULL
-  AND `reported_by` IN (SELECT `id` FROM `users`)
-  AND `reported` IN (SELECT `id` FROM `users`);
+FROM `old_reports` r
+WHERE r.`reported_by` IS NOT NULL
+  AND r.`reported`    IS NOT NULL
+  AND r.`reported_by` IN (SELECT `id` FROM `users`)
+  AND r.`reported`    IN (SELECT `id` FROM `users`);
 
 
--- STEP 12: Create new `fake_message_templates` (from old `fake_messages`)
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 11: Migrate fake_messages → fake_message_templates
+-- ==========================================================================
 
 CREATE TABLE IF NOT EXISTS `fake_message_templates` (
-  `id`     INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `message` TEXT            NOT NULL,
-  `active`  TINYINT(1)      DEFAULT 1,
+  `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `message` TEXT             NOT NULL,
+  `active`  TINYINT(1)       DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `fake_message_templates` (`id`, `message`, `active`)
+INSERT IGNORE INTO `fake_message_templates` (`id`, `message`, `active`)
 SELECT `id`, `fake_msg`, 1
 FROM `fake_messages`
 WHERE `fake_msg` IS NOT NULL AND `fake_msg` != '';
 
 
--- STEP 13: Create all remaining new tables
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 12: Create all remaining new tables (safe — IF NOT EXISTS)
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS `feed_likes` (
+  `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feed_id` INT(11)          NOT NULL,
+  `user_id` INT(11)          NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_feed_likes` (`feed_id`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id`      INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -484,18 +531,22 @@ CREATE TABLE IF NOT EXISTS `referrals` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- STEP 14: Seed site_config with settings from old `config` / `settings` tables
--- Copy key site settings across
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 13: Seed site_config from old config table
+-- ==========================================================================
 
 INSERT IGNORE INTO `site_config` (`key`, `value`)
 SELECT `name`, `title`
 FROM `config`
-WHERE `name` IN ('site_name','site_email','site_url','currency','credits_name');
+WHERE `name` IN (
+  'site_name','site_email','site_url','currency',
+  'credits_name','phone_code','site_description'
+);
 
 
--- STEP 15: Performance indexes
--- -------------------------------------------------------------------------
+-- ==========================================================================
+-- STEP 14: Performance indexes (safe — ADD INDEX IF NOT EXISTS)
+-- ==========================================================================
 
 ALTER TABLE `users`
   ADD INDEX IF NOT EXISTS `idx_users_fake`        (`fake`),
@@ -505,6 +556,7 @@ ALTER TABLE `users`
   ADD INDEX IF NOT EXISTS `idx_users_last_access` (`last_access`);
 
 -- ==========================================================================
--- DONE. Next step: run  node scripts/hash-passwords.mjs  on the server
--- to convert all plaintext passwords to bcrypt hashes.
+-- DONE.
+-- Next step: run  node scripts/hash-passwords.mjs  on the test server
+-- to convert all user passwords to bcrypt format.
 -- ==========================================================================
