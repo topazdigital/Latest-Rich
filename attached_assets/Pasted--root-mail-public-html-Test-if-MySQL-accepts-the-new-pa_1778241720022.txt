@@ -1,0 +1,46 @@
+[root@mail public_html]# # Test if MySQL accepts the new password
+[root@mail public_html]# mysql -u admin_testdating -p'RdnDb2025secure' admin_testdating -e "SELECT COUNT(*) FROM users;" 2>&1
++----------+
+| COUNT(*) |
++----------+
+|     7877 |
++----------+
+[root@mail public_html]# cd /home/admin/domains/test.richdatingnetwork.com/public_html
+[root@mail public_html]# pnpm --filter @workspace/rich-dating-network run build
+m2 restart rdn-test --update-env
+
+> @workspace/rich-dating-network@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network
+> vite build --config vite.config.ts
+
+vite v7.3.2 building client environment for production...
+✓ 2051 modules transformed.
+[plugin vite:reporter]
+(!) /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/lib/auth.ts is dynamically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/landing/LandingPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/LoginPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx but also statically imported by /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/App.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminActivity.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminBoost.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminCustomPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminDashboard.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeMessages.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminFakeUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminOrders.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPayments.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminPhotos.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminSettings.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUserDetail.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminUsers.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/admin/AdminVerifications.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/common/ProfileQuestionsModal.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/discover/DiscoverPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/layout/NotificationDropdown.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/components/ui/LocationAutocomplete.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/hooks/useAuth.ts, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/BoostPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/CreditsPageWrapper.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/GiftsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ModeratorPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ReferralsPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/RegisterPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/ResetPasswordPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VerifyEmailPage.tsx, /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/rich-dating-network/src/pages/VisitorsPage.tsx, dynamic import will not move module into another chunk.
+
+dist/public/index.html                   1.83 kB │ gzip:   0.79 kB
+dist/public/assets/index-BfvkGcS3.css  133.47 kB │ gzip:  22.08 kB
+dist/public/assets/index-ToYLksjl.js   692.13 kB │ gzip: 183.05 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 26.62s
+[root@mail public_html]# pm2 restart rdn-test --update-env
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-test](ids: [ 3 ])
+[PM2] [rdn-test](3) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 28.6mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.6mb   │
+│ 5  │ rdn-api            │ fork     │ 503  │ online    │ 65%      │ 119.9mb  │
+│ 3  │ rdn-test           │ fork     │ 713  │ online    │ 0%       │ 19.0mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]#
