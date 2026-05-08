@@ -169,7 +169,8 @@ router.get("/search", requireAuth, async (req, res) => {
       if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
       if (country && u.country !== country) return false
       if (gender > 0 && u.gender !== gender) return false
-      if ((u.age ?? 0) < ageMin || (u.age ?? 0) > ageMax) return false
+      const userAge = u.age ?? 0
+      if (userAge > 0 && (userAge < ageMin || userAge > ageMax)) return false
       if (onlineOnly && u.online !== 1) return false
       return true
     })

@@ -33,24 +33,30 @@ router.get("/", requireAuth, async (req: any, res) => {
       await db.update(usersTable).set({ referralCode: code }).where(eq(usersTable.id, req.userId))
     }
 
-    const referralsList = await db.select({
-      id: referralsTable.id,
-      referredId: referralsTable.referredId,
-      status: referralsTable.status,
-      reward: referralsTable.reward,
-      created: referralsTable.created,
-      name: usersTable.name,
-      photo: usersTable.photo,
-      photoThumb: usersTable.photoThumb,
-    })
-      .from(referralsTable)
-      .leftJoin(usersTable, eq(referralsTable.referredId, usersTable.id))
-      .where(eq(referralsTable.referrerId, req.userId))
-      .orderBy(desc(referralsTable.created))
-      .limit(50)
-
-    const [totalCount] = await db.select({ count: count() }).from(referralsTable)
-      .where(eq(referralsTable.referrerId, req.userId))
+    let referralsList: any[] = []
+    let totalCount = { count: 0 }
+    try {
+      referralsList = await db.select({
+        id: referralsTable.id,
+        referredId: referralsTable.referredId,
+        status: referralsTable.status,
+        reward: referralsTable.reward,
+        created: referralsTable.created,
+        name: usersTable.name,
+        photo: usersTable.photo,
+        photoThumb: usersTable.photoThumb,
+      })
+        .from(referralsTable)
+        .leftJoin(usersTable, eq(referralsTable.referredId, usersTable.id))
+        .where(eq(referralsTable.referrerId, req.userId))
+        .orderBy(desc(referralsTable.created))
+        .limit(50)
+      const [tc] = await db.select({ count: count() }).from(referralsTable)
+        .where(eq(referralsTable.referrerId, req.userId))
+      if (tc) totalCount = tc
+    } catch {
+      // referrals table may not exist yet — return empty data gracefully
+    }
 
     const siteUrl = await getConfig("site_url", "https://richdatingnetwork.com")
     const referralUrl = `${siteUrl}/ref/${code}`

@@ -22,7 +22,7 @@ export default function ChatPage({ params }: Props) {
     }).catch(() => {}).finally(() => setLoading(false))
   }, [otherId, token])
 
-  if (loading || !other || !user) return (
+  if (loading || !other?.id || !user) return (
     <div className="flex items-center justify-center h-[80vh]">
       <div className="animate-spin w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full" />
     </div>

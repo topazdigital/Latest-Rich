@@ -3,10 +3,19 @@ import path from "path"
 import fs from "fs"
 
 const router = Router()
-// Primary: assets/sources/uploads (old-site migrated photos)
-// Fallback: uploads/ (new uploads from this app)
-const uploadDir = path.join(process.cwd(), "assets", "sources", "uploads")
-const fallbackDir = path.join(process.cwd(), "uploads")
+
+// Search these directories in order for uploaded files
+function getSearchDirs(): string[] {
+  const dirs = [
+    path.join(process.cwd(), "assets", "sources", "uploads"),
+    path.join(process.cwd(), "uploads"),
+  ]
+  // Allow pointing to an existing PHP site's uploads directory via env var
+  if (process.env.LEGACY_UPLOADS_DIR) {
+    dirs.unshift(process.env.LEGACY_UPLOADS_DIR)
+  }
+  return dirs
+}
 
 router.get("/:filename", (req, res) => {
   const { filename } = req.params
@@ -14,15 +23,12 @@ router.get("/:filename", (req, res) => {
     res.status(400).send("Invalid filename")
     return
   }
-  const primary = path.join(uploadDir, filename)
-  if (fs.existsSync(primary)) {
-    res.sendFile(primary)
-    return
-  }
-  const fallback = path.join(fallbackDir, filename)
-  if (fs.existsSync(fallback)) {
-    res.sendFile(fallback)
-    return
+  for (const dir of getSearchDirs()) {
+    const full = path.join(dir, filename)
+    if (fs.existsSync(full)) {
+      res.sendFile(full)
+      return
+    }
   }
   res.status(404).send("Not found")
 })

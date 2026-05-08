@@ -30,7 +30,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   const [filterCity, setFilterCity] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
   const [filterAgeMin, setFilterAgeMin] = useState(18)
-  const [filterAgeMax, setFilterAgeMax] = useState(60)
+  const [filterAgeMax, setFilterAgeMax] = useState(99)
   const [filterOnline, setFilterOnline] = useState(false)
   const [filterPremium, setFilterPremium] = useState(false)
   const [filterCompatible, setFilterCompatible] = useState(false)
@@ -81,7 +81,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     })
   }, [users, filterPremium, filterCompatible, myInterests])
 
-  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 60 || filterOnline || filterPremium || filterCompatible
+  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 99 || filterOnline || filterPremium || filterCompatible
 
   async function likeUser(targetId: number) {
     const isLiked = likedUsers.has(targetId)

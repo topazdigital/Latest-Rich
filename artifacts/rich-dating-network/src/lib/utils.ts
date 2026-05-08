@@ -29,12 +29,21 @@ export function formatDate(timestamp: number | string) {
 export function getPhotoUrl(photo: string | null | undefined): string {
   if (!photo) return '/images/default-avatar.svg'
   if (photo.startsWith('http')) return photo
-  // Old site stored paths like /assets/sources/uploads/filename.jpg — remap to new uploads endpoint
-  if (photo.startsWith('/assets/sources/uploads/')) {
-    return `/api/uploads/${photo.replace('/assets/sources/uploads/', '')}`
+  // Strip all known legacy directory prefixes — only pass the bare filename to the uploads endpoint
+  const prefixes = [
+    '/assets/sources/uploads/',
+    'assets/sources/uploads/',
+    '/uploads/',
+    'uploads/',
+    '/photos/',
+    'photos/',
+  ]
+  let filename = photo
+  for (const p of prefixes) {
+    if (filename.startsWith(p)) { filename = filename.slice(p.length); break }
   }
-  if (photo.startsWith('/')) return photo
-  return `/api/uploads/${photo}`
+  if (filename.startsWith('/')) return filename
+  return `/api/uploads/${filename}`
 }
 
 export function isOnline(lastAccess: string | null | undefined): boolean {
