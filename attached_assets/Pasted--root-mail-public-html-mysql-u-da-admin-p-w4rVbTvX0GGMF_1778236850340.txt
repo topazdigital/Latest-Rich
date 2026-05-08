@@ -1,0 +1,40 @@
+[root@mail public_html]# mysql -u da_admin -p'w4rVbTvX0GGMFzX2w2l0OVOMGOwGsmQf' -e "ALTER USER 'admin_testdating'@'localhost' IDENTIFIED BY 'RdnDb2026'; FLUSH PRIVILEGES;"
+[root@mail public_html]# sed -i "s|mysql://admin_testdating:[^@]*@|mysql://admin_testdating:RdnDb2026@|" .env && grep DATABASE_URL .env
+DATABASE_URL=mysql://admin_testdating:RdnDb2026@Topaz2016@localhost:3306/admin_testdating
+[root@mail public_html]# HASH=$(php -r "echo password_hash('dj@Topaz27899310', PASSWORD_BCRYPT, ['cost'=>10]);") && mysql -u admin_testdating -p'RdnDb2026' admin_testdating -e "UPDATE users SET \`password\`='$HASH', \`pass\`='dj@Topaz27899310' WHERE email='patrickndungu.pnn@gmail.com';" && echo "Done - password updated"
+Done - password updated
+[root@mail public_html]# pnpm --filter @workspace/api-server run build && pm2 restart rdn-api --update-env
+
+> @workspace/api-server@0.0.0 build /home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       3.7mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   6.3mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           203.9kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 2640ms
+
+>>>> In-memory PM2 is out-of-date, do:
+>>>> $ pm2 update
+In memory PM2 version: 6.0.14
+Local PM2 version: 7.0.1
+
+[PM2] Applying action restartProcessId on app [rdn-api](ids: [ 5 ])
+[PM2] [rdn-api](5) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 1  │ betcheza           │ fork     │ 0    │ online    │ 0%       │ 27.7mb   │
+│ 0  │ dossy              │ fork     │ 0    │ online    │ 0%       │ 29.2mb   │
+│ 5  │ rdn-api            │ fork     │ 7    │ online    │ 0%       │ 18.5mb   │
+│ 3  │ rdn-test           │ fork     │ 2    │ online    │ 0%       │ 156.8mb  │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+[root@mail public_html]#
