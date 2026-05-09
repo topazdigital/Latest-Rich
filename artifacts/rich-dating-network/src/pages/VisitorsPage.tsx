@@ -86,11 +86,13 @@ export default function VisitorsPage() {
               )}
 
               <div className="relative flex-shrink-0">
-                <img src={getPhotoUrl(row.visitor?.photo)} alt=""
-                  className="w-14 h-14 rounded-2xl object-cover bg-gray-100"
-                  onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                <div className={`w-14 h-14 rounded-2xl overflow-hidden ${row.visitor?.online ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
+                  <img src={getPhotoUrl(row.visitor?.photo)} alt=""
+                    className="w-full h-full object-cover bg-gray-100"
+                    onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                </div>
                 {row.visitor?.online ? (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
                 ) : null}
               </div>
               <div className="flex-1 min-w-0">

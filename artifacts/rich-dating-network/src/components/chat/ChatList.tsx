@@ -28,10 +28,12 @@ export default function ChatList({ userId, conversations: initial }: Props) {
             <Link key={c.otherId} href={`/chat/${c.otherId}`}
               className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
               <div className="relative flex-shrink-0">
-                <div className="w-12 h-12 rounded-full overflow-hidden">
+                <div className={`w-12 h-12 rounded-full overflow-hidden ${isOnline(c.lastAccess) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
                   <img src={getPhotoUrl(c.photoThumb || c.photo)} alt={c.name} className="w-full h-full object-cover" />
                 </div>
-                {isOnline(c.lastAccess) && <div className="online-dot absolute bottom-0 right-0" />}
+                {isOnline(c.lastAccess) && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1 mb-0.5">

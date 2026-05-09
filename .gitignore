@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Agent working files — screenshots, SQL dumps, temporary assets
+attached_assets/

@@ -174,11 +174,11 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       {/* Hero photo card */}
       <div className="card overflow-hidden mb-4">
         <div className="relative h-72 md:h-96 bg-gray-200">
-          <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name || 'Profile'} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
           {isOnline(user.lastAccess) && (
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-green-500 text-white text-xs px-3 py-1 rounded-full">
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-green-500/90 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full shadow-lg">
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online now
             </div>
           )}
           {user.premium === 1 && (
@@ -194,9 +194,9 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
           )}
           <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
             <div className="flex items-end justify-between">
-              <div>
+              <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-3xl font-bold">{user.name}</h1>
+                  <h1 className="text-3xl font-bold">{user.name || (isOwnProfile ? 'Your Profile' : 'Member')}</h1>
                   {user.verified === 1 && (
                     <div title="Verified member">
                       <BadgeCheck size={26} className="text-blue-400 drop-shadow" />
@@ -211,6 +211,9 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                 </div>
                 {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
                   <p className="text-white/60 text-xs mt-1">Last seen {timeAgo(user.lastAccess)}</p>
+                )}
+                {isOwnProfile && !user.name && (
+                  <p className="text-white/70 text-xs mt-1 italic">Tap the edit button to set your name and complete your profile</p>
                 )}
               </div>
               {isOwnProfile && (
@@ -323,7 +326,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       </div>
 
       {/* Complete profile CTA — own profile with sparse data */}
-      {isOwnProfile && !user.bio && !interestDetails.length && !user.city && (
+      {isOwnProfile && (!user.name || !user.bio || (!interestDetails.length && !user.city)) && (
         <div className="card p-5 mb-4 border-2 border-dashed border-brand-200 bg-brand-50/30">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center flex-shrink-0">

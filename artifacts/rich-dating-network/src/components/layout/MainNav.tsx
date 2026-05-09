@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, Users, LogOut, User } from 'lucide-react'
-import { getPhotoUrl } from '../../lib/utils'
+import { getPhotoUrl, isOnline } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
 import NotificationDropdown from './NotificationDropdown'
@@ -139,7 +139,7 @@ export default function MainNav() {
             <div ref={profileMenuRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowProfileMenu(v => !v)}
-                style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', overflow: 'hidden', outline: '2px solid #ffc5c9', outlineOffset: '1px', flexShrink: 0, display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none' }}>
+                style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', overflow: 'hidden', outline: `2px solid ${isOnline(user?.lastAccess) ? '#22c55e' : '#ffc5c9'}`, outlineOffset: '1px', flexShrink: 0, display: 'block', border: 'none', padding: 0, cursor: 'pointer', background: 'none' }}>
                 <img
                   src={getPhotoUrl(user?.photoThumb || user?.photo)}
                   alt="Profile"
@@ -147,6 +147,9 @@ export default function MainNav() {
                   onError={e => { (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.svg' }}
                 />
               </button>
+              {isOnline(user?.lastAccess) && (
+                <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '8px', height: '8px', background: '#22c55e', border: '1.5px solid #fff', borderRadius: '50%' }} />
+              )}
               {showProfileMenu && (
                 <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', borderRadius: '0.875rem', boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid #f3f4f6', minWidth: '160px', zIndex: 100, overflow: 'hidden', padding: '0.375rem' }}>
                   <Link href="/profile" onClick={() => setShowProfileMenu(false)}

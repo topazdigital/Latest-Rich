@@ -24,6 +24,13 @@ pnpm install --frozen-lockfile
 echo "==> 3. Building API server..."
 pnpm --filter @workspace/api-server run build
 
+echo "==> 3b. Building frontend..."
+BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+
+echo "==> 3c. Copying frontend build to public_html..."
+cp -r "$SITE_DIR/artifacts/rich-dating-network/dist/." "$SITE_DIR/"
+echo "    ✅ Frontend deployed"
+
 echo "==> 4. Restarting PM2 API process..."
 pm2 restart rdn-api --update-env
 
