@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import ProfileView from '../components/profile/ProfileView'
 import { useAuth } from '../hooks/useAuth'
+import { Link } from 'wouter'
 
 interface Props { params: { id: string } }
 
@@ -37,10 +38,12 @@ export default function ProfilePage({ params }: Props) {
     </div>
   )
 
-  if (!profileUser) return (
+  if (!profileUser?.id) return (
     <div className="text-center py-20">
       <div className="text-5xl mb-4">😕</div>
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not found</h2>
+      <p className="text-gray-500 text-sm mb-6">This profile may have been removed or doesn't exist.</p>
+      <Link href="/discover" className="btn-primary">Browse Members</Link>
     </div>
   )
 

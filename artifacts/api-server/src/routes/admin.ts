@@ -442,7 +442,7 @@ router.get("/featured-users", async (req, res) => {
       verified: usersTable.verified,
     }).from(usersTable)
       .where(and(eq(usersTable.fake, 1), or(eq(usersTable.banned, 0), isNull(usersTable.banned)), ne(usersTable.photo, "")))
-      .orderBy(sql`RAND()`)
+      .orderBy(sql`RANDOM()`)
       .limit(12)
     res.json(users)
   } catch { res.json([]) }

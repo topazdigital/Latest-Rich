@@ -218,32 +218,37 @@ select {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-/* Input field */
-.input-field {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 0.875rem;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-  background: #f9fafb;
-  color: #111827;
-  font-family: inherit;
-  -webkit-appearance: none;
-  appearance: none;
-}
-.input-field::placeholder { color: #9ca3af; }
-.input-field:hover { background: #ffffff; }
-.input-field:focus {
-  border-color: #FF192C;
-  box-shadow: 0 0 0 3px rgba(255,25,44,0.09);
-  background: #ffffff;
-}
-.input-field:disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
+/* Input field — wrapped in @layer components so Tailwind utilities (pl-*, pr-*, py-*, px-*) override padding */
+@layer components {
+  .input-field {
+    width: 100%;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 0.875rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    background: #f9fafb;
+    color: #111827;
+    font-family: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .input-field::placeholder { color: #9ca3af; }
+  .input-field:hover { background: #ffffff; }
+  .input-field:focus {
+    border-color: #FF192C;
+    box-shadow: 0 0 0 3px rgba(255,25,44,0.09);
+    background: #ffffff;
+  }
+  .input-field:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
 }
 
 /* Page container */

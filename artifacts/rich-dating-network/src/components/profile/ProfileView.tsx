@@ -322,8 +322,26 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         )}
       </div>
 
+      {/* Complete profile CTA — own profile with sparse data */}
+      {isOwnProfile && !user.bio && !interestDetails.length && !user.city && (
+        <div className="card p-5 mb-4 border-2 border-dashed border-brand-200 bg-brand-50/30">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center flex-shrink-0">
+              <Edit3 size={18} className="text-brand-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-1">Complete your profile</h3>
+              <p className="text-sm text-gray-500 mb-3">Profiles with a bio and interests get 3x more matches. Add your details to stand out!</p>
+              <Link href="/settings" className="inline-flex items-center gap-2 btn-primary text-sm py-2 px-4">
+                <Edit3 size={14} /> Edit Profile
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Looking For + About Me — two column on md */}
-      {(user.looking || user.userExtended?.relationship || user.userExtended?.idealDate) && !isOwnProfile && (
+      {(user.looking || user.userExtended?.relationship || user.userExtended?.idealDate) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {user.looking && (
             <div className="card p-5">

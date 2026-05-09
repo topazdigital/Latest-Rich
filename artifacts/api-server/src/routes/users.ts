@@ -235,7 +235,7 @@ router.get("/meet", requireAuth, async (req, res) => {
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
         eq(usersTable.fake, 0),
       ))
-      .orderBy(sql`RAND()`)
+      .orderBy(sql`RANDOM()`)
       .limit(50)
     res.json(users.map(safeUser))
   } catch {

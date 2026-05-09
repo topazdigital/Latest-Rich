@@ -215,6 +215,15 @@ fi
 echo '--- Phase B: Hash remaining plaintext passwords ---'
 node scripts/hash-passwords.mjs
 echo 'Password hashing complete.'
+
+echo '--- Phase C: Import likes from old DB ---'
+OLD_DB="admin_richdatingnetwork"
+OLD_PASS="dj@Topaz2016"
+if OLD_DB_URL="mysql://admin_richdatingnetwork:${OLD_PASS}@localhost/${OLD_DB}" node scripts/import-likes.mjs; then
+  echo 'Likes import complete.'
+else
+  echo 'WARNING: import-likes.mjs failed or old likes table not found — continuing.'
+fi
 "@
 
 ssh -p $SSH_PORT "${SSH_USER}@${SERVER_IP}" $step6

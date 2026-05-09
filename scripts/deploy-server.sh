@@ -41,6 +41,22 @@ else
   echo "    ✅ Uploads path already exists"
 fi
 
+echo "==> 6. Running data migrations (likes, photos, passwords)..."
+export DATABASE_URL=$(grep DATABASE_URL "$SITE_DIR/.env" | cut -d= -f2-)
+OLD_DB_URL="mysql://admin_richdatingnetwork:dj@Topaz2016@localhost/admin_richdatingnetwork"
+
+if node "$SITE_DIR/scripts/migrate-photos.mjs"; then
+  echo "    ✅ Photo migration complete"
+else
+  echo "    ⚠️  Photo migration skipped (old_activity not found)"
+fi
+
+if OLD_DB_URL="$OLD_DB_URL" node "$SITE_DIR/scripts/import-likes.mjs"; then
+  echo "    ✅ Likes import complete"
+else
+  echo "    ⚠️  Likes import skipped (old likes table not found)"
+fi
+
 echo ""
 echo "✅ Deployment complete! API is restarting in the background."
 echo "   Check logs with: pm2 logs rdn-api --lines 50"
