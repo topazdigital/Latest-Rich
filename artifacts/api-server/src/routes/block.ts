@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { blockedUsersTable, reportedUsersTable, usersTable } from "@workspace/db/schema"
+import { blockedUsersTable, reportedUsersTable, usersTable, activityTable } from "@workspace/db/schema"
 import { eq, and, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
@@ -49,8 +49,21 @@ router.get("/blocked", requireAuth, async (req, res) => {
 // Report user
 router.post("/report/:id", requireAuth, async (req, res) => {
   try {
+    const reportedId = parseInt(req.params.id as string)
     const { reason } = req.body
-    await db.insert(reportedUsersTable).values({ userId: req.userId!, reportedId: parseInt(req.params.id as string), reason: reason || "inappropriate", time: now() })
+    await db.insert(reportedUsersTable).values({ userId: req.userId!, reportedId, reason: reason || "inappropriate", time: now() })
+
+    // Log to admin activity
+    const [reporter] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    const [reported] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, reportedId)).limit(1)
+    db.insert(activityTable).values({
+      type: "admin",
+      userId: req.userId!,
+      title: "User reported",
+      message: `${reporter?.name || 'User'} reported ${reported?.name || 'User'}: ${reason || 'inappropriate'}`,
+      time: now(),
+    }).catch(() => {})
+
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

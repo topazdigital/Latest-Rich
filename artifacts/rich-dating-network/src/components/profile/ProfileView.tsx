@@ -59,6 +59,15 @@ const QUICK_MESSAGES = [
   "Hi there! You seem really interesting, let's talk!",
 ]
 
+const REPORT_REASONS = [
+  "Fake profile",
+  "Inappropriate photos",
+  "Harassment or abuse",
+  "Spam or scam",
+  "Underage user",
+  "Other",
+]
+
 export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked, isMatch, myInterests = [] }: Props) {
   const [liked, setLiked] = useState(hasLiked)
   const [activePhotoIdx, setActivePhotoIdx] = useState<number | null>(null)
@@ -77,7 +86,6 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
     ...photos.filter((p: any) => p.photo !== user.photo),
   ]
 
-  // Interests
   const userInterests: string[] = (() => {
     try { return JSON.parse(user.userExtended?.interests || '[]') } catch { return [] }
   })()
@@ -85,15 +93,12 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
     .map(id => INTERESTS.find(i => i.id === id))
     .filter(Boolean) as typeof INTERESTS
 
-  // Shared interests
   const sharedInterestIds = myInterests.filter(i => userInterests.includes(i))
   const sharedInterestDetails = sharedInterestIds
     .map(id => INTERESTS.find(i => i.id === id))
     .filter(Boolean) as typeof INTERESTS
 
   const compatibility = !isOwnProfile ? calcCompatibility(myInterests, userInterests) : null
-
-  // Age — live calculated from birthday if available
   const displayAge = user.birthday ? calcAge(user.birthday) ?? user.age : user.age
   const zodiac = user.birthday ? calcZodiac(user.birthday) : ''
 
@@ -125,6 +130,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       })
       toast.success('Report submitted. Thank you for keeping our community safe.')
       setShowReportModal(false)
+      setReportReason('')
     } catch { toast.error('Failed to submit report') }
   }
 
@@ -160,7 +166,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
 
   if (blocked) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12 text-center">
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <ShieldOff size={48} className="text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">{user.name} has been blocked</h2>
         <p className="text-gray-500 mb-6">They can no longer contact you or view your profile.</p>
@@ -170,188 +176,191 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      {/* Hero photo card */}
-      <div className="card overflow-hidden mb-4">
-        <div className="relative h-72 md:h-96 bg-gray-200">
-          <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name || 'Profile'} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-          {isOnline(user.lastAccess) && (
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-green-500/90 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full shadow-lg">
-              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online now
-            </div>
-          )}
-          {user.premium === 1 && (
-            <div className="absolute top-4 left-4 flex items-center gap-1 bg-amber-500 text-white text-xs px-2.5 py-1 rounded-full">
-              <Crown size={12} /> VIP Member
-            </div>
-          )}
-          {/* Compatibility badge on photo */}
-          {compatibility !== null && compatibility > 0 && (
-            <div className={`absolute bottom-20 right-4 flex items-center gap-1.5 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm ${compatibility >= 70 ? 'bg-green-500/90' : compatibility >= 40 ? 'bg-brand-500/90' : 'bg-gray-500/70'}`}>
-              {compatibility}% Match
-            </div>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-            <div className="flex items-end justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-3xl font-bold">{user.name || (isOwnProfile ? 'Your Profile' : 'Member')}</h1>
-                  {user.verified === 1 && (
-                    <div title="Verified member">
-                      <BadgeCheck size={26} className="text-blue-400 drop-shadow" />
-                    </div>
-                  )}
+    <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-4">
+      {/* Hero photo card — full-height with all overlaid info */}
+      <div className="card overflow-hidden mb-4 rounded-none sm:rounded-2xl">
+        <div className="relative bg-gray-900" style={{ minHeight: '480px', height: 'min(75vw, 560px)' }}>
+          {/* Main photo */}
+          <img
+            src={getPhotoUrl(user.photoThumb || user.photo)}
+            alt={user.name || 'Profile'}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+
+          {/* Gradient — strong at bottom for readability */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 35%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.90) 100%)' }} />
+
+          {/* Top badges */}
+          <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
+            <div className="flex flex-col gap-1.5">
+              {user.premium === 1 && (
+                <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2.5 py-1 rounded-full font-semibold shadow-lg">
+                  <Crown size={11} /> VIP Member
                 </div>
-                <div className="flex items-center gap-3 text-white/80 text-sm flex-wrap">
-                  {displayAge && displayAge > 0 && <span>{displayAge} years</span>}
-                  {zodiac && <><span>•</span><span>{zodiac}</span></>}
-                  {genderLabel(user.gender) && genderLabel(user.gender) !== 'Unknown' && <><span>•</span><span>{genderLabel(user.gender)}</span></>}
-                  {user.city && <><span>•</span><span className="flex items-center gap-1"><MapPin size={12} />{user.city}</span></>}
+              )}
+              {compatibility !== null && compatibility > 0 && (
+                <div className={`flex items-center gap-1.5 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg ${compatibility >= 70 ? 'bg-green-500' : compatibility >= 40 ? 'bg-brand-500' : 'bg-gray-500/80'}`}>
+                  {compatibility}% Match
                 </div>
-                {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
-                  <p className="text-white/60 text-xs mt-1">Last seen {timeAgo(user.lastAccess)}</p>
-                )}
-                {isOwnProfile && !user.name && (
-                  <p className="text-white/70 text-xs mt-1 italic">Tap the edit button to set your name and complete your profile</p>
-                )}
-              </div>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1.5">
+              {isOnline(user.lastAccess) && (
+                <div className="flex items-center gap-1.5 bg-green-500/90 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full shadow-lg">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
+                </div>
+              )}
               {isOwnProfile && (
-                <Link href="/settings" className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all">
-                  <Edit3 size={18} />
+                <Link href="/settings" className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all">
+                  <Edit3 size={16} className="text-white" />
                 </Link>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Bio snippet */}
-        {user.bio && (
-          <div className="px-5 pt-4 pb-2">
-            <p className="text-gray-600 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
-          </div>
-        )}
-
-        {!isOwnProfile && (
-          <div className="p-4 space-y-3">
-            {/* Inline message compose — like DateMyAge */}
-            <div className="relative">
-              <div className="flex items-center gap-2 border-2 border-gray-200 rounded-xl px-3 py-2 focus-within:border-brand-400 transition-colors bg-white">
-                <input
-                  ref={msgRef}
-                  type="text"
-                  value={msgText}
-                  onChange={e => setMsgText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                  placeholder={`Type a message to ${user.name}...`}
-                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowQuick(p => !p)}
-                  className="text-gray-400 hover:text-brand-500 transition-colors p-1"
-                  title="Quick messages">
-                  <Smile size={18} />
-                </button>
+          {/* Bottom overlay — name + details + message input */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+            {/* Name & meta */}
+            <div className="mb-3">
+              <div className="flex items-end gap-2 mb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+                  {user.name || (isOwnProfile ? 'Your Profile' : 'Member')}
+                </h1>
+                {user.verified === 1 && (
+                  <span title="Verified member"><BadgeCheck size={22} className="text-blue-400 drop-shadow mb-0.5 flex-shrink-0" /></span>
+                )}
               </div>
-              {/* Quick message picker */}
-              {showQuick && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
-                  {QUICK_MESSAGES.map((q, i) => (
-                    <button key={i} onClick={() => { setMsgText(q); setShowQuick(false); msgRef.current?.focus() }}
-                      className="w-full text-left text-sm px-4 py-3 hover:bg-brand-50 hover:text-brand-700 border-b border-gray-50 last:border-0 transition-colors">
-                      {q}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-white/85 text-sm">
+                {displayAge && displayAge > 0 && <span className="font-medium">{displayAge} yrs</span>}
+                {zodiac && <><span className="text-white/50">·</span><span>{zodiac}</span></>}
+                {genderLabel(user.gender) && genderLabel(user.gender) !== 'Unknown' && <><span className="text-white/50">·</span><span>{genderLabel(user.gender)}</span></>}
+                {user.city && (
+                  <><span className="text-white/50">·</span>
+                  <span className="flex items-center gap-1"><MapPin size={11} />{user.city}</span></>
+                )}
+              </div>
+              {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
+                <p className="text-white/55 text-xs mt-0.5">Last seen {timeAgo(user.lastAccess)}</p>
               )}
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => sendMessage()}
-                disabled={sending}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-60 shadow-sm">
-                <Send size={16} /> {sending ? 'Sending…' : 'Chat Now'}
-              </button>
-              <button onClick={toggleLike}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${liked ? 'bg-brand-500 text-white shadow-md' : 'bg-brand-50 text-brand-500 hover:bg-brand-100'}`}>
-                <Heart size={18} className={liked ? 'fill-white' : ''} />
-                {liked ? 'Liked' : 'Like'}
-              </button>
-              <Link href={`/chat/${user.id}`}
-                className="flex items-center justify-center px-4 py-3 rounded-xl font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all" title="Open full chat">
-                <MessageCircle size={18} />
-              </Link>
-              <Link href={`/gifts?toId=${user.id}`}
-                className="flex items-center justify-center px-4 py-3 rounded-xl font-semibold bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all" title="Send a gift">
-                <Gift size={18} />
-              </Link>
-            </div>
+            {/* Message compose area — inside photo */}
+            {!isOwnProfile && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl px-3 py-2.5 shadow-lg">
+                    <input
+                      ref={msgRef}
+                      type="text"
+                      value={msgText}
+                      onChange={e => setMsgText(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                      placeholder={`Message ${user.name}…`}
+                      className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400 min-w-0"
+                    />
+                    <button type="button" onClick={() => setShowQuick(p => !p)}
+                      className="text-gray-400 hover:text-brand-500 transition-colors p-0.5 flex-shrink-0">
+                      <Smile size={17} />
+                    </button>
+                    <button type="button" onClick={() => sendMessage()} disabled={sending}
+                      className="bg-brand-500 hover:bg-brand-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 flex-shrink-0 disabled:opacity-60">
+                      <Send size={13} /> {sending ? '…' : 'Send'}
+                    </button>
+                  </div>
+                  {showQuick && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
+                      {QUICK_MESSAGES.map((q, i) => (
+                        <button key={i} onClick={() => { setMsgText(q); setShowQuick(false); msgRef.current?.focus() }}
+                          className="w-full text-left text-sm px-4 py-2.5 hover:bg-brand-50 hover:text-brand-700 border-b border-gray-50 last:border-0 transition-colors">
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-            {isMatch && (
-              <div className="flex items-center justify-center gap-2 py-2 bg-brand-50 rounded-xl text-brand-600 text-sm font-medium">
-                <Heart size={14} className="fill-brand-500 text-brand-500" /> You matched with {user.name}! Start chatting 💬
+                {/* Action row */}
+                <div className="flex gap-2">
+                  <button onClick={() => sendMessage()} disabled={sending}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-60 shadow-md">
+                    <MessageCircle size={15} /> Chat Now
+                  </button>
+                  <button onClick={toggleLike}
+                    className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md ${liked ? 'bg-brand-500 text-white' : 'bg-white/90 text-brand-500 hover:bg-brand-500 hover:text-white'}`}>
+                    <Heart size={15} className={liked ? 'fill-white' : ''} />
+                    {liked ? 'Liked' : 'Like'}
+                  </button>
+                  <Link href={`/gifts?toId=${user.id}`}
+                    className="flex items-center justify-center px-3.5 py-2.5 rounded-xl font-semibold bg-amber-500/90 text-white hover:bg-amber-500 transition-all shadow-md" title="Send a gift">
+                    <Gift size={15} />
+                  </Link>
+                </div>
               </div>
             )}
 
-            {/* Shared interests teaser */}
+            {/* Own profile CTA */}
+            {isOwnProfile && (!user.name || !user.bio) && (
+              <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 flex items-center gap-3">
+                <Edit3 size={16} className="text-white flex-shrink-0" />
+                <p className="text-white/90 text-sm flex-1">Complete your profile to get more matches</p>
+                <Link href="/settings" className="bg-white text-brand-600 text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0">Edit</Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action footer — bio + match + block/report */}
+        {!isOwnProfile && (
+          <div className="px-4 py-3">
+            {user.bio && (
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
+            )}
+            {isMatch && (
+              <div className="flex items-center justify-center gap-2 py-2 mb-2 bg-brand-50 rounded-xl text-brand-600 text-sm font-medium">
+                <Heart size={14} className="fill-brand-500 text-brand-500" /> You matched with {user.name}! 💬
+              </div>
+            )}
             {sharedInterestDetails.length > 0 && (
-              <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2.5 text-sm">
+              <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2 text-sm mb-2">
                 <span className="text-green-600 font-semibold text-xs uppercase tracking-wide flex-shrink-0">You both love</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {sharedInterestDetails.slice(0, 5).map(i => (
+                <div className="flex flex-wrap gap-1">
+                  {sharedInterestDetails.slice(0, 4).map(i => (
                     <span key={i.id} className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ background: i.color }}>
                       {i.emoji} {i.label}
                     </span>
                   ))}
-                  {sharedInterestDetails.length > 5 && <span className="text-xs text-green-600 font-medium">+{sharedInterestDetails.length - 5} more</span>}
+                  {sharedInterestDetails.length > 4 && <span className="text-xs text-green-600 font-medium">+{sharedInterestDetails.length - 4}</span>}
                 </div>
               </div>
             )}
-
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-1 pt-1 border-t border-gray-100">
               <button onClick={blockUser}
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50">
-                <ShieldOff size={13} /> Block
+                <ShieldOff size={12} /> Block
               </button>
               <button onClick={() => setShowReportModal(true)}
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-orange-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-orange-50">
-                <Flag size={13} /> Report
+                <Flag size={12} /> Report
               </button>
             </div>
           </div>
         )}
+        {isOwnProfile && user.bio && (
+          <div className="px-5 py-3 border-t border-gray-100">
+            <p className="text-gray-600 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
+          </div>
+        )}
       </div>
 
-      {/* Complete profile CTA — own profile with sparse data */}
-      {isOwnProfile && (!user.name || !user.bio || (!interestDetails.length && !user.city)) && (
-        <div className="card p-5 mb-4 border-2 border-dashed border-brand-200 bg-brand-50/30">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center flex-shrink-0">
-              <Edit3 size={18} className="text-brand-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-1">Complete your profile</h3>
-              <p className="text-sm text-gray-500 mb-3">Profiles with a bio and interests get 3x more matches. Add your details to stand out!</p>
-              <Link href="/settings" className="inline-flex items-center gap-2 btn-primary text-sm py-2 px-4">
-                <Edit3 size={14} /> Edit Profile
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Looking For + About Me — two column on md */}
+      {/* Looking For + Passions */}
       {(user.looking || user.userExtended?.relationship || user.userExtended?.idealDate) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 px-0 sm:px-0">
           {user.looking && (
-            <div className="card p-5">
-              <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <span className="text-lg">💞</span> I'm Looking For
+            <div className="card p-4">
+              <h2 className="font-semibold text-gray-900 mb-2.5 flex items-center gap-2 text-sm">
+                <span className="text-base">💞</span> I'm Looking For
               </h2>
-              <div className="space-y-2 text-sm text-gray-700">
+              <div className="space-y-1.5 text-sm text-gray-700">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400 text-xs w-16 flex-shrink-0">Gender</span>
                   <span className="font-medium">{lookingForLabel(user.looking)}</span>
@@ -365,12 +374,12 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                 {user.ageMin && user.ageMax && (
                   <div className="flex items-center gap-2">
                     <span className="text-gray-400 text-xs w-16 flex-shrink-0">Age</span>
-                    <span className="font-medium">{user.ageMin}–{user.ageMax} years</span>
+                    <span className="font-medium">{user.ageMin}–{user.ageMax} yrs</span>
                   </div>
                 )}
                 {user.userExtended?.idealDate && (
                   <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-gray-400 text-xs mb-1">My ideal date</p>
+                    <p className="text-gray-400 text-xs mb-1">Ideal date</p>
                     <p className="text-gray-700 leading-relaxed">{user.userExtended.idealDate}</p>
                   </div>
                 )}
@@ -378,9 +387,9 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             </div>
           )}
           {user.userExtended?.passions && (
-            <div className="card p-5">
-              <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <span className="text-lg">🔥</span> My Passions
+            <div className="card p-4">
+              <h2 className="font-semibold text-gray-900 mb-2.5 flex items-center gap-2 text-sm">
+                <span className="text-base">🔥</span> My Passions
               </h2>
               <p className="text-gray-700 text-sm leading-relaxed">{user.userExtended.passions}</p>
             </div>
@@ -388,39 +397,38 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         </div>
       )}
 
-      {/* Interests section */}
+      {/* Interests */}
       {interestDetails.length > 0 && (
-        <div className="card p-5 mb-4">
-          <h2 className="font-semibold text-gray-900 mb-3">My Interests</h2>
-          <div className="flex flex-wrap gap-2">
+        <div className="card p-4 mb-3">
+          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">My Interests</h2>
+          <div className="flex flex-wrap gap-1.5">
             {interestDetails.map(interest => {
               const isShared = sharedInterestIds.includes(interest.id)
               return (
                 <div
                   key={interest.id}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-medium shadow-sm transition-transform ${isShared && !isOwnProfile ? 'ring-2 ring-offset-1 ring-white scale-105' : ''}`}
-                  style={{ background: interest.color }}
-                  title={isShared && !isOwnProfile ? 'You both have this interest!' : ''}>
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-white text-xs font-medium shadow-sm ${isShared && !isOwnProfile ? 'ring-2 ring-offset-1 ring-white scale-105' : ''}`}
+                  style={{ background: interest.color }}>
                   <span>{interest.emoji}</span>
                   <span>{interest.label}</span>
-                  {isShared && !isOwnProfile && <span className="text-white/80 text-xs">✓</span>}
+                  {isShared && !isOwnProfile && <span className="text-white/80">✓</span>}
                 </div>
               )
             })}
           </div>
           {sharedInterestDetails.length > 0 && !isOwnProfile && (
             <p className="text-xs text-green-600 mt-2 font-medium">
-              ✓ You share {sharedInterestDetails.length} interest{sharedInterestDetails.length !== 1 ? 's' : ''}
+              ✓ {sharedInterestDetails.length} shared interest{sharedInterestDetails.length !== 1 ? 's' : ''}
             </p>
           )}
         </div>
       )}
 
-      {/* Details grid */}
+      {/* About Me details grid */}
       {user.userExtended && Object.values(user.userExtended).some((v: any) => v && v !== '' && v !== '[]') && (
-        <div className="card p-5 mb-4">
-          <h2 className="font-semibold text-gray-900 mb-3">About Me</h2>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="card p-4 mb-3">
+          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">About Me</h2>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
             {zodiac && (
               <div>
                 <p className="text-gray-400 text-xs">Zodiac</p>
@@ -456,14 +464,14 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       )}
 
       {/* Photo grid */}
-      {allPhotos.length > 0 && (
-        <div className="card p-5 mb-4">
-          <h2 className="font-semibold text-gray-900 mb-3">Photos ({allPhotos.length})</h2>
-          <div className="grid grid-cols-3 gap-2">
+      {allPhotos.length > 1 && (
+        <div className="card p-4 mb-3">
+          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">Photos ({allPhotos.length})</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {allPhotos.map((p: any, i: number) => (
               <button key={p.id || i} onClick={() => setActivePhotoIdx(i)}
                 className="aspect-square rounded-xl overflow-hidden hover:opacity-90 transition-opacity">
-                <img src={getPhotoUrl(p.thumb || p.photo)} alt="" className="w-full h-full object-cover" />
+                <img src={getPhotoUrl(p.thumb || p.photo)} alt="" className="w-full h-full object-cover" loading="lazy" />
               </button>
             ))}
           </div>
@@ -478,43 +486,52 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             <X size={20} />
           </button>
           {allPhotos.length > 1 && <>
-            <button className="absolute left-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 z-10"
+            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 z-10"
               onClick={e => { e.stopPropagation(); navPhoto(-1) }}>
               <ChevronLeft size={20} />
             </button>
-            <button className="absolute right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 z-10"
+            <button className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 z-10"
               onClick={e => { e.stopPropagation(); navPhoto(1) }}>
               <ChevronRight size={20} />
             </button>
-            <div className="absolute bottom-6 flex gap-1.5">
-              {allPhotos.map((_, i) => (
-                <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === activePhotoIdx ? 'bg-white' : 'bg-white/40'}`} />
-              ))}
-            </div>
           </>}
-          <img src={getPhotoUrl(allPhotos[activePhotoIdx].photo)} alt="" className="max-w-full max-h-[85vh] rounded-xl object-contain"
-            onClick={e => e.stopPropagation()} />
+          <img
+            src={getPhotoUrl(allPhotos[activePhotoIdx].photo)}
+            alt=""
+            className="max-w-[92vw] max-h-[90vh] object-contain rounded-xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            {activePhotoIdx + 1} / {allPhotos.length}
+          </div>
         </div>
       )}
 
-      {/* Report modal */}
+      {/* Report Modal */}
       {showReportModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowReportModal(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 mb-1">Report {user.name}</h3>
-            <p className="text-sm text-gray-500 mb-4">Help us keep the community safe. Select a reason:</p>
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {['Fake profile', 'Harassment', 'Spam', 'Inappropriate content', 'Scam', 'Other'].map(r => (
-                <button key={r} onClick={() => setReportReason(r)}
-                  className={`text-sm py-2 px-3 rounded-xl border-2 text-left transition-all ${reportReason === r ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                  {r}
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowReportModal(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Flag size={16} className="text-orange-500" /> Report {user.name}
+              </h3>
+              <button onClick={() => setShowReportModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-gray-500 text-sm mb-3">Why are you reporting this profile?</p>
+            <div className="space-y-2 mb-4">
+              {REPORT_REASONS.map(reason => (
+                <button key={reason} onClick={() => setReportReason(reason)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm border-2 transition-all font-medium ${reportReason === reason ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
+                  {reason}
                 </button>
               ))}
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowReportModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50">Cancel</button>
-              <button onClick={submitReport} disabled={!reportReason} className="flex-1 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50">Submit Report</button>
-            </div>
+            <button onClick={submitReport} disabled={!reportReason}
+              className="w-full py-3 rounded-xl bg-brand-500 text-white font-semibold text-sm disabled:opacity-40 hover:bg-brand-600 transition-colors">
+              Submit Report
+            </button>
           </div>
         </div>
       )}

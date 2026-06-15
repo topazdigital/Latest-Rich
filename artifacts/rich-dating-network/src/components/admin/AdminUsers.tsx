@@ -8,6 +8,7 @@ interface AdminUser {
   id: number; name: string; email: string; city: string; country: string
   gender: number; age: number; fake: number; admin: number; banned: number
   premium: number; credits: number; verified: number; created: number; photo: string
+  lastAccess: string | null
 }
 
 export default function AdminUsers() {
@@ -91,9 +92,9 @@ export default function AdminUsers() {
                 <tr className="text-gray-400 text-left">
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
+                  <th className="px-4 py-3">Last Active</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Credits</th>
-                  <th className="px-4 py-3">Premium</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -109,7 +110,17 @@ export default function AdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-300">{u.city}, {u.country}</td>
+                    <td className="px-4 py-3 text-gray-300 text-xs">{u.city}{u.city && u.country ? ', ' : ''}{u.country}</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                      {u.lastAccess && Number(u.lastAccess) > 0 ? (() => {
+                        const diff = Math.floor(Date.now() / 1000) - Number(u.lastAccess)
+                        if (diff < 60) return <span className="text-green-400 font-medium">Online now</span>
+                        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+                        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+                        if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+                        return new Date(Number(u.lastAccess) * 1000).toLocaleDateString()
+                      })() : <span className="text-gray-700">Never</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1 items-center">
                         {u.fake === 1 ? (

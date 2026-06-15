@@ -109,7 +109,7 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
 
     let users = await db.select().from(usersTable)
       .where(filterCondition)
-      .orderBy(desc(usersTable.id))
+      .orderBy(sql`CAST(COALESCE(${usersTable.lastAccess}, '0') AS ${sql.raw(isMysql ? 'SIGNED' : 'BIGINT')}) DESC`)
       .limit(limit)
       .offset(offset)
 
@@ -515,8 +515,20 @@ router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
 // Reported users
 router.get("/reports", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const reports = await db.select().from(reportedUsersTable).orderBy(desc(reportedUsersTable.id)).limit(100)
+    const reports = await db.select().from(reportedUsersTable).orderBy(desc(reportedUsersTable.id)).limit(200)
     res.json(reports)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Dismiss a report
+router.delete("/reports/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    await db.delete(reportedUsersTable).where(eq(reportedUsersTable.id, id))
+    res.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })

@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { messagesTable, usersTable, siteConfigTable } from "@workspace/db/schema"
+import { messagesTable, usersTable, siteConfigTable, activityTable } from "@workspace/db/schema"
 import { eq, and, or, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
@@ -122,6 +122,17 @@ router.post("/", requireAuth, async (req, res) => {
       .limit(1)
 
     const [updatedSender] = await db.select({ credits: usersTable.credits }).from(usersTable).where(eq(usersTable.id, myId)).limit(1)
+
+    // Log activity for admin
+    const [recipient] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
+    db.insert(activityTable).values({
+      type: "message",
+      userId: myId,
+      title: "Message sent",
+      message: `${sender.name} → ${recipient?.name || 'Unknown'}: ${message.trim().slice(0, 80)}`,
+      time: msgTime,
+    }).catch(() => {})
+
     res.json({ ...msg, credits: updatedSender?.credits })
   } catch (err) {
     console.error(err)
