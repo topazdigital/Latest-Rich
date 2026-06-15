@@ -220,9 +220,10 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb } = req.body
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
-    const [user] = await db.insert(usersTable).values({
+    const fakeEmail = `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`
+    await db.insert(usersTable).values({
       name,
-      email: `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`,
+      email: fakeEmail,
       password: "fake_user_no_login",
       gender: parseInt(gender) || 2,
       looking: parseInt(looking) || 1,
@@ -235,7 +236,8 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       photoThumb: photoThumb || "",
       fake: 1, verified: 1, credits: 2000,
       created: now(), lastAccess: String(now()),
-    }).returning()
+    })
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, fakeEmail)).limit(1)
     await db.insert(activityTable).values({
       type: "admin", userId: req.userId,
       title: "Fake user created", message: `${name} (id: ${user.id})`, time: now()
@@ -300,7 +302,7 @@ router.put("/config", requireAuth, requireAdmin, async (req, res) => {
     const updates = req.body as Record<string, string>
     for (const [key, value] of Object.entries(updates)) {
       await db.insert(siteConfigTable).values({ key, value: String(value) })
-        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: String(value) } })
+        .onDuplicateKeyUpdate({ set: { value: String(value) } })
     }
     res.json({ success: true })
   } catch (err: unknown) {
@@ -324,7 +326,12 @@ router.post("/fake-messages", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { message } = req.body
     if (!message?.trim()) { res.status(400).json({ error: "Message is required" }); return }
-    const [msg] = await db.insert(fakeMessageTemplatesTable).values({ message: message.trim(), active: 1 }).returning()
+    const msgTrimmed = message.trim()
+    await db.insert(fakeMessageTemplatesTable).values({ message: msgTrimmed, active: 1 })
+    const [msg] = await db.select().from(fakeMessageTemplatesTable)
+      .where(eq(fakeMessageTemplatesTable.message, msgTrimmed))
+      .orderBy(desc(fakeMessageTemplatesTable.id))
+      .limit(1)
     res.json(msg)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
@@ -527,7 +534,7 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
           photoThumb: u.photoThumb || "",
           fake: 1, verified: 1, credits: 2000,
           created: now(), lastAccess: String(now()),
-        }).onConflictDoNothing()
+        })
         imported++
       } catch { /* skip */ }
     }

@@ -74,13 +74,17 @@ router.post("/activate", requireAuth, async (req, res) => {
     const newCredits = (user.credits || 0) - config.credits
     await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, req.userId!))
 
-    const [boost] = await db.insert(profileBoostsTable).values({
+    await db.insert(profileBoostsTable).values({
       userId: req.userId!,
       startTime,
       endTime,
       creditsSpent: config.credits,
       active: 1,
-    }).returning()
+    })
+    const [boost] = await db.select().from(profileBoostsTable)
+      .where(and(eq(profileBoostsTable.userId, req.userId!), eq(profileBoostsTable.startTime, startTime)))
+      .orderBy(desc(profileBoostsTable.id))
+      .limit(1)
 
     await db.insert(notificationsTable).values({
       userId: req.userId!,

@@ -4,7 +4,7 @@ import { Server } from "http"
 import { verifyToken } from "./jwt"
 import { db } from "@workspace/db"
 import { messagesTable, siteConfigTable, usersTable } from "@workspace/db/schema"
-import { eq, and } from "drizzle-orm"
+import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
 
 function now() { return Math.floor(Date.now() / 1000) }
@@ -124,9 +124,14 @@ async function handleMessage(fromUserId: number, msg: any) {
         send(fromUserId, { type: "credits_updated", credits: (fromUser.credits || 0) - creditCost })
       }
 
-      const [savedMsg] = await db.insert(messagesTable).values({
-        u1: fromUserId, u2: toUserId, message: message.trim(), time: now(), read: 0,
-      }).returning()
+      const wsMsgTime = now()
+      await db.insert(messagesTable).values({
+        u1: fromUserId, u2: toUserId, message: message.trim(), time: wsMsgTime, read: 0,
+      })
+      const [savedMsg] = await db.select().from(messagesTable)
+        .where(and(eq(messagesTable.u1, fromUserId), eq(messagesTable.u2, toUserId), eq(messagesTable.time, wsMsgTime)))
+        .orderBy(desc(messagesTable.id))
+        .limit(1)
 
       send(fromUserId, { type: "message_sent", tempId, message: savedMsg })
       send(toUserId, { type: "new_message", message: savedMsg, from: { id: fromUser.id, name: fromUser.name, photo: fromUser.photoThumb || fromUser.photo } })

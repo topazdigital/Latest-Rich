@@ -26,11 +26,11 @@ async function getPackagesFromConfig(): Promise<typeof DEFAULT_PACKAGES> {
       if (!name) continue
       packages.push({
         id: i,
-        name,
+        name: String(name),
         days: parseInt(map.get(`premium_pkg_${i}_days`) || "30"),
         price: parseFloat(map.get(`premium_pkg_${i}_price`) || "9.99"),
         popular: parseInt(map.get(`premium_pkg_${i}_popular`) || "0"),
-        description: map.get(`premium_pkg_${i}_description`) || "",
+        description: String(map.get(`premium_pkg_${i}_description`) || ""),
         active: parseInt(map.get(`premium_pkg_${i}_active`) || "1"),
       })
     }

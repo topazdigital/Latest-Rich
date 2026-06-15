@@ -136,7 +136,7 @@ router.post("/register", async (req, res) => {
     const age = calcAge(birthday || "")
     const registrationCredits = parseInt(await getConfig("registration_credits") || "50")
 
-    const [user] = await db.insert(usersTable).values({
+    await db.insert(usersTable).values({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       username: cleanUsername || null,
@@ -155,7 +155,8 @@ router.post("/register", async (req, res) => {
       superlike: 3,
       emailVerified: 0,
       welcomeShown: 0,
-    }).returning()
+    })
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim())).limit(1)
     await db.insert(userExtendedTable).values({ userId: user.id })
     await db.insert(activityTable).values({
       type: "register", userId: user.id,

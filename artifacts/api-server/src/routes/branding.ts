@@ -37,7 +37,7 @@ router.post("/upload/:type", requireAuth, requireAdmin, upload.single("file"), a
     const filename = req.file.filename
     const url = `/api/branding/file/${filename}`
     await db.insert(siteConfigTable).values({ key: `branding_${type}`, value: url })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: url } })
+      .onDuplicateKeyUpdate({ set: { value: url } })
     res.json({ url })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

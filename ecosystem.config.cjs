@@ -7,7 +7,6 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 8080,
-        DATABASE_URL: "mysql://admin_testdating:EEhm0XRgtewBSUBditW7@localhost:3306/admin_testdating",
       },
       max_memory_restart: "512M",
       restart_delay: 3000,

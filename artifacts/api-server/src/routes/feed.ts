@@ -23,12 +23,17 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const { content, photo } = req.body
     if (!content?.trim()) { res.status(400).json({ error: "Content required" }); return }
-    const [post] = await db.insert(feedTable).values({
+    const postTime = now()
+    await db.insert(feedTable).values({
       userId: req.userId!,
       content: content.trim(),
       photo: photo || "",
-      time: now(),
-    }).returning()
+      time: postTime,
+    })
+    const [post] = await db.select().from(feedTable)
+      .where(and(eq(feedTable.userId, req.userId!), eq(feedTable.time, postTime)))
+      .orderBy(desc(feedTable.id))
+      .limit(1)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     const { password, ...safeUser } = user || {}
     res.json({ post: { ...post, user: safeUser, _count: { likes: 0, comments: 0 } } })

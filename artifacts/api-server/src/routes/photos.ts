@@ -85,7 +85,7 @@ router.post("/upload", requireAuth, upload.single("photo"), async (req, res) => 
     const approved = photoModeration === "1" ? 0 : 1
 
     const filename = req.file.filename
-    const [photo] = await db.insert(photosTable).values({
+    await db.insert(photosTable).values({
       userId: req.userId!,
       photo: filename,
       thumb: filename,
@@ -93,7 +93,10 @@ router.post("/upload", requireAuth, upload.single("photo"), async (req, res) => 
       flagged: flagged ? 1 : 0,
       flagReason: reason,
       created: now(),
-    }).returning()
+    })
+    const [photo] = await db.select().from(photosTable)
+      .where(eq(photosTable.photo, filename))
+      .limit(1)
 
     const [userPhotos] = await db.select().from(photosTable)
       .where(and(eq(photosTable.userId, req.userId!), eq(photosTable.main, 1)))
@@ -156,7 +159,7 @@ router.put("/admin/approve/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!me || me.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
+    if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
     await db.update(photosTable).set({ approved: 1 }).where(eq(photosTable.id, id))
     res.json({ success: true })
   } catch { res.status(500).json({ error: "Failed" }) }
@@ -166,7 +169,7 @@ router.delete("/admin/reject/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!me || me.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
+    if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
     const [photo] = await db.select().from(photosTable).where(eq(photosTable.id, id)).limit(1)
     if (photo) {
       await db.delete(photosTable).where(eq(photosTable.id, id))
@@ -179,7 +182,7 @@ router.delete("/admin/reject/:id", requireAuth, async (req, res) => {
 router.get("/admin/pending", requireAuth, async (req, res) => {
   try {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!me || me.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
+    if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
     const photos = await db.select({
       photo: photosTable,
       user: { id: usersTable.id, name: usersTable.name }

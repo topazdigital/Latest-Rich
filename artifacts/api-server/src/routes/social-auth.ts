@@ -38,9 +38,10 @@ router.post("/google", async (req, res) => {
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
 
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
+      const googleEmail = email.toLowerCase()
+      await db.insert(usersTable).values({
         name: name || email.split("@")[0],
-        email: email.toLowerCase(),
+        email: googleEmail,
         password: `google_${googleId}`,
         photo: picture || "",
         photoThumb: picture || "",
@@ -52,7 +53,8 @@ router.post("/google", async (req, res) => {
         created: now(),
         lastAccess: String(now()),
         online: 1,
-      }).returning()
+      })
+      const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, googleEmail)).limit(1)
       user = newUser
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Google registration", message: `${name} joined via Google`, time: now() }).catch(() => {})
@@ -99,9 +101,10 @@ router.post("/facebook", async (req, res) => {
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
 
     if (!user) {
-      const [newUser] = await db.insert(usersTable).values({
+      const fbEmail = email.toLowerCase()
+      await db.insert(usersTable).values({
         name: profile.name || email.split("@")[0],
-        email: email.toLowerCase(),
+        email: fbEmail,
         password: `facebook_${profile.id}`,
         photo: picture,
         photoThumb: picture,
@@ -113,7 +116,8 @@ router.post("/facebook", async (req, res) => {
         created: now(),
         lastAccess: String(now()),
         online: 1,
-      }).returning()
+      })
+      const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, fbEmail)).limit(1)
       user = newUser
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Facebook registration", message: `${profile.name} joined via Facebook`, time: now() }).catch(() => {})

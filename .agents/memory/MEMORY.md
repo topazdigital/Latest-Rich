@@ -1,0 +1,1 @@
+- [MySQL migration patterns](mysql-migration.md) — all MySQL-incompatible Drizzle patterns found and fixed across the codebase

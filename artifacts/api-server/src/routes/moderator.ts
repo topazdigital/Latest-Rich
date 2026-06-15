@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, messagesTable, chatLocksTable, activityTable, pushSubscriptionsTable } from "@workspace/db/schema"
-import { eq, sql, and, or } from "drizzle-orm"
+import { eq, sql, and, or, desc, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -88,7 +88,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       const modIds = [...new Set(locks.map(l => l.moderatorId))]
       const mods = await db.select({ id: usersTable.id, name: usersTable.name })
         .from(usersTable)
-        .where(sql`${usersTable.id} = ANY(ARRAY[${sql.join(modIds.map(id => sql`${id}`), sql`, `)}]::int[])`)
+        .where(inArray(usersTable.id, modIds.filter((id): id is number => id !== null && id !== undefined)))
       mods.forEach(m => lockedByMods.set(m.id, { name: m.name }))
     }
 
@@ -110,10 +110,10 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
         lastTime: Number(r.last_time) || 0,
         msgCount: Number(r.msg_count) || 0,
         lock: lock ? {
-          moderatorId: lock.moderatorId,
-          moderatorName: lockedByMods.get(lock.moderatorId)?.name || 'Unknown',
-          lockedAt: lock.lockedAt || 0,
-          expiresAt: lock.expiresAt || 0,
+          moderatorId: (lock as any).moderatorId,
+          moderatorName: lockedByMods.get((lock as any).moderatorId)?.name || 'Unknown',
+          lockedAt: (lock as any).lockedAt || 0,
+          expiresAt: (lock as any).expiresAt || 0,
         } : null,
       }
     })
@@ -140,8 +140,7 @@ router.post("/conversations/:key/lock", requireAuth, requireModerator, async (re
       moderatorId: req.userId,
       lockedAt: now(),
       expiresAt,
-    }).onConflictDoUpdate({
-      target: chatLocksTable.conversationKey,
+    }).onDuplicateKeyUpdate({
       set: { moderatorId: req.userId, lockedAt: now(), expiresAt },
     })
     res.json({ success: true, expiresAt })
@@ -229,13 +228,18 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     const realUser = users.find(u => u.fake !== 1)
     if (!fakeUser || !realUser) { res.status(400).json({ error: "Could not identify fake/real users" }); return }
 
-    const [msg] = await db.insert(messagesTable).values({
+    const msgTime = now()
+    await db.insert(messagesTable).values({
       u1: fakeUser.id,
       u2: realUser.id,
       message: message.trim(),
-      time: now(),
+      time: msgTime,
       read: 0,
-    }).returning()
+    })
+    const [msg] = await db.select().from(messagesTable)
+      .where(and(eq(messagesTable.u1, fakeUser.id), eq(messagesTable.u2, realUser.id), eq(messagesTable.time, msgTime)))
+      .orderBy(desc(messagesTable.id))
+      .limit(1)
 
     await db.update(chatLocksTable).set({ expiresAt: now() + LOCK_DURATION }).where(eq(chatLocksTable.conversationKey, key))
 
@@ -277,8 +281,7 @@ router.post("/push/subscribe", requireAuth, requireModerator, async (req: any, r
       p256dh: keys.p256dh,
       auth: keys.auth,
       createdAt: now(),
-    }).onConflictDoUpdate({
-      target: pushSubscriptionsTable.endpoint,
+    }).onDuplicateKeyUpdate({
       set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() },
     })
     res.json({ success: true })

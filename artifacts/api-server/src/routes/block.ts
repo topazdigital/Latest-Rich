@@ -11,7 +11,9 @@ function now() { return Math.floor(Date.now() / 1000) }
 router.post("/block/:id", requireAuth, async (req, res) => {
   try {
     const blockedId = parseInt(req.params.id as string)
-    await db.insert(blockedUsersTable).values({ userId: req.userId!, blockedId, time: now() }).onConflictDoNothing()
+    try {
+      await db.insert(blockedUsersTable).values({ userId: req.userId!, blockedId, time: now() })
+    } catch { /* ignore duplicate */ }
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

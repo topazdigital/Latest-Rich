@@ -114,14 +114,19 @@ router.post("/trigger", async (req, res) => {
       .set({ dismissed: 1 })
       .where(and(eq(fakeVideoCallsTable.realUserId, realUserId), eq(fakeVideoCallsTable.answered, 0), eq(fakeVideoCallsTable.dismissed, 0)))
 
-    const [call] = await db.insert(fakeVideoCallsTable).values({
+    const callTriggeredAt = now()
+    await db.insert(fakeVideoCallsTable).values({
       fakeUserId: parseInt(fakeUserId),
       realUserId: parseInt(realUserId),
       videoUrl: videoUrl || "",
-      triggeredAt: now(),
+      triggeredAt: callTriggeredAt,
       answered: 0,
       dismissed: 0,
-    }).returning()
+    })
+    const [call] = await db.select().from(fakeVideoCallsTable)
+      .where(and(eq(fakeVideoCallsTable.fakeUserId, parseInt(fakeUserId)), eq(fakeVideoCallsTable.triggeredAt, callTriggeredAt)))
+      .orderBy(desc(fakeVideoCallsTable.id))
+      .limit(1)
 
     res.json({ success: true, callId: call.id })
   } catch (err) {

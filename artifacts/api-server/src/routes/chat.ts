@@ -112,9 +112,14 @@ router.post("/", requireAuth, async (req, res) => {
       }
     }
 
-    const [msg] = await db.insert(messagesTable).values({
-      u1: myId, u2: parseInt(toUserId), message: message.trim(), time: now(), read: 0,
-    }).returning()
+    const msgTime = now()
+    await db.insert(messagesTable).values({
+      u1: myId, u2: parseInt(toUserId), message: message.trim(), time: msgTime, read: 0,
+    })
+    const [msg] = await db.select().from(messagesTable)
+      .where(and(eq(messagesTable.u1, myId), eq(messagesTable.u2, parseInt(toUserId)), eq(messagesTable.time, msgTime)))
+      .orderBy(desc(messagesTable.id))
+      .limit(1)
 
     const [updatedSender] = await db.select({ credits: usersTable.credits }).from(usersTable).where(eq(usersTable.id, myId)).limit(1)
     res.json({ ...msg, credits: updatedSender?.credits })

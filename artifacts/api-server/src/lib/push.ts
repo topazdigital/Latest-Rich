@@ -1,7 +1,7 @@
 import webpush from "web-push"
 import { db } from "@workspace/db"
 import { pushSubscriptionsTable, siteConfigTable, usersTable } from "@workspace/db/schema"
-import { eq, sql } from "drizzle-orm"
+import { eq, sql, inArray } from "drizzle-orm"
 import { logger } from "./logger"
 
 let vapidInitialized = false
@@ -18,9 +18,9 @@ async function getOrCreateVapidKeys(): Promise<{ publicKey: string; privateKey: 
     const keys = webpush.generateVAPIDKeys()
 
     await db.insert(siteConfigTable).values({ key: "vapid_public_key", value: keys.publicKey })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.publicKey } })
+      .onDuplicateKeyUpdate({ set: { value: keys.publicKey } })
     await db.insert(siteConfigTable).values({ key: "vapid_private_key", value: keys.privateKey })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.privateKey } })
+      .onDuplicateKeyUpdate({ set: { value: keys.privateKey } })
 
     logger.info("Generated new VAPID keys")
     return keys
@@ -66,7 +66,7 @@ export async function sendPushToModerators(payload: {
 
     const modIds = [...new Set(mods.map(m => m.userId))]
     const subs = await db.select().from(pushSubscriptionsTable)
-      .where(sql`${pushSubscriptionsTable.userId} = ANY(ARRAY[${sql.join(modIds.map(id => sql`${id}`), sql`, `)}]::int[])`)
+      .where(inArray(pushSubscriptionsTable.userId, modIds.filter((id): id is number => id !== null && id !== undefined)))
 
     const message = JSON.stringify({
       title: payload.title,

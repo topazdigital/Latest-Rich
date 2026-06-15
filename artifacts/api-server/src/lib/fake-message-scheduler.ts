@@ -73,7 +73,7 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       eq(usersTable.fake, 1),
       eq(usersTable.banned, 0),
       inArray(usersTable.gender, genderFilter),
-      ...(usedFakeUserIds.length > 0 ? [notInArray(usersTable.id, usedFakeUserIds)] : [])
+      ...(usedFakeUserIds.length > 0 ? [notInArray(usersTable.id, usedFakeUserIds as number[])] : [])
     ))
     .limit(30)
 
@@ -116,11 +116,13 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       time: now(),
     })
 
-    await db.insert(likesTable).values({
-      userId: faker.id,
-      targetId: realUser.id,
-      created: msgTime,
-    }).onConflictDoNothing()
+    try {
+      await db.insert(likesTable).values({
+        userId: faker.id,
+        targetId: realUser.id,
+        created: msgTime,
+      })
+    } catch { /* ignore duplicate like */ }
 
     try {
       const { sendNewMessageEmail } = await import("./mailer")

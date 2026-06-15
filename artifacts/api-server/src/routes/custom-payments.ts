@@ -68,7 +68,8 @@ router.post("/submit", requireAuth, async (req, res) => {
       pkg = pp; premiumDays = pp.days
     }
 
-    const [order] = await db.insert(customPaymentOrdersTable).values({
+    const orderTime = now()
+    await db.insert(customPaymentOrdersTable).values({
       userId: req.userId!,
       gatewayId: parseInt(gatewayId),
       type,
@@ -77,8 +78,12 @@ router.post("/submit", requireAuth, async (req, res) => {
       currency: currency || "USD",
       proof,
       status: "pending",
-      time: now(),
-    }).returning()
+      time: orderTime,
+    })
+    const [order] = await db.select().from(customPaymentOrdersTable)
+      .where(and(eq(customPaymentOrdersTable.userId, req.userId!), eq(customPaymentOrdersTable.time, orderTime)))
+      .orderBy(desc(customPaymentOrdersTable.id))
+      .limit(1)
 
     res.json({ success: true, orderId: order.id, reviewTime: gw.reviewTime })
   } catch (err: any) {
@@ -118,14 +123,19 @@ router.post("/admin/gateways", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, logo, description, status, reviewTime, externalUrl, country, type, proofLabel } = req.body
     if (!name) { res.status(400).json({ error: "Name required" }); return }
-    const [gw] = await db.insert(customPaymentsTable).values({
+    const gwCreatedAt = now()
+    await db.insert(customPaymentsTable).values({
       name, logo: logo || "", description: description || "",
       status: parseInt(status ?? 1), reviewTime: parseInt(reviewTime ?? 24),
       externalUrl: externalUrl || "", country: country || "",
       type: parseInt(type ?? 1),
       proofLabel: proofLabel || "Transaction ID / Screenshot",
-      createdAt: now(),
-    }).returning()
+      createdAt: gwCreatedAt,
+    })
+    const [gw] = await db.select().from(customPaymentsTable)
+      .where(eq(customPaymentsTable.name, name))
+      .orderBy(desc(customPaymentsTable.id))
+      .limit(1)
     res.json(gw)
   } catch (err: any) {
     res.status(500).json({ error: err.message })
