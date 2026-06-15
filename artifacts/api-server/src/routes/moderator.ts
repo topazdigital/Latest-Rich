@@ -140,7 +140,8 @@ router.post("/conversations/:key/lock", requireAuth, requireModerator, async (re
       moderatorId: req.userId,
       lockedAt: now(),
       expiresAt,
-    }).onDuplicateKeyUpdate({
+    }).onConflictDoUpdate({
+      target: chatLocksTable.conversationKey,
       set: { moderatorId: req.userId, lockedAt: now(), expiresAt },
     })
     res.json({ success: true, expiresAt })
@@ -281,7 +282,8 @@ router.post("/push/subscribe", requireAuth, requireModerator, async (req: any, r
       p256dh: keys.p256dh,
       auth: keys.auth,
       createdAt: now(),
-    }).onDuplicateKeyUpdate({
+    }).onConflictDoUpdate({
+      target: pushSubscriptionsTable.endpoint,
       set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() },
     })
     res.json({ success: true })

@@ -302,7 +302,7 @@ router.put("/config", requireAuth, requireAdmin, async (req, res) => {
     const updates = req.body as Record<string, string>
     for (const [key, value] of Object.entries(updates)) {
       await db.insert(siteConfigTable).values({ key, value: String(value) })
-        .onDuplicateKeyUpdate({ set: { value: String(value) } })
+        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: String(value) } })
     }
     res.json({ success: true })
   } catch (err: unknown) {

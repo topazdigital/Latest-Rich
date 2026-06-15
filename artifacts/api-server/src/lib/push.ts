@@ -18,9 +18,9 @@ async function getOrCreateVapidKeys(): Promise<{ publicKey: string; privateKey: 
     const keys = webpush.generateVAPIDKeys()
 
     await db.insert(siteConfigTable).values({ key: "vapid_public_key", value: keys.publicKey })
-      .onDuplicateKeyUpdate({ set: { value: keys.publicKey } })
+      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.publicKey } })
     await db.insert(siteConfigTable).values({ key: "vapid_private_key", value: keys.privateKey })
-      .onDuplicateKeyUpdate({ set: { value: keys.privateKey } })
+      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.privateKey } })
 
     logger.info("Generated new VAPID keys")
     return keys
