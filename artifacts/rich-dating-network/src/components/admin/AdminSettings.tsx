@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { authFetch } from "../../lib/auth"
 import toast from "react-hot-toast"
-import { Save, Eye, EyeOff, Settings, CreditCard, MessageSquare, Users, Globe, Shield, Crown, Plus, Trash2, Image, Mail, Bell, Camera } from "lucide-react"
+import { Save, Eye, EyeOff, Settings, CreditCard, MessageSquare, Users, Globe, Shield, Crown, Plus, Trash2, Image, Mail, Bell, Camera, Coins } from "lucide-react"
 
 const SECTIONS = [
   {
@@ -101,17 +101,28 @@ const DEFAULT_PACKAGES = [
   { name: "1 Year", days: 365, price: 59.99, popular: 0, description: "Best value — Save 50%", active: 1 },
 ]
 
+const DEFAULT_CREDIT_PACKAGES = [
+  { credits: 100, price: 4.99, popular: 0, description: "Starter Pack", active: 1 },
+  { credits: 250, price: 9.99, popular: 1, description: "Popular", active: 1 },
+  { credits: 500, price: 17.99, popular: 0, description: "Value Pack", active: 1 },
+  { credits: 1000, price: 29.99, popular: 0, description: "Best Value", active: 1 },
+]
+
 interface PremiumPkg { name: string; days: number; price: number; popular: number; description: string; active: number }
+interface CreditPkg { credits: number; price: number; popular: number; description: string; active: number }
 
 export default function AdminSettings() {
   const [config, setConfig] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingPkg, setSavingPkg] = useState(false)
+  const [savingCreditPkg, setSavingCreditPkg] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
   const [showPasswords, setShowPasswords] = useState<Set<string>>(new Set())
   const [packages, setPackages] = useState<PremiumPkg[]>(DEFAULT_PACKAGES)
   const [pkgLoading, setPkgLoading] = useState(true)
+  const [creditPackages, setCreditPackages] = useState<CreditPkg[]>(DEFAULT_CREDIT_PACKAGES)
+  const [creditPkgLoading, setCreditPkgLoading] = useState(true)
   const [logoUrl, setLogoUrl] = useState("")
   const [faviconUrl, setFaviconUrl] = useState("")
   const [gestureImageUrl, setGestureImageUrl] = useState("")
@@ -133,6 +144,11 @@ export default function AdminSettings() {
       if (Array.isArray(d) && d.length > 0) setPackages(d)
       setPkgLoading(false)
     }).catch(() => setPkgLoading(false))
+
+    authFetch("/api/credits/packages").then(r => r.json()).then((d: any[]) => {
+      if (Array.isArray(d) && d.length > 0) setCreditPackages(d)
+      setCreditPkgLoading(false)
+    }).catch(() => setCreditPkgLoading(false))
 
     fetch("/api/branding/public").then(r => r.json()).then((d: any) => {
       if (d.branding_logo) setLogoUrl(d.branding_logo)
@@ -165,6 +181,18 @@ export default function AdminSettings() {
       if (res.ok) toast.success("Premium packages saved!")
       else toast.error("Failed to save packages")
     } catch { toast.error("Failed to save packages") } finally { setSavingPkg(false) }
+  }
+
+  const saveCreditPackages = async () => {
+    setSavingCreditPkg(true)
+    try {
+      const res = await authFetch("/api/credits/packages", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packages: creditPackages })
+      })
+      if (res.ok) toast.success("Credits packages saved!")
+      else toast.error("Failed to save credit packages")
+    } catch { toast.error("Failed to save credit packages") } finally { setSavingCreditPkg(false) }
   }
 
   const sendTestEmail = async () => {
@@ -211,6 +239,18 @@ export default function AdminSettings() {
 
   function removePkg(i: number) {
     setPackages(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function updateCreditPkg(i: number, key: keyof CreditPkg, val: any) {
+    setCreditPackages(prev => prev.map((p, idx) => idx === i ? { ...p, [key]: val } : p))
+  }
+
+  function addCreditPkg() {
+    setCreditPackages(prev => [...prev, { credits: 100, price: 4.99, popular: 0, description: "", active: 1 }])
+  }
+
+  function removeCreditPkg(i: number) {
+    setCreditPackages(prev => prev.filter((_, idx) => idx !== i))
   }
 
   function renderField(f: any) {
@@ -473,6 +513,100 @@ export default function AdminSettings() {
       </div>
 
       </div>{/* end email+premium 2-col grid */}
+
+      {/* Credits Packages Management */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-green-400">
+              <Coins size={16} />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold text-sm">Credits Packages</h3>
+              <p className="text-gray-500 text-xs">Configure credit bundles users can purchase</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={addCreditPkg}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition-colors border border-gray-700">
+              <Plus size={13} /> Add Bundle
+            </button>
+            <button onClick={saveCreditPackages} disabled={savingCreditPkg}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50">
+              <Save size={13} />
+              {savingCreditPkg ? "Saving..." : "Save Bundles"}
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {creditPkgLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-gray-800/50 rounded-xl p-3 mb-4">
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  <strong className="text-gray-300">Credits are used for:</strong> sending messages, sending gifts, boosting your profile, superlikes, and unlocking private photos.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {creditPackages.map((pkg, i) => (
+                  <div key={i} className="bg-gray-800 rounded-xl p-4 border border-gray-700 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 text-xs font-mono">Bundle {i + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" checked={pkg.active === 1}
+                            onChange={e => updateCreditPkg(i, 'active', e.target.checked ? 1 : 0)}
+                            className="w-3.5 h-3.5 accent-green-500 rounded" />
+                          <span className="text-[10px] text-gray-400">{pkg.active ? 'On' : 'Off'}</span>
+                        </label>
+                        <button onClick={() => removeCreditPkg(i)} className="text-red-500 hover:text-red-400 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Credits</label>
+                      <input type="number" value={pkg.credits} min="1"
+                        onChange={e => updateCreditPkg(i, 'credits', parseInt(e.target.value) || 100)}
+                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500 font-bold" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Price (USD)</label>
+                      <input type="number" value={pkg.price} step="0.01" min="0"
+                        onChange={e => updateCreditPkg(i, 'price', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500" />
+                    </div>
+                    <div>
+                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Label</label>
+                      <input value={pkg.description}
+                        onChange={e => updateCreditPkg(i, 'description', e.target.value)}
+                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500"
+                        placeholder="e.g. Popular" />
+                    </div>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={pkg.popular === 1}
+                        onChange={e => updateCreditPkg(i, 'popular', e.target.checked ? 1 : 0)}
+                        className="w-3.5 h-3.5 accent-green-500 rounded" />
+                      <span className="text-[10px] text-gray-400">Show "Popular" badge</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {creditPackages.length === 0 && (
+                <div className="text-center py-6 text-gray-500 text-sm">
+                  No bundles configured. Add a bundle above.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="flex justify-end pb-6">
         <button onClick={save} disabled={saving}

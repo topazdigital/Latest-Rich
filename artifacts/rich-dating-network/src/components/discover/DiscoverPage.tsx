@@ -251,10 +251,10 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               const showCompat = compat > 0 && !isOwnCard(u.id, userId)
               return (
                 <div key={u.id}
-                  className={`group relative rounded-2xl overflow-hidden bg-gray-100 cursor-pointer flex flex-col ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  className={`group relative rounded-2xl overflow-hidden bg-gray-900 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(`/profile/${u.id}`) }}>
-                  {/* Photo area — fixed 3:4 aspect ratio, always filled */}
-                  <div className="relative w-full" style={{ paddingBottom: '133%' }}>
+                  {/* Photo area — 3:4 aspect ratio, always filled */}
+                  <div className="relative w-full aspect-[3/4]">
                     {/* Fallback background for no-photo users */}
                     <div className="absolute inset-0 flex items-center justify-center"
                       style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>

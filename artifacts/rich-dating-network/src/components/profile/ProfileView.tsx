@@ -176,10 +176,10 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-0 sm:px-4 py-0 sm:py-4">
+    <div className="max-w-lg mx-auto px-0 sm:px-4 py-0 sm:py-4">
       {/* Hero photo card — full-height with all overlaid info */}
-      <div className="card overflow-hidden mb-4 rounded-none sm:rounded-2xl">
-        <div className="relative bg-gray-900" style={{ minHeight: '480px', height: 'min(75vw, 560px)' }}>
+      <div className="card overflow-hidden mb-3 rounded-none sm:rounded-2xl shadow-xl">
+        <div className="relative bg-gray-900" style={{ minHeight: '480px', height: 'min(80vw, 580px)' }}>
           {/* Main photo */}
           <img
             src={getPhotoUrl(user.photoThumb || user.photo)}
@@ -353,112 +353,86 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         )}
       </div>
 
-      {/* Looking For + Passions */}
-      {(user.looking || user.userExtended?.relationship || user.userExtended?.idealDate) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 px-0 sm:px-0">
-          {user.looking && (
-            <div className="card p-4">
-              <h2 className="font-semibold text-gray-900 mb-2.5 flex items-center gap-2 text-sm">
-                <span className="text-base">💞</span> I'm Looking For
-              </h2>
-              <div className="space-y-1.5 text-sm text-gray-700">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400 text-xs w-16 flex-shrink-0">Gender</span>
-                  <span className="font-medium">{lookingForLabel(user.looking)}</span>
-                </div>
-                {user.userExtended?.relationship && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 text-xs w-16 flex-shrink-0">Relation</span>
-                    <span className="font-medium">{user.userExtended.relationship}</span>
-                  </div>
-                )}
-                {user.ageMin && user.ageMax && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-400 text-xs w-16 flex-shrink-0">Age</span>
-                    <span className="font-medium">{user.ageMin}–{user.ageMax} yrs</span>
-                  </div>
-                )}
-                {user.userExtended?.idealDate && (
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <p className="text-gray-400 text-xs mb-1">Ideal date</p>
-                    <p className="text-gray-700 leading-relaxed">{user.userExtended.idealDate}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {user.userExtended?.passions && (
-            <div className="card p-4">
-              <h2 className="font-semibold text-gray-900 mb-2.5 flex items-center gap-2 text-sm">
-                <span className="text-base">🔥</span> My Passions
-              </h2>
-              <p className="text-gray-700 text-sm leading-relaxed">{user.userExtended.passions}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Interests */}
       {interestDetails.length > 0 && (
-        <div className="card p-4 mb-3">
-          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">My Interests</h2>
+        <div className="card p-4 mb-3 mx-0 sm:mx-0">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2.5">Interests</p>
           <div className="flex flex-wrap gap-1.5">
             {interestDetails.map(interest => {
               const isShared = sharedInterestIds.includes(interest.id)
               return (
-                <div
-                  key={interest.id}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-white text-xs font-medium shadow-sm ${isShared && !isOwnProfile ? 'ring-2 ring-offset-1 ring-white scale-105' : ''}`}
+                <div key={interest.id}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-white text-xs font-medium shadow-sm ${isShared && !isOwnProfile ? 'ring-2 ring-white/60 scale-105' : ''}`}
                   style={{ background: interest.color }}>
                   <span>{interest.emoji}</span>
                   <span>{interest.label}</span>
-                  {isShared && !isOwnProfile && <span className="text-white/80">✓</span>}
+                  {isShared && !isOwnProfile && <span className="text-white/80 text-[10px]">✓</span>}
                 </div>
               )
             })}
           </div>
-          {sharedInterestDetails.length > 0 && !isOwnProfile && (
-            <p className="text-xs text-green-600 mt-2 font-medium">
-              ✓ {sharedInterestDetails.length} shared interest{sharedInterestDetails.length !== 1 ? 's' : ''}
-            </p>
-          )}
         </div>
       )}
 
-      {/* About Me details grid */}
+      {/* About / Looking For — elegant pill grid */}
       {user.userExtended && Object.values(user.userExtended).some((v: any) => v && v !== '' && v !== '[]') && (
         <div className="card p-4 mb-3">
-          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">About Me</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">About</p>
+          <div className="grid grid-cols-2 gap-2">
             {zodiac && (
-              <div>
-                <p className="text-gray-400 text-xs">Zodiac</p>
-                <p className="text-gray-800 font-medium">{zodiac}</p>
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                <span className="text-base leading-none">{zodiac.split(' ')[0]}</span>
+                <div>
+                  <p className="text-[10px] text-gray-400 leading-none mb-0.5">Zodiac</p>
+                  <p className="text-xs font-semibold text-gray-800">{zodiac.split(' ').slice(1).join(' ')}</p>
+                </div>
+              </div>
+            )}
+            {user.looking && (
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                <span className="text-base leading-none">💞</span>
+                <div>
+                  <p className="text-[10px] text-gray-400 leading-none mb-0.5">Looking for</p>
+                  <p className="text-xs font-semibold text-gray-800">{lookingForLabel(user.looking)}</p>
+                </div>
               </div>
             )}
             {[
-              ['Occupation', user.userExtended.occupation],
-              ['Education', user.userExtended.education],
-              ['Height', user.userExtended.height],
-              ['Body Type', user.userExtended.bodyType],
-              ['Ethnicity', user.userExtended.ethnicity],
-              ['Religion', user.userExtended.religion],
-              ['Smoking', user.userExtended.smoking],
-              ['Drinking', user.userExtended.drinking],
-              ['Children', user.userExtended.children],
-              ['Relationship', user.userExtended.relationship],
-              ['Languages', user.userExtended.languages],
-            ].filter(([, v]) => v && v !== '[]').map(([label, value]) => (
-              <div key={label as string}>
-                <p className="text-gray-400 text-xs">{label}</p>
-                <p className="text-gray-800 font-medium">{value}</p>
+              ['💼', 'Work', user.userExtended.occupation],
+              ['🎓', 'Education', user.userExtended.education],
+              ['📏', 'Height', user.userExtended.height],
+              ['💪', 'Body', user.userExtended.bodyType],
+              ['🌍', 'Ethnicity', user.userExtended.ethnicity],
+              ['🙏', 'Religion', user.userExtended.religion],
+              ['🚬', 'Smoking', user.userExtended.smoking],
+              ['🍷', 'Drinking', user.userExtended.drinking],
+              ['👶', 'Children', user.userExtended.children],
+              ['💬', 'Languages', user.userExtended.languages],
+            ].filter(([, , v]) => v && v !== '[]').map(([emoji, label, value]) => (
+              <div key={label as string} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                <span className="text-base leading-none">{emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-400 leading-none mb-0.5">{label}</p>
+                  <p className="text-xs font-semibold text-gray-800 truncate">{value}</p>
+                </div>
               </div>
             ))}
           </div>
           {user.userExtended.selfDescription && (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-gray-400 text-xs mb-1">In their own words</p>
-              <p className="text-gray-700 text-sm leading-relaxed italic">"{user.userExtended.selfDescription}"</p>
+              <p className="text-gray-500 text-sm leading-relaxed italic">"{user.userExtended.selfDescription}"</p>
+            </div>
+          )}
+          {user.userExtended.passions && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Passions</p>
+              <p className="text-gray-700 text-sm leading-relaxed">{user.userExtended.passions}</p>
+            </div>
+          )}
+          {user.userExtended.idealDate && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Ideal date</p>
+              <p className="text-gray-700 text-sm leading-relaxed">{user.userExtended.idealDate}</p>
             </div>
           )}
         </div>
@@ -467,11 +441,11 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       {/* Photo grid */}
       {allPhotos.length > 1 && (
         <div className="card p-4 mb-3">
-          <h2 className="font-semibold text-gray-900 mb-2.5 text-sm">Photos ({allPhotos.length})</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2.5">Photos ({allPhotos.length})</p>
+          <div className="grid grid-cols-3 gap-2">
             {allPhotos.map((p: any, i: number) => (
               <button key={p.id || i} onClick={() => setActivePhotoIdx(i)}
-                className="aspect-square rounded-xl overflow-hidden hover:opacity-90 transition-opacity">
+                className="aspect-[3/4] rounded-xl overflow-hidden hover:opacity-90 transition-opacity">
                 <img src={getPhotoUrl(p.thumb || p.photo)} alt="" className="w-full h-full object-cover" loading="lazy" />
               </button>
             ))}
