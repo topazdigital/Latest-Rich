@@ -3,6 +3,7 @@ import { db } from "@workspace/db"
 import { giftsTable, userGiftsTable, usersTable, notificationsTable } from "@workspace/db/schema"
 import { eq, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { send } from "../lib/websocket"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -53,6 +54,13 @@ router.post("/send", requireAuth, async (req, res) => {
       userId: recipient.id, fromId: sender.id, type: "gift",
       message: `${sender.name} sent you a ${gift.emoji} ${gift.name}${message ? ": " + message : ""}`,
       link: `/profile/${sender.id}`, read: 0, time: now()
+    })
+    // Real-time push to recipient
+    send(recipient.id, {
+      type: "gift",
+      from: { id: sender.id, name: sender.name, photo: sender.photoThumb || sender.photo },
+      gift: { emoji: gift.emoji, name: gift.name },
+      message: message || "",
     })
     res.json({ success: true, newCredits: (sender.credits || 0) - (gift.credits || 0) })
   } catch (err: any) {

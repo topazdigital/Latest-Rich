@@ -102,6 +102,9 @@ fi
 
 $MYSQL_CMD < scripts/migrate-from-legacy.sql && echo "      Migration + schema sync OK ✓" || echo "      Migration warning (check output above)"
 
+echo "      Linking legacy photos to user profiles..."
+node scripts/import-legacy-photos.mjs && echo "      Photo import OK ✓" || echo "      Photo import warning (non-fatal)"
+
 # ── 6. Build ───────────────────────────────────────────────
 echo "[6/7] Building..."
 pnpm --filter @workspace/api-server run build

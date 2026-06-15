@@ -4,6 +4,7 @@ import { getPhotoUrl, isOnline, truncate } from '../../lib/utils'
 import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import { useWSEvent } from '../../hooks/useWebSocket'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
 import { authFetch } from '../../lib/auth'
 
@@ -36,7 +37,18 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   const [filterCompatible, setFilterCompatible] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [likedUsers, setLikedUsers] = useState<Set<number>>(new Set())
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set())
   const { token } = useAuth()
+
+  // Real-time online status updates from WebSocket
+  useWSEvent('user_online', (msg) => {
+    setOnlineUserIds(prev => {
+      const next = new Set(prev)
+      if (msg.online) next.add(msg.userId as number)
+      else next.delete(msg.userId as number)
+      return next
+    })
+  })
 
   function fetchUsers() {
     setLoading(true)
@@ -259,9 +271,10 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                   <div className="relative aspect-[3/4]">
                     <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
                       className="w-full h-full object-cover"
-                      loading="lazy" />
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
                     <div className="gradient-bottom absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {isOnline(u.lastAccess) && (
+                    {(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
                       <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                     )}
                     {u.premium === 1 && !isBoosted && (
