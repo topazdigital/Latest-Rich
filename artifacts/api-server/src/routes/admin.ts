@@ -6,7 +6,7 @@ import {
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
   chatLocksTable, userExtendedTable
 } from "@workspace/db/schema"
-import { eq, desc, sql, and, ne, gte, count, SQL, or, isNull } from "drizzle-orm"
+import { eq, desc, sql, and, ne, gte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -24,6 +24,37 @@ function safeUser(u: typeof usersTable.$inferSelect) {
   const { password, ...rest } = u
   return rest
 }
+
+// Sync users.photo from photos table for users missing a profile photo
+router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const usersNeedingPhoto = await db.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(or(eq(usersTable.photo, ''), isNull(usersTable.photo as any)))
+    const userIds = usersNeedingPhoto.map(u => u.id)
+    if (userIds.length === 0) { res.json({ updated: 0 }); return }
+
+    const photos = await db.select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
+      .from(photosTable)
+      .where(and(inArray(photosTable.userId, userIds), eq(photosTable.approved, 1)))
+      .orderBy(desc(photosTable.main), photosTable.id)
+
+    const photoMap = new Map<number, { photo: string; thumb: string }>()
+    for (const p of photos) {
+      if (!photoMap.has(p.userId)) photoMap.set(p.userId, { photo: p.photo, thumb: p.thumb || p.photo })
+    }
+
+    let updated = 0
+    for (const [userId, { photo, thumb }] of photoMap) {
+      await db.update(usersTable).set({ photo, photoThumb: thumb }).where(eq(usersTable.id, userId))
+      updated++
+    }
+    res.json({ updated })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
 
 // Dashboard stats
 router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
@@ -255,6 +286,7 @@ router.get("/activity", requireAuth, requireAdmin, async (req, res) => {
     const filter = String(req.query.filter || "all")
     const filterCondition: SQL | undefined = filter !== "all" ? eq(activityTable.type, filter) : undefined
 
+    const limitParam = Math.min(500, Math.max(1, parseInt(String(req.query.limit || "100"))))
     const rows = await db.select({
       activity: activityTable,
       user: { id: usersTable.id, name: usersTable.name, photo: usersTable.photo }
@@ -263,7 +295,7 @@ router.get("/activity", requireAuth, requireAdmin, async (req, res) => {
       .leftJoin(usersTable, eq(activityTable.userId, usersTable.id))
       .where(filterCondition)
       .orderBy(desc(activityTable.id))
-      .limit(100)
+      .limit(limitParam)
 
     res.json(rows)
   } catch (err: unknown) {

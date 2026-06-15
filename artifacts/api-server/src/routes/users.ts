@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql, gt, or, isNull } from "drizzle-orm"
+import { eq, and, ne, desc, sql, gt, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 
@@ -185,10 +185,29 @@ router.get("/search", requireAuth, async (req, res) => {
       return aCity - bCity
     })
 
-    const result = users.slice(0, 200).map(u => ({
+    let result = users.slice(0, 200).map(u => ({
       ...safeUser(u),
       isBoosted: boostedIds.has(u.id),
     }))
+
+    // Enrich with photos table for users missing a profile photo
+    const missingPhotoIds = result.filter(u => !u.photo).map(u => u.id)
+    if (missingPhotoIds.length > 0) {
+      const fallbackPhotos = await db
+        .select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
+        .from(photosTable)
+        .where(and(inArray(photosTable.userId, missingPhotoIds), eq(photosTable.approved, 1)))
+        .orderBy(desc(photosTable.main), photosTable.id)
+      const photoMap = new Map<number, { photo: string; thumb: string }>()
+      for (const p of fallbackPhotos) {
+        if (!photoMap.has(p.userId)) photoMap.set(p.userId, { photo: p.photo, thumb: p.thumb || p.photo })
+      }
+      result = result.map(u => ({
+        ...u,
+        photo: u.photo || photoMap.get(u.id)?.photo || '',
+        photoThumb: u.photoThumb || photoMap.get(u.id)?.thumb || '',
+      }))
+    }
 
     res.json(result)
   } catch {
@@ -252,7 +271,17 @@ router.get("/:id", requireAuth, async (req, res) => {
     const [activeBoost] = await db.select().from(profileBoostsTable)
       .where(and(eq(profileBoostsTable.userId, id), eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
       .limit(1)
-    res.json({ ...safeUser(user), userExtended: extended || {}, isBoosted: !!activeBoost })
+    // If no profile photo, fall back to first approved photo in photos table
+    let photo = user.photo || ''
+    let photoThumb = user.photoThumb || ''
+    if (!photo) {
+      const [firstPhoto] = await db.select().from(photosTable)
+        .where(and(eq(photosTable.userId, id), eq(photosTable.approved, 1)))
+        .orderBy(desc(photosTable.main), photosTable.id)
+        .limit(1)
+      if (firstPhoto) { photo = firstPhoto.photo; photoThumb = firstPhoto.thumb || firstPhoto.photo }
+    }
+    res.json({ ...safeUser(user), photo, photoThumb, userExtended: extended || {}, isBoosted: !!activeBoost })
   } catch {
     res.status(500).json({ error: "Failed" })
   }

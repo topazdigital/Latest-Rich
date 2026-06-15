@@ -38,7 +38,13 @@ export default function MainNav() {
     { href: '/chat', icon: MessageCircle, label: 'Chat' },
   ]
 
-  const mobileItems = navItems.slice(0, 5)
+  const mobileItems = [
+    { href: '/discover', icon: Search, label: 'Discover' },
+    { href: '/meet', icon: Flame, label: 'Meet' },
+    { href: '/likes', icon: Heart, label: 'Likes' },
+    { href: '/visitors', icon: Eye, label: 'Visitors' },
+    { href: '/chat', icon: MessageCircle, label: 'Chat', badge: chatUnread },
+  ]
 
   return (
     <>
@@ -182,33 +188,36 @@ export default function MainNav() {
       {/* Mobile bottom nav */}
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-        background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)',
-        borderTop: '1px solid rgba(0,0,0,0.07)',
-        boxShadow: '0 -2px 12px rgba(0,0,0,0.05)',
+        background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(16px)',
+        borderTop: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 -2px 16px rgba(0,0,0,0.06)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }} className="mobile-nav">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', height: '3.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', height: '3.25rem' }}>
           {mobileItems.map(item => {
             const active = location.startsWith(item.href)
-            const badge = item.href === '/chat' ? chatUnread : 0
+            const badge = (item as any).badge || 0
             return (
               <Link key={item.href} href={item.href} style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: '0.15rem', fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.02em',
+                gap: '0.2rem', fontSize: '0.5rem', fontWeight: 700, letterSpacing: '0.03em',
                 textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', position: 'relative',
                 color: active ? '#FF192C' : '#9ca3af', transition: 'color 0.15s',
               }}>
                 <div style={{ position: 'relative' }}>
-                  {active && <div style={{ position: 'absolute', inset: '-5px', background: '#fff0f1', borderRadius: '0.6rem' }} />}
-                  <div style={{ position: 'relative' }}>
-                    <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
-                  </div>
-                  {badge > 0 && (
-                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', minWidth: '13px', height: '13px', background: '#FF192C', color: '#fff', fontSize: '8px', fontWeight: 800, borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>
-                      {badge > 9 ? '9+' : badge}
-                    </span>
+                  {active && (
+                    <div style={{ position: 'absolute', inset: '-6px -8px', background: 'rgba(255,25,44,0.08)', borderRadius: '0.75rem' }} />
                   )}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <item.icon size={19} strokeWidth={active ? 2.5 : 1.8} />
+                    {badge > 0 && (
+                      <span style={{ position: 'absolute', top: '-5px', right: '-6px', minWidth: '14px', height: '14px', background: '#FF192C', color: '#fff', fontSize: '8px', fontWeight: 800, borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', border: '1.5px solid #fff' }}>
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span style={{ color: active ? '#FF192C' : '#9ca3af' }}>{item.label}</span>
+                <span style={{ color: active ? '#FF192C' : '#9ca3af', fontSize: '0.48rem', fontWeight: active ? 700 : 500 }}>{item.label}</span>
               </Link>
             )
           })}

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'wouter'
+import { Link, useLocation } from 'wouter'
 import { getPhotoUrl, isOnline, truncate } from '../../lib/utils'
 import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -24,6 +24,7 @@ function calcCompatibility(myInterests: string[], theirInterests: string[]): num
 }
 
 export default function DiscoverPage({ userId, myCity, myCountry, myInterests = [] }: Props) {
+  const [, setLocation] = useLocation()
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -249,7 +250,9 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               const compat = u._compat as number
               const showCompat = compat > 0 && !isOwnCard(u.id, userId)
               return (
-                <div key={u.id} className={`profile-card group relative ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}>
+                <div key={u.id} className={`profile-card group relative ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(`/profile/${u.id}`) }}
+                  style={{ cursor: 'pointer' }}>
                   {/* Boost badge */}
                   {isBoosted && (
                     <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">

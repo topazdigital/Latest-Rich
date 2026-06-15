@@ -61,52 +61,52 @@ export default function AdminPage() {
         display: 'flex', flexDirection: 'column',
       }} className="admin-sidebar">
         {/* Logo */}
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.875rem', background: 'linear-gradient(135deg,#FF192C,#ff5f6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(255,25,44,0.35)' }}>❤️</div>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #1e293b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ width: '2rem', height: '2rem', borderRadius: '0.625rem', background: 'linear-gradient(135deg,#FF192C,#ff5f6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', boxShadow: '0 3px 8px rgba(255,25,44,0.35)' }}>❤️</div>
             <div>
-              <p style={{ color: '#fff', fontWeight: 800, fontSize: '0.82rem' }}>Rich Dating Network</p>
-              <p style={{ color: '#FF192C', fontSize: '0.7rem', fontWeight: 700 }}>Admin Panel</p>
+              <p style={{ color: '#fff', fontWeight: 800, fontSize: '0.78rem' }}>Rich Dating Network</p>
+              <p style={{ color: '#FF192C', fontSize: '0.65rem', fontWeight: 700 }}>Admin Panel</p>
             </div>
           </div>
         </div>
 
         {/* Admin user */}
-        <div style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.75rem', background: '#1e293b', borderRadius: '0.875rem', border: '1px solid #334155' }}>
-            <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '50%', background: '#FF192C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '0.875rem', flexShrink: 0 }}>
+        <div style={{ padding: '0.625rem 0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.625rem', padding: '0.5rem 0.625rem', background: '#1e293b', borderRadius: '0.625rem', border: '1px solid #334155' }}>
+            <div style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', background: '#FF192C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>
               {user.name?.[0]?.toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</p>
-              <p style={{ color: '#FF192C', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em' }}>ADMINISTRATOR</p>
+              <p style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</p>
+              <p style={{ color: '#FF192C', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em' }}>ADMINISTRATOR</p>
             </div>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             {MENU.map(m => (
               <button key={m.key} onClick={() => { setTab(m.key); setSidebarOpen(false) }} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.625rem 0.875rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
+                width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
                 background: tab === m.key ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
                 color: tab === m.key ? '#fff' : '#94a3b8',
-                fontSize: '0.82rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
+                fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
                 fontFamily: 'inherit',
-                boxShadow: tab === m.key ? '0 4px 12px rgba(255,25,44,0.3)' : 'none',
+                boxShadow: tab === m.key ? '0 3px 8px rgba(255,25,44,0.25)' : 'none',
               }}
                 onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#1e293b' }}
                 onMouseLeave={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                <span style={{ fontSize: '1rem' }}>{m.icon}</span>
+                <span style={{ fontSize: '0.875rem' }}>{m.icon}</span>
                 <span>{m.label}</span>
               </button>
             ))}
           </nav>
 
-          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #1e293b' }}>
+          <div style={{ marginTop: '0.875rem', paddingTop: '0.875rem', borderTop: '1px solid #1e293b' }}>
             <button onClick={() => setLocation("/discover")} style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
-              padding: '0.625rem 0.875rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: '#94a3b8', fontSize: '0.82rem', fontFamily: 'inherit', fontWeight: 600,
+              width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
+              background: 'transparent', color: '#94a3b8', fontSize: '0.78rem', fontFamily: 'inherit', fontWeight: 600,
             }}>
               <span>🏠</span> Back to App
             </button>
@@ -133,7 +133,7 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
+        <main style={{ flex: 1, padding: '1rem 1.25rem', overflowY: 'auto' }}>
           {tab === "dashboard" && <AdminDashboard />}
           {tab === "users" && <AdminUsers />}
           {tab === "verifications" && <AdminVerifications />}
