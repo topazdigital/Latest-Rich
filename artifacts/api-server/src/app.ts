@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,6 +32,31 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Serve built React frontend in production
+// Looks for the dist relative to CWD (project root) or next to dist/
+const possibleFrontendDirs = [
+  path.join(process.cwd(), "artifacts/rich-dating-network/dist/public"),
+  path.resolve(__dirname, "../../rich-dating-network/dist/public"),
+  path.resolve(__dirname, "../../../artifacts/rich-dating-network/dist/public"),
+];
+const frontendDir = possibleFrontendDirs.find(d => fs.existsSync(d));
+
+if (frontendDir) {
+  app.use(express.static(frontendDir));
+  // SPA fallback — any non-API route serves index.html
+  app.get("*", (_req, res) => {
+    const indexPath = path.join(frontendDir, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send("Frontend not built. Run: pnpm --filter @workspace/rich-dating-network run build");
+    }
+  });
+  logger.info({ frontendDir }, "Serving React frontend from Express");
+} else {
+  logger.warn("React frontend dist not found — only API routes active");
+}
 
 // Start background auto-message scheduler
 import("./lib/fake-message-scheduler").then(({ startAutoMessageScheduler }) => {

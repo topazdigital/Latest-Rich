@@ -8,7 +8,7 @@ export const usersTable = mysqlTable("users", {
   email: varchar("email", { length: 255 }).notNull(),
   username: varchar("username", { length: 100 }),
   phone: text("phone").default(""),
-  password: text("password").notNull(),
+  password: text("password").default(""),
   legacyPass: text("pass").default(""),
   photo: text("photo").default(""),
   photoThumb: text("photo_thumb").default(""),

@@ -544,6 +544,7 @@ CREATE TABLE IF NOT EXISTS `feed_likes` (
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `password` text DEFAULT '',
   ADD COLUMN IF NOT EXISTS `photo_thumb` text DEFAULT '',
   ADD COLUMN IF NOT EXISTS `country_code` varchar(12) DEFAULT '',
   ADD COLUMN IF NOT EXISTS `email_verified` tinyint(1) DEFAULT 0,
