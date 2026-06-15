@@ -45,7 +45,8 @@ const frontendDir = possibleFrontendDirs.find(d => fs.existsSync(d));
 if (frontendDir) {
   app.use(express.static(frontendDir));
   // SPA fallback — any non-API route serves index.html
-  app.get("*", (_req, res) => {
+  // Express 5 + path-to-regexp v8 require a named wildcard — bare "*" throws PathError
+  app.get("/{*path}", (_req, res) => {
     const indexPath = path.join(frontendDir, "index.html");
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);

@@ -131,9 +131,13 @@ RewriteCond %{HTTP:Connection} upgrade [NC]
 RewriteRule ^(.*)$ ws://localhost:8080/$1 [P,L]
 HTACCESS
 
-# Start/restart PM2
+# Stop PM2 process and wait for port 8080 to be released
 pm2 stop rdn-api 2>/dev/null || true
 pm2 delete rdn-api 2>/dev/null || true
+sleep 2
+# Force-free port 8080 if something is still holding it (EADDRINUSE prevention)
+fuser -k 8080/tcp 2>/dev/null || lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+sleep 1
 
 pm2 start ecosystem.config.cjs
 pm2 save
