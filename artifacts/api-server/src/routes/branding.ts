@@ -2,7 +2,7 @@ import { Router } from "express"
 import path from "path"
 import fs from "fs"
 import multer from "multer"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { siteConfigTable } from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -36,8 +36,13 @@ router.post("/upload/:type", requireAuth, requireAdmin, upload.single("file"), a
     if (!["logo", "favicon", "gesture"].includes(type)) { res.status(400).json({ error: "Invalid type" }); return }
     const filename = req.file.filename
     const url = `/api/branding/file/${filename}`
-    await db.insert(siteConfigTable).values({ key: `branding_${type}`, value: url })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: url } })
+    if (isMysql) {
+      await db.insert(siteConfigTable).values({ key: `branding_${type}`, value: url })
+        .onDuplicateKeyUpdate({ set: { value: url } })
+    } else {
+      await db.insert(siteConfigTable).values({ key: `branding_${type}`, value: url })
+        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: url } })
+    }
     res.json({ url })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

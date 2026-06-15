@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { usersTable, messagesTable, chatLocksTable, activityTable, pushSubscriptionsTable } from "@workspace/db/schema"
 import { eq, sql, and, or, desc, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -135,15 +135,24 @@ router.post("/conversations/:key/lock", requireAuth, requireModerator, async (re
       res.status(409).json({ error: "Conversation is locked by another moderator" }); return
     }
     const expiresAt = now() + LOCK_DURATION
-    await db.insert(chatLocksTable).values({
-      conversationKey: key,
-      moderatorId: req.userId,
-      lockedAt: now(),
-      expiresAt,
-    }).onConflictDoUpdate({
-      target: chatLocksTable.conversationKey,
-      set: { moderatorId: req.userId, lockedAt: now(), expiresAt },
-    })
+    if (isMysql) {
+      await db.insert(chatLocksTable).values({
+        conversationKey: key,
+        moderatorId: req.userId,
+        lockedAt: now(),
+        expiresAt,
+      }).onDuplicateKeyUpdate({ set: { moderatorId: req.userId, lockedAt: now(), expiresAt } })
+    } else {
+      await db.insert(chatLocksTable).values({
+        conversationKey: key,
+        moderatorId: req.userId,
+        lockedAt: now(),
+        expiresAt,
+      }).onConflictDoUpdate({
+        target: chatLocksTable.conversationKey,
+        set: { moderatorId: req.userId, lockedAt: now(), expiresAt },
+      })
+    }
     res.json({ success: true, expiresAt })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
@@ -276,16 +285,26 @@ router.post("/push/subscribe", requireAuth, requireModerator, async (req: any, r
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
       res.status(400).json({ error: "Invalid subscription object" }); return
     }
-    await db.insert(pushSubscriptionsTable).values({
-      userId: req.userId,
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth,
-      createdAt: now(),
-    }).onConflictDoUpdate({
-      target: pushSubscriptionsTable.endpoint,
-      set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() },
-    })
+    if (isMysql) {
+      await db.insert(pushSubscriptionsTable).values({
+        userId: req.userId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        createdAt: now(),
+      }).onDuplicateKeyUpdate({ set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() } })
+    } else {
+      await db.insert(pushSubscriptionsTable).values({
+        userId: req.userId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        createdAt: now(),
+      }).onConflictDoUpdate({
+        target: pushSubscriptionsTable.endpoint,
+        set: { userId: req.userId, p256dh: keys.p256dh, auth: keys.auth, createdAt: now() },
+      })
+    }
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

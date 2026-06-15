@@ -32,7 +32,7 @@ function loadEnv() {
 loadEnv()
 
 const url = process.env.DATABASE_URL || ""
-const isMysql = url.startsWith("mysql://") || url.startsWith("mysql2://")
+export const isMysql = url.startsWith("mysql://") || url.startsWith("mysql2://")
 
 if (!isMysql && !url) {
   throw new Error("DATABASE_URL must be set. Did you forget to provision a database?")

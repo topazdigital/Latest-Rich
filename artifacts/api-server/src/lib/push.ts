@@ -1,5 +1,5 @@
 import webpush from "web-push"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { pushSubscriptionsTable, siteConfigTable, usersTable } from "@workspace/db/schema"
 import { eq, sql, inArray } from "drizzle-orm"
 import { logger } from "./logger"
@@ -17,10 +17,17 @@ async function getOrCreateVapidKeys(): Promise<{ publicKey: string; privateKey: 
 
     const keys = webpush.generateVAPIDKeys()
 
-    await db.insert(siteConfigTable).values({ key: "vapid_public_key", value: keys.publicKey })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.publicKey } })
-    await db.insert(siteConfigTable).values({ key: "vapid_private_key", value: keys.privateKey })
-      .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.privateKey } })
+    if (isMysql) {
+      await db.insert(siteConfigTable).values({ key: "vapid_public_key", value: keys.publicKey })
+        .onDuplicateKeyUpdate({ set: { value: keys.publicKey } })
+      await db.insert(siteConfigTable).values({ key: "vapid_private_key", value: keys.privateKey })
+        .onDuplicateKeyUpdate({ set: { value: keys.privateKey } })
+    } else {
+      await db.insert(siteConfigTable).values({ key: "vapid_public_key", value: keys.publicKey })
+        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.publicKey } })
+      await db.insert(siteConfigTable).values({ key: "vapid_private_key", value: keys.privateKey })
+        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: keys.privateKey } })
+    }
 
     logger.info("Generated new VAPID keys")
     return keys

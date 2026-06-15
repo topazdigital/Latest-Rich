@@ -476,11 +476,18 @@ CREATE TABLE IF NOT EXISTS `custom_payments` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Migrate old custom_payments if it has the new schema columns
-INSERT INTO `custom_payments` (`id`, `name`, `logo`, `description`, `status`, `created_at`)
-SELECT cp.`id`, cp.`name`, COALESCE(cp.`logo`, ''), COALESCE(cp.`description`, ''), 1, UNIX_TIMESTAMP()
-FROM `custom_payments` cp
-WHERE FALSE; -- placeholder: only runs if old table had different schema
+-- Add any missing columns to custom_payments (if it existed in the old PHP site with a different schema)
+ALTER TABLE `custom_payments`
+  ADD COLUMN IF NOT EXISTS `name` text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `logo` text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `description` text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `status` int(11) DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `review_time` int(11) DEFAULT 24,
+  ADD COLUMN IF NOT EXISTS `external_url` text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `country` text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `type` int(11) DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `proof_label` text DEFAULT 'Transaction ID / Screenshot',
+  ADD COLUMN IF NOT EXISTS `created_at` int(11) DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS `custom_payment_orders` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

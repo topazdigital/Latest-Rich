@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import {
   usersTable, ordersTable, notificationsTable, messagesTable,
   activityTable, fakeMessageTemplatesTable, siteConfigTable,
@@ -301,8 +301,14 @@ router.put("/config", requireAuth, requireAdmin, async (req, res) => {
   try {
     const updates = req.body as Record<string, string>
     for (const [key, value] of Object.entries(updates)) {
-      await db.insert(siteConfigTable).values({ key, value: String(value) })
-        .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: String(value) } })
+      const v = String(value)
+      if (isMysql) {
+        await db.insert(siteConfigTable).values({ key, value: v })
+          .onDuplicateKeyUpdate({ set: { value: v } })
+      } else {
+        await db.insert(siteConfigTable).values({ key, value: v })
+          .onConflictDoUpdate({ target: siteConfigTable.key, set: { value: v } })
+      }
     }
     res.json({ success: true })
   } catch (err: unknown) {
