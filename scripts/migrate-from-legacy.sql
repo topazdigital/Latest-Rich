@@ -271,10 +271,20 @@ CREATE TABLE IF NOT EXISTS `blocked_users` (
   UNIQUE KEY `unique_block` (`user_id`, `blocked_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT IGNORE INTO `blocked_users` (`user_id`, `blocked_id`, `time`)
-SELECT ub.`u1`, ub.`u2`, CAST(ub.`time` AS UNSIGNED)
-FROM `users_blocks` ub
-WHERE ub.`u1` IS NOT NULL AND ub.`u2` IS NOT NULL;
+-- Wrap in a procedure so missing source table or wrong columns are silently skipped
+DROP PROCEDURE IF EXISTS `rdn_migrate_blocks`;
+DELIMITER $$
+CREATE PROCEDURE `rdn_migrate_blocks`()
+BEGIN
+  DECLARE CONTINUE HANDLER FOR SQLEXCEPTION BEGIN END;
+  INSERT IGNORE INTO `blocked_users` (`user_id`, `blocked_id`, `time`)
+  SELECT ub.`u1`, ub.`u2`, CAST(ub.`time` AS UNSIGNED)
+  FROM `users_blocks` ub
+  WHERE ub.`u1` IS NOT NULL AND ub.`u2` IS NOT NULL;
+END$$
+DELIMITER ;
+CALL `rdn_migrate_blocks`();
+DROP PROCEDURE IF EXISTS `rdn_migrate_blocks`;
 
 -- ---------------------------------------------------------------------------
 -- 10. SITE CONFIG
@@ -561,13 +571,11 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `referred_by` int(11) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `username` varchar(255) DEFAULT '',
   ADD COLUMN IF NOT EXISTS `phone` varchar(30) DEFAULT '',
-  ADD COLUMN IF NOT EXISTS `legacyPass` varchar(255) DEFAULT '';
-
--- Copy old DES/MD5 password to legacyPass for users that have no bcrypt password yet
-UPDATE `users`
-SET `legacyPass` = `pass`
-WHERE `pass` IS NOT NULL AND `pass` != ''
-  AND (`legacyPass` IS NULL OR `legacyPass` = '');
+  ADD COLUMN IF NOT EXISTS `superlike` int(11) DEFAULT 3,
+  ADD COLUMN IF NOT EXISTS `popular` int(11) DEFAULT 0;
+-- NOTE: `pass` column is the legacy password column (already exists in old schema).
+-- Drizzle reads it as `legacyPass` via: legacyPass: text("pass").
+-- No extra column or copy needed — auth.ts falls back to `user.legacyPass` automatically.
 
 -- Populate created from join_date_time for old users
 UPDATE `users`

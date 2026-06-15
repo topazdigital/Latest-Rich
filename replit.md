@@ -9,15 +9,15 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run push` — push DB schema changes (Replit dev / PostgreSQL only — NEVER run on production MySQL)
+- Required env: `DATABASE_URL` — PostgreSQL in Replit dev, MySQL on production server
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Frontend: React 19 + Vite (port 5000), Tailwind CSS 4, Radix UI, Wouter routing
 - API: Express 5 (port 8080)
-- DB: PostgreSQL + Drizzle ORM
+- DB: **Production = MySQL** (DirectAdmin server), **Dev = PostgreSQL** (Replit built-in). Code auto-detects from `DATABASE_URL`. Both dialects must always be kept working.
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
@@ -58,7 +58,7 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 
 ## Gotchas
 
-- After editing DB schema, always run `pnpm --filter @workspace/db run push`
+- After editing DB schema in **Replit dev**: run `pnpm --filter @workspace/db run push` (PostgreSQL only). For **production MySQL**, schema changes are applied via `scripts/migrate-from-legacy.sql` — add new `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements there. Never run drizzle-kit push on the production server — it hangs interactively on legacy tables.
 - API server must be restarted after route changes (esbuild rebuild)
 - Vite proxies `/api` → `http://localhost:8080` (configured in `artifacts/rich-dating-network/vite.config.ts`)
 - The `admin` column repurposed: old PHP site had admin=1 for admins, new system uses admin=2 for admins and admin=1 for moderators — existing admin users need their level bumped to 2 after import

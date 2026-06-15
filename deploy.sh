@@ -10,6 +10,10 @@
 #   - No mod_proxy_html needed — one simple ProxyPass rule
 #
 # Requires: .env file at project root (same folder as this script)
+#
+# DATABASE: Production uses MySQL (DirectAdmin).
+#   DATABASE_URL must start with mysql:// in .env
+#   Replit dev environment uses PostgreSQL (auto-detected by code).
 # =============================================================
 
 set -e
@@ -38,7 +42,7 @@ fi
 
 # ── 1. Node.js ─────────────────────────────────────────────
 if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt 20 ]]; then
-  echo "[1/8] Installing Node.js 22 via NVM..."
+  echo "[1/7] Installing Node.js 22 via NVM..."
   curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
   export NVM_DIR="$HOME/.nvm"
   [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
@@ -46,7 +50,7 @@ if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d 'v') -lt 
   nvm use 22
   nvm alias default 22
 else
-  echo "[1/8] Node.js $(node -v) ✓"
+  echo "[1/7] Node.js $(node -v) ✓"
 fi
 
 # Load NVM if installed but not in PATH
@@ -55,27 +59,34 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
 # ── 2. pnpm ────────────────────────────────────────────────
 if ! command -v pnpm &>/dev/null; then
-  echo "[2/8] Installing pnpm..."
+  echo "[2/7] Installing pnpm..."
   npm install -g pnpm
 else
-  echo "[2/8] pnpm $(pnpm -v) ✓"
+  echo "[2/7] pnpm $(pnpm -v) ✓"
 fi
 
 # ── 3. PM2 ─────────────────────────────────────────────────
 if ! command -v pm2 &>/dev/null; then
-  echo "[3/8] Installing PM2..."
+  echo "[3/7] Installing PM2..."
   npm install -g pm2
 else
-  echo "[3/8] PM2 $(pm2 -v) ✓"
+  echo "[3/7] PM2 $(pm2 -v) ✓"
 fi
 
 # ── 4. Install deps ────────────────────────────────────────
-echo "[4/8] Installing dependencies..."
+echo "[4/7] Installing dependencies..."
 pnpm install --frozen-lockfile
 
-# ── 5. Legacy DB migration ─────────────────────────────────
-echo "[5/8] Running legacy database migration..."
-echo "      (Safe to re-run — uses INSERT IGNORE / WHERE NOT EXISTS)"
+# ── 5. DB migration + schema sync ──────────────────────────
+# This single SQL script handles EVERYTHING:
+#   - Creates all new app tables (CREATE TABLE IF NOT EXISTS)
+#   - Adds missing columns to existing tables (ALTER TABLE ... ADD COLUMN IF NOT EXISTS)
+#   - Migrates data from legacy PHP tables
+#   - Safe to re-run — all statements are idempotent
+# We do NOT use drizzle-kit push here because it requires interactive input
+# when it detects the many legacy tables in the database.
+echo "[5/7] Running database migration + schema sync..."
+echo "      (Safe to re-run — all idempotent)"
 
 DB_USER=$(echo "$DATABASE_URL" | sed 's|mysql[0-9]*://||' | cut -d: -f1)
 DB_PASS=$(echo "$DATABASE_URL" | sed 's|mysql[0-9]*://[^:]*:||' | cut -d@ -f1)
@@ -89,23 +100,18 @@ if [ -n "$DB_PASS" ]; then
   MYSQL_CMD="mysql -u${DB_USER} -p${DB_PASS} -h${DB_HOST} -P${DB_PORT} ${DB_NAME}"
 fi
 
-$MYSQL_CMD < scripts/migrate-from-legacy.sql && echo "      Migration OK ✓" || echo "      Migration warning (check logs above)"
+$MYSQL_CMD < scripts/migrate-from-legacy.sql && echo "      Migration + schema sync OK ✓" || echo "      Migration warning (check output above)"
 
-# ── 6. Drizzle schema sync ─────────────────────────────────
-echo "[6/8] Syncing database schema..."
-pnpm --filter @workspace/db run push-force
-echo "      Schema sync OK ✓"
-
-# ── 7. Build ───────────────────────────────────────────────
-echo "[7/8] Building..."
+# ── 6. Build ───────────────────────────────────────────────
+echo "[6/7] Building..."
 pnpm --filter @workspace/api-server run build
 echo "      API server built ✓"
 
 BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
 echo "      Frontend built ✓"
 
-# ── 8. Configure Apache + start PM2 ───────────────────────
-echo "[8/8] Configuring Apache proxy & starting PM2..."
+# ── 7. Configure Apache + start PM2 ───────────────────────
+echo "[7/7] Configuring Apache proxy & starting PM2..."
 
 # Write .htaccess at project root — proxies EVERYTHING to Node.js on 8080
 # This requires mod_proxy + mod_proxy_http to be enabled in Apache.
