@@ -249,7 +249,7 @@ export default function AdminSettings() {
   )
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white">Site Settings</h2>
@@ -262,9 +262,9 @@ export default function AdminSettings() {
         </button>
       </div>
 
-      {/* Branding */}
+      {/* Branding — full width */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-800">
           <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-pink-400">
             <Image size={16} />
           </div>
@@ -273,77 +273,62 @@ export default function AdminSettings() {
             <p className="text-gray-500 text-xs">Upload your site logo and favicon</p>
           </div>
         </div>
-        <div className="p-5 grid grid-cols-3 gap-5">
-          <div>
-            <label className="text-gray-300 text-sm font-medium mb-3 block">Site Logo</label>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
-                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <Camera size={22} className="text-gray-600" />}
+        <div className="p-4 grid grid-cols-3 gap-4">
+          {[
+            { label: "Site Logo", url: logoUrl, ref: logoRef, uploading: uploadingLogo, type: "logo" as const, btnClass: "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700" },
+            { label: "Favicon", url: faviconUrl, ref: faviconRef, uploading: uploadingFavicon, type: "favicon" as const, btnClass: "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700" },
+            { label: "Verification Gesture", url: gestureImageUrl, ref: gestureRef, uploading: uploadingGesture, type: "gesture" as const, btnClass: "bg-pink-900 hover:bg-pink-800 text-pink-300 border-pink-800" },
+          ].map(b => (
+            <div key={b.type}>
+              <label className="text-gray-300 text-xs font-medium mb-2 block">{b.label}</label>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {b.url ? <img src={b.url} alt={b.label} className="w-full h-full object-contain p-1.5" /> : <Camera size={18} className="text-gray-600" />}
+                </div>
+                <div>
+                  <input ref={b.ref} type="file" accept="image/*,.ico" className="hidden"
+                    onChange={e => e.target.files?.[0] && uploadBranding(b.type, e.target.files[0])} />
+                  <button onClick={() => b.ref.current?.click()} disabled={b.uploading}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-50 ${b.btnClass}`}>
+                    {b.uploading ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
               </div>
-              <input ref={logoRef} type="file" accept="image/*" className="hidden"
-                onChange={e => e.target.files?.[0] && uploadBranding("logo", e.target.files[0])} />
-              <button onClick={() => logoRef.current?.click()} disabled={uploadingLogo}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
-                {uploadingLogo ? "Uploading..." : "Upload Logo"}
-              </button>
             </div>
-          </div>
-          <div>
-            <label className="text-gray-300 text-sm font-medium mb-3 block">Favicon</label>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
-                {faviconUrl ? <img src={faviconUrl} alt="Favicon" className="w-10 h-10 object-contain" /> : <Camera size={22} className="text-gray-600" />}
-              </div>
-              <input ref={faviconRef} type="file" accept="image/*,.ico" className="hidden"
-                onChange={e => e.target.files?.[0] && uploadBranding("favicon", e.target.files[0])} />
-              <button onClick={() => faviconRef.current?.click()} disabled={uploadingFavicon}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 disabled:opacity-50">
-                {uploadingFavicon ? "Uploading..." : "Upload Favicon"}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="text-gray-300 text-sm font-medium mb-3 block">Verification Gesture Image</label>
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-20 h-20 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden">
-                {gestureImageUrl ? <img src={gestureImageUrl} alt="Gesture" className="w-full h-full object-cover" /> : <Camera size={22} className="text-gray-600" />}
-              </div>
-              <input ref={gestureRef} type="file" accept="image/*" className="hidden"
-                onChange={e => e.target.files?.[0] && uploadBranding("gesture", e.target.files[0])} />
-              <button onClick={() => gestureRef.current?.click()} disabled={uploadingGesture}
-                className="px-3 py-1.5 bg-pink-900 hover:bg-pink-800 text-pink-300 rounded-lg text-xs font-medium border border-pink-800 disabled:opacity-50">
-                {uploadingGesture ? "Uploading..." : "Upload Gesture"}
-              </button>
-              <p className="text-gray-600 text-xs text-center">Shown to users during verification</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {SECTIONS.map((section) => {
-        const SectionIcon = section.icon
-        return (
-          <div key={section.title} className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800">
-              <div className={`w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center ${section.color}`}>
-                <SectionIcon size={16} />
-              </div>
-              <h3 className="text-white font-semibold text-sm">{section.title}</h3>
-            </div>
-            <div className="p-5 space-y-4">
-              {section.fields.map((f: any) => (
-                <div key={f.key}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-gray-300 text-sm font-medium">{f.label}</label>
-                    {f.help && <span className="text-gray-500 text-xs max-w-xs text-right">{f.help}</span>}
-                  </div>
-                  {renderField(f)}
+      {/* Settings sections — 2 columns */}
+      <div className="grid grid-cols-2 gap-4">
+        {SECTIONS.map((section) => {
+          const SectionIcon = section.icon
+          return (
+            <div key={section.title} className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
+                <div className={`w-7 h-7 rounded-lg bg-gray-800 flex items-center justify-center ${section.color} flex-shrink-0`}>
+                  <SectionIcon size={14} />
                 </div>
-              ))}
+                <h3 className="text-white font-semibold text-sm">{section.title}</h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {section.fields.map((f: any) => (
+                  <div key={f.key}>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <label className="text-gray-300 text-xs font-medium leading-tight">{f.label}</label>
+                      {f.help && <span className="text-gray-600 text-[10px] leading-tight text-right max-w-[140px] flex-shrink-0">{f.help}</span>}
+                    </div>
+                    {renderField(f)}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+
+      {/* Email / SMTP + Premium — 2 columns */}
+      <div className="grid grid-cols-2 gap-4 items-start">
 
       {/* Email / SMTP Settings */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
@@ -486,6 +471,8 @@ export default function AdminSettings() {
           )}
         </div>
       </div>
+
+      </div>{/* end email+premium 2-col grid */}
 
       <div className="flex justify-end pb-6">
         <button onClick={save} disabled={saving}

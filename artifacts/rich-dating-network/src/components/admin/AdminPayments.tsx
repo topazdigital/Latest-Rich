@@ -89,136 +89,140 @@ export default function AdminPayments() {
 
   const provider = PROVIDERS.find(p => p.id === activeProvider)!
 
+  const ROUTING = [
+    { flag: '🇰🇪', country: 'Kenya', provider: 'PayHero M-Pesa', color: '#00a651' },
+    { flag: '🇹🇿', country: 'Tanzania', provider: 'PayHero M-Pesa', color: '#00a651' },
+    { flag: '🇺🇬', country: 'Uganda', provider: 'PayHero M-Pesa', color: '#00a651' },
+    { flag: '🇷🇼', country: 'Rwanda', provider: 'PayHero M-Pesa', color: '#00a651' },
+    { flag: '🇳🇬', country: 'Nigeria', provider: 'Paystack', color: '#00c3f7' },
+    { flag: '🇬🇭', country: 'Ghana', provider: 'Paystack', color: '#00c3f7' },
+    { flag: '🇿🇦', country: 'South Africa', provider: 'Paystack', color: '#00c3f7' },
+    { flag: '🇵🇭', country: 'Philippines', provider: 'PayMongo (GCash)', color: '#7c3aed' },
+    { flag: '🇺🇸', country: 'USA', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇬🇧', country: 'UK', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇨🇦', country: 'Canada', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇦🇺', country: 'Australia', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇩🇪', country: 'Germany', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇦🇪', country: 'UAE', provider: 'Stripe', color: '#635bff' },
+    { flag: '🇸🇬', country: 'Singapore', provider: 'Stripe', color: '#635bff' },
+    { flag: '🌍', country: 'All others', provider: 'Stripe (default)', color: '#635bff' },
+  ]
+
   return (
-    <div style={{ maxWidth: '900px' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.35rem' }}>Payment Providers</h2>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-          Configure payment methods for each country. Users automatically see the right method based on their profile location.
-          Each user's payment goes directly to your account for that provider.
+    <div>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h2 style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.25rem' }}>Payment Providers</h2>
+        <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+          Configure payment methods per region. Users see the right option based on their location.
         </p>
       </div>
 
-      {/* How payments work */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
-        <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.82rem', marginBottom: '0.5rem' }}>💡 How it works</p>
-        <ul style={{ color: '#94a3b8', fontSize: '0.82rem', lineHeight: '1.8', paddingLeft: '1rem' }}>
-          <li>A user in <strong style={{ color: '#fff' }}>Kenya</strong> pays via <strong style={{ color: '#00a651' }}>M-Pesa (PayHero)</strong> → KES goes directly to your M-Pesa/PayHero account</li>
-          <li>A user in <strong style={{ color: '#fff' }}>Nigeria</strong> pays via <strong style={{ color: '#00c3f7' }}>Paystack</strong> → NGN goes to your Paystack account</li>
-          <li>A user in <strong style={{ color: '#fff' }}>Philippines</strong> pays via <strong style={{ color: '#7c3aed' }}>GCash/Maya (PayMongo)</strong> → PHP to your PayMongo account</li>
-          <li>A user in <strong style={{ color: '#fff' }}>USA/UK/Europe</strong> pays via <strong style={{ color: '#635bff' }}>Stripe</strong> → USD/GBP/EUR to your Stripe account</li>
-          <li>Set exchange rates so we charge the correct local amount equivalent to USD price</li>
-        </ul>
-      </div>
+      {/* Two-column layout: left = config, right = routing */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '1.25rem', alignItems: 'start' }}>
 
-      {/* Provider tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {PROVIDERS.map(p => (
-          <button key={p.id} onClick={() => setActiveProvider(p.id)} style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.6rem 1rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
-            background: activeProvider === p.id ? p.color : '#1e293b',
-            color: '#fff', fontSize: '0.85rem', fontWeight: 700, transition: 'all 0.15s',
-            boxShadow: activeProvider === p.id ? `0 4px 14px ${p.color}40` : 'none',
-          }}>
-            <span>{p.icon}</span> {p.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Active provider config */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>Loading...</div>
-      ) : (
-        <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '1rem', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid #1f2937' }}>
-            <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: provider.color + '20', border: `1px solid ${provider.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
-              {provider.icon}
-            </div>
-            <div>
-              <p style={{ color: '#fff', fontWeight: 700 }}>{provider.name}</p>
-              <p style={{ color: '#6b7280', fontSize: '0.78rem' }}>🌍 {provider.countries}</p>
-            </div>
-            <div style={{ marginLeft: 'auto' }}>
-              <a href={`https://${provider.id === 'stripe' ? 'dashboard.stripe.com' : provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
-                target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: provider.color, textDecoration: 'none', fontWeight: 700 }}>
-                Open Dashboard →
-              </a>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-            {provider.fields.map(field => (
-              <div key={field.key}>
-                <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.78rem', fontWeight: 600, marginBottom: '0.4rem' }}>
-                  {field.label}
-                  {field.secret && <span style={{ color: '#ef4444', marginLeft: '0.3rem', fontSize: '0.7rem' }}>🔒 Encrypted</span>}
-                </label>
-                <input
-                  type={field.secret ? 'password' : 'text'}
-                  placeholder={edits[field.key] ? '' : (config[field.key] || field.placeholder)}
-                  value={edits[field.key] || ''}
-                  onChange={e => handleChange(field.key, e.target.value)}
-                  style={{
-                    width: '100%', padding: '0.65rem 0.875rem',
-                    background: '#0f172a', border: '1px solid #374151', borderRadius: '0.625rem',
-                    color: '#fff', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                  }}
-                  onFocus={e => { e.currentTarget.style.borderColor = provider.color }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#374151' }}
-                />
-                {config[field.key] && !edits[field.key] && (
-                  <p style={{ color: '#22c55e', fontSize: '0.7rem', marginTop: '0.25rem' }}>✓ Configured — leave blank to keep</p>
-                )}
-              </div>
+        {/* LEFT: Provider config */}
+        <div>
+          {/* Provider tabs */}
+          <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            {PROVIDERS.map(p => (
+              <button key={p.id} onClick={() => setActiveProvider(p.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                padding: '0.5rem 0.875rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
+                background: activeProvider === p.id ? p.color : '#1e293b',
+                color: '#fff', fontSize: '0.82rem', fontWeight: 700, transition: 'all 0.15s',
+                boxShadow: activeProvider === p.id ? `0 4px 12px ${p.color}40` : 'none',
+              }}>
+                <span>{p.icon}</span> {p.name}
+              </button>
             ))}
           </div>
 
-          <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button onClick={handleSave} disabled={saving || Object.keys(edits).length === 0} style={{
-              padding: '0.65rem 1.5rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer',
-              background: Object.keys(edits).length === 0 ? '#374151' : provider.color,
-              color: '#fff', fontWeight: 700, fontSize: '0.875rem', fontFamily: 'inherit',
-              opacity: saving ? 0.7 : 1, transition: 'all 0.15s',
-            }}>
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-            {saved && <span style={{ color: '#22c55e', fontSize: '0.85rem', fontWeight: 600 }}>✓ Saved successfully!</span>}
-          </div>
-        </div>
-      )}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>Loading...</div>
+          ) : (
+            <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '1rem', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '0.875rem', borderBottom: '1px solid #1f2937' }}>
+                <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: provider.color + '20', border: `1px solid ${provider.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>
+                  {provider.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{provider.name}</p>
+                  <p style={{ color: '#6b7280', fontSize: '0.75rem' }}>🌍 {provider.countries}</p>
+                </div>
+                <a href={`https://${provider.id === 'stripe' ? 'dashboard.stripe.com' : provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
+                  target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: provider.color, textDecoration: 'none', fontWeight: 700, flexShrink: 0 }}>
+                  Dashboard →
+                </a>
+              </div>
 
-      {/* Country routing table */}
-      <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '1rem', padding: '1.25rem', marginTop: '1.5rem' }}>
-        <p style={{ color: '#fff', fontWeight: 700, marginBottom: '1rem', fontSize: '0.9rem' }}>🗺️ Country → Payment Provider Routing</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
-          {[
-            { flag: '🇰🇪', country: 'Kenya', provider: 'PayHero M-Pesa', color: '#00a651' },
-            { flag: '🇹🇿', country: 'Tanzania', provider: 'PayHero M-Pesa', color: '#00a651' },
-            { flag: '🇺🇬', country: 'Uganda', provider: 'PayHero M-Pesa', color: '#00a651' },
-            { flag: '🇷🇼', country: 'Rwanda', provider: 'PayHero M-Pesa', color: '#00a651' },
-            { flag: '🇳🇬', country: 'Nigeria', provider: 'Paystack', color: '#00c3f7' },
-            { flag: '🇬🇭', country: 'Ghana', provider: 'Paystack', color: '#00c3f7' },
-            { flag: '🇿🇦', country: 'South Africa', provider: 'Paystack', color: '#00c3f7' },
-            { flag: '🇵🇭', country: 'Philippines', provider: 'PayMongo (GCash)', color: '#7c3aed' },
-            { flag: '🇺🇸', country: 'USA', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇬🇧', country: 'UK', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇨🇦', country: 'Canada', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇦🇺', country: 'Australia', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇩🇪', country: 'Germany', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇦🇪', country: 'UAE', provider: 'Stripe', color: '#635bff' },
-            { flag: '🇸🇬', country: 'Singapore', provider: 'Stripe', color: '#635bff' },
-            { flag: '🌍', country: 'All others', provider: 'Stripe (default)', color: '#635bff' },
-          ].map((row, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.75rem', background: '#0f172a', borderRadius: '0.5rem' }}>
-              <span style={{ fontSize: '1.1rem' }}>{row.flag}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: '#e5e7eb', fontSize: '0.78rem', fontWeight: 600 }}>{row.country}</p>
-                <p style={{ color: row.color, fontSize: '0.7rem' }}>{row.provider}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.875rem' }}>
+                {provider.fields.map(field => (
+                  <div key={field.key}>
+                    <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                      {field.label}
+                      {field.secret && <span style={{ color: '#ef4444', marginLeft: '0.3rem', fontSize: '0.68rem' }}>🔒 Encrypted</span>}
+                    </label>
+                    <input
+                      type={field.secret ? 'password' : 'text'}
+                      placeholder={edits[field.key] ? '' : (config[field.key] || field.placeholder)}
+                      value={edits[field.key] || ''}
+                      onChange={e => handleChange(field.key, e.target.value)}
+                      style={{
+                        width: '100%', padding: '0.6rem 0.8rem',
+                        background: '#0f172a', border: '1px solid #374151', borderRadius: '0.5rem',
+                        color: '#fff', fontSize: '0.83rem', outline: 'none', fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                      }}
+                      onFocus={e => { e.currentTarget.style.borderColor = provider.color }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#374151' }}
+                    />
+                    {config[field.key] && !edits[field.key] && (
+                      <p style={{ color: '#22c55e', fontSize: '0.68rem', marginTop: '0.2rem' }}>✓ Configured — leave blank to keep</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button onClick={handleSave} disabled={saving || Object.keys(edits).length === 0} style={{
+                  padding: '0.6rem 1.25rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
+                  background: Object.keys(edits).length === 0 ? '#374151' : provider.color,
+                  color: '#fff', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit',
+                  opacity: saving ? 0.7 : 1, transition: 'all 0.15s',
+                }}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                {saved && <span style={{ color: '#22c55e', fontSize: '0.83rem', fontWeight: 600 }}>✓ Saved!</span>}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* How it works note */}
+          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '0.75rem', padding: '0.875rem 1rem', marginTop: '1rem' }}>
+            <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.78rem', marginBottom: '0.4rem' }}>💡 How routing works</p>
+            <ul style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: '1.7', paddingLeft: '1rem', margin: 0 }}>
+              <li>Kenya/East Africa → <strong style={{ color: '#00a651' }}>PayHero M-Pesa</strong></li>
+              <li>Nigeria/Ghana/SA → <strong style={{ color: '#00c3f7' }}>Paystack</strong></li>
+              <li>Philippines → <strong style={{ color: '#7c3aed' }}>PayMongo (GCash)</strong></li>
+              <li>USA/UK/Europe/UAE → <strong style={{ color: '#635bff' }}>Stripe</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* RIGHT: Country routing table */}
+        <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '1rem', padding: '1rem' }}>
+          <p style={{ color: '#fff', fontWeight: 700, marginBottom: '0.75rem', fontSize: '0.85rem' }}>🗺️ Country Routing</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            {ROUTING.map((row, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.6rem', background: '#0f172a', borderRadius: '0.4rem' }}>
+                <span style={{ fontSize: '1rem', flexShrink: 0 }}>{row.flag}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: '#e5e7eb', fontSize: '0.75rem', fontWeight: 600 }}>{row.country}</p>
+                  <p style={{ color: row.color, fontSize: '0.65rem' }}>{row.provider}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

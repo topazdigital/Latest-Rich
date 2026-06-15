@@ -218,110 +218,94 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             </div>
           </div>
 
-          {/* Bottom overlay — name + details + message input */}
+          {/* Bottom overlay — name + details ONLY (no compose here) */}
           <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-            {/* Name & meta */}
-            <div className="mb-3">
-              <div className="flex items-end gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-                  {user.name || (isOwnProfile ? 'Your Profile' : 'Member')}
-                </h1>
-                {user.verified === 1 && (
-                  <span title="Verified member"><BadgeCheck size={22} className="text-blue-400 drop-shadow mb-0.5 flex-shrink-0" /></span>
-                )}
-              </div>
-              <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-white/85 text-sm">
-                {displayAge && displayAge > 0 && <span className="font-medium">{displayAge} yrs</span>}
-                {zodiac && <><span className="text-white/50">·</span><span>{zodiac}</span></>}
-                {genderLabel(user.gender) && genderLabel(user.gender) !== 'Unknown' && <><span className="text-white/50">·</span><span>{genderLabel(user.gender)}</span></>}
-                {user.city && (
-                  <><span className="text-white/50">·</span>
-                  <span className="flex items-center gap-1"><MapPin size={11} />{user.city}</span></>
-                )}
-              </div>
-              {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
-                <p className="text-white/55 text-xs mt-0.5">Last seen {timeAgo(user.lastAccess)}</p>
+            <div className="flex items-end gap-2 mb-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight drop-shadow-lg">
+                {user.name || (isOwnProfile ? 'Your Profile' : 'Member')}
+              </h1>
+              {user.verified === 1 && (
+                <span title="Verified member"><BadgeCheck size={22} className="text-blue-400 drop-shadow mb-0.5 flex-shrink-0" /></span>
               )}
             </div>
-
-            {/* Message compose area — inside photo */}
-            {!isOwnProfile && (
-              <div className="space-y-2">
-                <div className="relative">
-                  <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl px-3 py-2.5 shadow-lg">
-                    <input
-                      ref={msgRef}
-                      type="text"
-                      value={msgText}
-                      onChange={e => setMsgText(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                      placeholder={`Message ${user.name}…`}
-                      className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400 min-w-0"
-                    />
-                    <button type="button" onClick={() => setShowQuick(p => !p)}
-                      className="text-gray-400 hover:text-brand-500 transition-colors p-0.5 flex-shrink-0">
-                      <Smile size={17} />
-                    </button>
-                    <button type="button" onClick={() => sendMessage()} disabled={sending}
-                      className="bg-brand-500 hover:bg-brand-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 flex-shrink-0 disabled:opacity-60">
-                      <Send size={13} /> {sending ? '…' : 'Send'}
-                    </button>
-                  </div>
-                  {showQuick && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
-                      {QUICK_MESSAGES.map((q, i) => (
-                        <button key={i} onClick={() => { setMsgText(q); setShowQuick(false); msgRef.current?.focus() }}
-                          className="w-full text-left text-sm px-4 py-2.5 hover:bg-brand-50 hover:text-brand-700 border-b border-gray-50 last:border-0 transition-colors">
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Action row */}
-                <div className="flex gap-2">
-                  <button onClick={() => sendMessage()} disabled={sending}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-60 shadow-md">
-                    <MessageCircle size={15} /> Chat Now
-                  </button>
-                  <button onClick={toggleLike}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md ${liked ? 'bg-brand-500 text-white' : 'bg-white/90 text-brand-500 hover:bg-brand-500 hover:text-white'}`}>
-                    <Heart size={15} className={liked ? 'fill-white' : ''} />
-                    {liked ? 'Liked' : 'Like'}
-                  </button>
-                  <Link href={`/gifts?toId=${user.id}`}
-                    className="flex items-center justify-center px-3.5 py-2.5 rounded-xl font-semibold bg-amber-500/90 text-white hover:bg-amber-500 transition-all shadow-md" title="Send a gift">
-                    <Gift size={15} />
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {/* Own profile CTA */}
-            {isOwnProfile && (!user.name || !user.bio) && (
-              <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 flex items-center gap-3">
-                <Edit3 size={16} className="text-white flex-shrink-0" />
-                <p className="text-white/90 text-sm flex-1">Complete your profile to get more matches</p>
-                <Link href="/settings" className="bg-white text-brand-600 text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0">Edit</Link>
-              </div>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-white/85 text-sm drop-shadow">
+              {displayAge && displayAge > 0 && <span className="font-medium">{displayAge} yrs</span>}
+              {zodiac && <><span className="text-white/50">·</span><span>{zodiac}</span></>}
+              {genderLabel(user.gender) && genderLabel(user.gender) !== 'Unknown' && <><span className="text-white/50">·</span><span>{genderLabel(user.gender)}</span></>}
+              {user.city && (
+                <><span className="text-white/50">·</span>
+                <span className="flex items-center gap-1"><MapPin size={11} />{user.city}</span></>
+              )}
+            </div>
+            {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
+              <p className="text-white/55 text-xs mt-0.5">Last seen {timeAgo(user.lastAccess)}</p>
             )}
           </div>
         </div>
 
-        {/* Action footer — bio + match + block/report */}
+        {/* Compose + actions — below the photo, inside card */}
         {!isOwnProfile && (
-          <div className="px-4 py-3">
-            {user.bio && (
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
-            )}
+          <div className="px-4 pt-3 pb-3 space-y-2.5">
+            {/* Message input */}
+            <div className="relative">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+                <input
+                  ref={msgRef}
+                  type="text"
+                  value={msgText}
+                  onChange={e => setMsgText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                  placeholder={`Message ${user.name}…`}
+                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400 min-w-0"
+                />
+                <button type="button" onClick={() => setShowQuick(p => !p)}
+                  className="text-gray-400 hover:text-brand-500 transition-colors p-0.5 flex-shrink-0">
+                  <Smile size={17} />
+                </button>
+                <button type="button" onClick={() => sendMessage()} disabled={sending}
+                  className="bg-brand-500 hover:bg-brand-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 flex-shrink-0 disabled:opacity-60">
+                  <Send size={13} /> {sending ? '…' : 'Send'}
+                </button>
+              </div>
+              {showQuick && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
+                  {QUICK_MESSAGES.map((q, i) => (
+                    <button key={i} onClick={() => { setMsgText(q); setShowQuick(false); msgRef.current?.focus() }}
+                      className="w-full text-left text-sm px-4 py-2.5 hover:bg-brand-50 hover:text-brand-700 border-b border-gray-50 last:border-0 transition-colors">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button onClick={() => { setLocation(`/chat/${user.id}`) }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm bg-green-500 text-white hover:bg-green-600 transition-all shadow-sm">
+                <MessageCircle size={15} /> Chat Now
+              </button>
+              <button onClick={toggleLike}
+                className={`flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm ${liked ? 'bg-brand-500 text-white' : 'bg-brand-50 text-brand-500 border border-brand-200 hover:bg-brand-500 hover:text-white hover:border-brand-500'}`}>
+                <Heart size={15} className={liked ? 'fill-white' : ''} />
+                {liked ? 'Liked' : 'Like'}
+              </button>
+              <Link href={`/gifts?toId=${user.id}`}
+                className="flex items-center justify-center px-3.5 py-2.5 rounded-xl font-semibold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all" title="Send a gift">
+                <Gift size={15} />
+              </Link>
+            </div>
+
+            {/* Match banner */}
             {isMatch && (
-              <div className="flex items-center justify-center gap-2 py-2 mb-2 bg-brand-50 rounded-xl text-brand-600 text-sm font-medium">
+              <div className="flex items-center justify-center gap-2 py-2 bg-brand-50 rounded-xl text-brand-600 text-sm font-medium">
                 <Heart size={14} className="fill-brand-500 text-brand-500" /> You matched with {user.name}! 💬
               </div>
             )}
+
+            {/* Shared interests */}
             {sharedInterestDetails.length > 0 && (
-              <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2 text-sm mb-2">
+              <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2">
                 <span className="text-green-600 font-semibold text-xs uppercase tracking-wide flex-shrink-0">You both love</span>
                 <div className="flex flex-wrap gap-1">
                   {sharedInterestDetails.slice(0, 4).map(i => (
@@ -333,6 +317,13 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                 </div>
               </div>
             )}
+
+            {/* Bio snippet */}
+            {user.bio && (
+              <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 pt-0.5" dangerouslySetInnerHTML={{ __html: user.bio }} />
+            )}
+
+            {/* Block/Report */}
             <div className="flex gap-1 pt-1 border-t border-gray-100">
               <button onClick={blockUser}
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50">
@@ -345,9 +336,19 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             </div>
           </div>
         )}
-        {isOwnProfile && user.bio && (
-          <div className="px-5 py-3 border-t border-gray-100">
-            <p className="text-gray-600 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
+
+        {isOwnProfile && (
+          <div className="px-5 py-3">
+            {(!user.name || !user.bio) && (
+              <div className="bg-brand-50 border border-brand-100 rounded-xl p-3 flex items-center gap-3 mb-3">
+                <Edit3 size={16} className="text-brand-500 flex-shrink-0" />
+                <p className="text-brand-700 text-sm flex-1">Complete your profile to get more matches</p>
+                <Link href="/settings" className="bg-brand-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0">Edit</Link>
+              </div>
+            )}
+            {user.bio && (
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
+            )}
           </div>
         )}
       </div>

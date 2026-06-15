@@ -253,14 +253,23 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                 <div key={u.id}
                   className={`group relative rounded-2xl overflow-hidden bg-gray-100 cursor-pointer flex flex-col ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(`/profile/${u.id}`) }}>
-                  {/* Photo area — fixed aspect ratio */}
+                  {/* Photo area — fixed 3:4 aspect ratio, always filled */}
                   <div className="relative w-full" style={{ paddingBottom: '133%' }}>
-                    <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
+                    {/* Fallback background for no-photo users */}
+                    <div className="absolute inset-0 flex items-center justify-center"
+                      style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>
+                      <div style={{ fontSize: '3rem', opacity: 0.4, color: '#fff', fontWeight: 800, userSelect: 'none' }}>
+                        {(u.name?.[0] || '?').toUpperCase()}
+                      </div>
+                    </div>
+                    {(u.photoThumb || u.photo) && (
+                      <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    )}
                     {/* Dark gradient at bottom */}
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.75) 100%)' }} />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 45%, rgba(0,0,0,0.8) 100%)' }} />
                     {/* Top-left badge */}
                     {isBoosted && (
                       <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">

@@ -154,7 +154,7 @@ export default function AdminCustomPayments() {
   const pendingCount = orders.filter((o: any) => o.order?.status === "pending").length
 
   return (
-    <div style={{ maxWidth: "960px" }}>
+    <div>
       <div style={{ marginBottom: "1.5rem" }}>
         <h2 style={{ color: "#fff", fontSize: "1.25rem", fontWeight: 800, marginBottom: "0.35rem" }}>Manual Payment Gateways</h2>
         <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Add custom payment methods like M-Pesa Till, bank transfers, etc. Users submit proof and you approve manually.</p>
