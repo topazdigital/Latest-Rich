@@ -62,7 +62,7 @@ export default function MainNav() {
               <Heart size={12} color="#fff" fill="#fff" />
             </div>
             <span style={{ fontWeight: 900, color: '#111827', fontSize: '0.82rem', letterSpacing: '-0.02em' }}>
-              Rich <span style={{ color: '#FF192C' }}>Dating</span>
+              Rich <span style={{ color: '#FF192C' }}>Dating</span> Network
             </span>
           </Link>
 

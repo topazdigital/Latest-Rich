@@ -198,7 +198,7 @@ export default function LandingPage() {
               <Heart className="w-4 h-4 text-white fill-white" />
             </div>
             <span className={`text-xl font-bold transition-colors ${scrolled ? 'text-gray-900' : 'text-white'}`}>
-              Rich <span className={scrolled ? 'text-brand-500' : 'text-yellow-300'}>Dating</span>
+              Rich <span className={scrolled ? 'text-brand-500' : 'text-yellow-300'}>Dating</span> Network
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export default function LandingPage() {
                 <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg">
                   <Heart className="w-4 h-4 text-white fill-white" />
                 </div>
-                <span className="font-bold text-lg text-gray-900">Rich Dating</span>
+                <span className="font-bold text-lg text-gray-900">Rich Dating Network</span>
               </Link>
             </div>
 

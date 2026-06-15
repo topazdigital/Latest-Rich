@@ -105,7 +105,7 @@ export default function VerifyEmailPage() {
               <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg">
                 <Heart className="w-4 h-4 text-white fill-white" />
               </div>
-              <span className="font-bold text-gray-900">Rich Dating</span>
+              <span className="font-bold text-gray-900">Rich Dating Network</span>
             </Link>
           </div>
 

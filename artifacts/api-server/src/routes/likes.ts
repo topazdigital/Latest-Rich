@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { likesTable, notificationsTable, usersTable } from "@workspace/db/schema"
-import { eq, and, desc } from "drizzle-orm"
+import { likesTable, notificationsTable, usersTable, photosTable } from "@workspace/db/schema"
+import { eq, and, desc, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send } from "../lib/websocket"
 
@@ -43,10 +43,32 @@ router.get("/", requireAuth, async (req, res) => {
 
     const matches = likedMeRows.filter(r => matchIds.includes(r.like.userId))
 
+    // Enrich photo fallback from photos table for users with empty photo
+    const allUserIds = [
+      ...likedMeRows.map(r => r.user?.id),
+      ...iLikedRows.map(r => r.user?.id),
+    ].filter((id): id is number => !!id)
+    const uniqueIds = [...new Set(allUserIds)]
+    const photoMap = new Map<number, { photo: string; thumb: string }>()
+    if (uniqueIds.length > 0) {
+      const fallbackPhotos = await db.select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
+        .from(photosTable)
+        .where(and(inArray(photosTable.userId, uniqueIds), eq(photosTable.approved, 1)))
+        .orderBy(desc(photosTable.main), photosTable.id)
+      for (const p of fallbackPhotos) {
+        if (!photoMap.has(p.userId)) photoMap.set(p.userId, { photo: p.photo, thumb: p.thumb || p.photo })
+      }
+    }
+    function enrichUser(u: any) {
+      if (!u) return null
+      const fb = photoMap.get(u.id)
+      return { ...safeUser(u), photo: u.photo || fb?.photo || '', photoThumb: u.photoThumb || fb?.thumb || '' }
+    }
+
     res.json({
-      likedMe: likedMeRows.map(r => ({ ...r.like, user: safeUser(r.user) })),
-      iLiked: iLikedRows.map(r => ({ ...r.like, user: safeUser(r.user) })),
-      matches: matches.map(r => ({ ...r.like, user: safeUser(r.user) })),
+      likedMe: likedMeRows.map(r => ({ ...r.like, user: enrichUser(r.user) })),
+      iLiked: iLikedRows.map(r => ({ ...r.like, user: enrichUser(r.user) })),
+      matches: matches.map(r => ({ ...r.like, user: enrichUser(r.user) })),
     })
   } catch (err: any) {
     console.error(err)

@@ -165,7 +165,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center border border-white/30">
               <Heart className="w-5 h-5 text-white fill-white" />
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">Rich Dating</span>
+            <span className="text-white font-bold text-xl tracking-tight">Rich Dating Network</span>
           </Link>
 
           <div className="flex-1 flex flex-col justify-center mt-12">
@@ -225,7 +225,7 @@ export default function LoginPage() {
               <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center shadow-lg">
                 <Heart className="w-5 h-5 text-white fill-white" />
               </div>
-              <span className="font-bold text-lg text-gray-900">Rich Dating</span>
+              <span className="font-bold text-lg text-gray-900">Rich Dating Network</span>
             </Link>
           </div>
 

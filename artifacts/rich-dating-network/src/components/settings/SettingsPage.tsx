@@ -373,6 +373,22 @@ export default function SettingsPage({ user: initialUser }: Props) {
     } catch { toast.error('Failed to delete') }
   }
 
+  async function setMainPhoto(photoId: number) {
+    try {
+      const res = await fetch(`/api/photos/set-main/${photoId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setPhotos((p: any[]) => p.map((ph: any) => ({ ...ph, main: ph.id === photoId ? 1 : 0 })))
+        toast.success('Profile photo updated!')
+        await refreshUser()
+      } else {
+        toast.error('Failed to set profile photo')
+      }
+    } catch { toast.error('Failed') }
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="section-title mb-6">Settings</h1>
@@ -547,10 +563,10 @@ export default function SettingsPage({ user: initialUser }: Props) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-gray-900">My Photos</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Upload up to 10 photos</p>
+              <p className="text-sm text-gray-500 mt-0.5">Upload up to 10 photos · hover to set profile photo</p>
             </div>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading}
-              className="btn-primary text-sm py-2 px-4 disabled:opacity-50">
+            <button onClick={() => fileRef.current?.click()} disabled={uploading || photos.length >= 10}
+              className="btn-primary text-sm py-2 px-4 disabled:opacity-50 flex items-center gap-1.5">
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
               Add Photo
             </button>
@@ -558,20 +574,37 @@ export default function SettingsPage({ user: initialUser }: Props) {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {photos.map((p: any) => (
               <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden group shadow-sm">
-                <img src={getPhotoUrl(p.thumb || p.photo)} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <img src={getPhotoUrl(p.thumb || p.photo)} alt="" className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.background = '#f3f4f6' }} />
+                {p.main === 1 && (
+                  <div className="absolute top-1.5 left-1.5 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow">
+                    ⭐ Profile
+                  </div>
+                )}
+                {p.approved === 0 && p.main !== 1 && (
+                  <div className="absolute top-1.5 right-1.5 bg-yellow-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow">
+                    Pending
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 px-2">
+                  {p.main !== 1 && (
+                    <button onClick={() => setMainPhoto(p.id)}
+                      className="w-full py-1 bg-brand-500 text-white rounded-lg text-[11px] font-semibold hover:bg-brand-600 transition-colors flex items-center justify-center gap-1">
+                      ⭐ Set Profile
+                    </button>
+                  )}
                   <button onClick={() => deletePhoto(p.id)}
-                    className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
-                    <Trash2 size={14} />
+                    className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors flex-shrink-0">
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
             ))}
-            {photos.length === 0 && (
+            {photos.length < 10 && (
               <button onClick={() => fileRef.current?.click()}
-                className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-brand-400 hover:bg-brand-50 transition-all col-span-2">
-                <Camera size={24} className="text-gray-300 mb-2" />
-                <span className="text-xs text-gray-400">Upload your first photo</span>
+                className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-brand-400 hover:bg-brand-50 transition-all">
+                <Camera size={22} className="text-gray-300 mb-1.5" />
+                <span className="text-xs text-gray-400">{photos.length === 0 ? 'Add photo' : 'Add more'}</span>
               </button>
             )}
           </div>
