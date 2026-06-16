@@ -235,7 +235,17 @@ export default function AdminSettings() {
     try {
       const res = await authFetch("/api/admin/test-email", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail })
+        body: JSON.stringify({
+          to: testEmail,
+          host: config["smtp_host"],
+          port: config["smtp_port"],
+          user: config["smtp_user"],
+          pass: config["smtp_pass"],
+          secure: config["smtp_secure"],
+          from: config["smtp_from"],
+          from_name: config["smtp_from_name"],
+          auth_method: config["smtp_auth_method"],
+        })
       })
       const data = await res.json()
       if (res.ok) toast.success("Test email sent! Check your inbox.")

@@ -762,48 +762,47 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
 // Test email endpoint — uses nodemailer directly so the real SMTP error is surfaced to the admin
 router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { to } = req.body
+    const { to, host: bodyHost, port: bodyPort, user: bodyUser, pass: bodyPass,
+            secure: bodySecure, from: bodyFrom, from_name: bodyFromName,
+            auth_method: bodyAuthMethod } = req.body
     if (!to) { res.status(400).json({ error: "Recipient email required" }); return }
 
-    // Read SMTP config from DB
+    // Use values from the request body (current form) if provided, fall back to DB
     const getConf = async (key: string) => {
       const r = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
       return r[0]?.value || ""
     }
-    const smtpHost = process.env.SMTP_HOST || await getConf("smtp_host")
-    const smtpPort = parseInt(process.env.SMTP_PORT || await getConf("smtp_port") || "587")
-    const smtpUser = process.env.SMTP_USER || await getConf("smtp_user")
-    const smtpPass = process.env.SMTP_PASS || await getConf("smtp_pass")
-    const smtpFrom = process.env.SMTP_FROM || await getConf("smtp_from") || smtpUser
-    const smtpFromName = process.env.SMTP_FROM_NAME || await getConf("smtp_from_name") || "Rich Dating Network"
-    const smtpSecure = (process.env.SMTP_SECURE || await getConf("smtp_secure")) === "1"
-    const smtpAuthMethod = process.env.SMTP_AUTH_METHOD || await getConf("smtp_auth_method") || ""
+    const smtpHost = bodyHost || process.env.SMTP_HOST || await getConf("smtp_host")
+    const smtpPort = parseInt(bodyPort || process.env.SMTP_PORT || await getConf("smtp_port") || "587")
+    const smtpUser = bodyUser !== undefined ? bodyUser : (process.env.SMTP_USER || await getConf("smtp_user"))
+    const smtpPass = bodyPass !== undefined ? bodyPass : (process.env.SMTP_PASS || await getConf("smtp_pass"))
+    const smtpFromRaw = bodyFrom !== undefined ? bodyFrom : (process.env.SMTP_FROM || await getConf("smtp_from"))
+    const smtpFrom = smtpFromRaw || smtpUser
+    const smtpFromName = bodyFromName || process.env.SMTP_FROM_NAME || await getConf("smtp_from_name") || "Rich Dating Network"
+    const smtpSecure = bodySecure !== undefined ? (bodySecure === "1" || bodySecure === true) : ((process.env.SMTP_SECURE || await getConf("smtp_secure")) === "1")
+    const smtpAuthMethod = bodyAuthMethod !== undefined ? bodyAuthMethod : (process.env.SMTP_AUTH_METHOD || await getConf("smtp_auth_method") || "")
     const siteName = await getConf("site_name") || "Rich Dating Network"
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      res.status(400).json({
-        error: `SMTP not fully configured. Missing: ${[!smtpHost && "Host", !smtpUser && "Username", !smtpPass && "Password"].filter(Boolean).join(", ")}.`
-      }); return
+    if (!smtpHost) {
+      res.status(400).json({ error: "SMTP Host is required." }); return
     }
 
-    // Create transporter directly — any SMTP error propagates to the catch block below.
-    // Per-option timeouts cover TCP connect + greeting, but NOT the TLS handshake phase —
-    // a misconfigured port/secure combo (e.g. port 465 with secure:false) can still hang
-    // indefinitely inside the TLS negotiation. Promise.race with a hard deadline guarantees
-    // the request always resolves within SMTP_HARD_TIMEOUT_MS regardless of what hangs.
+    // Create transporter — auth is optional (localhost:25 works without credentials)
     const SMTP_HARD_TIMEOUT_MS = 8000
     const nodemailer = await import("nodemailer")
-    const authConfigTE: any = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
-    const transporter = nodemailer.createTransport({
+    const transportOptsTE: any = {
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      auth: authConfigTE,
       tls: { rejectUnauthorized: false },
       connectionTimeout: 5000,
       greetingTimeout: 5000,
       socketTimeout: 8000,
-    })
+    }
+    if (smtpUser && smtpPass) {
+      transportOptsTE.auth = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
+    }
+    const transporter = nodemailer.createTransport(transportOptsTE)
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
