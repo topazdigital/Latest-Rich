@@ -8,7 +8,7 @@ module.exports = {
       env_file: ".env",
       env: {
         NODE_ENV: "production",
-        PORT: 8080,
+        PORT: 7080,
       },
       max_memory_restart: "512M",
       restart_delay: 3000,

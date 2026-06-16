@@ -158,30 +158,28 @@ echo "      Build completed at $(date '+%Y-%m-%d %H:%M:%S')"
 # ── 7. Configure Apache + start PM2 ───────────────────────
 echo "[7/7] Configuring Apache proxy & starting PM2..."
 
-# Write .htaccess at project root — proxies EVERYTHING to Node.js on 8080
+# Write .htaccess at project root — proxies EVERYTHING to Node.js on 7080
+# Port 7080 is used to avoid conflicts with other apps on this server:
+#   wet3camp-api=8080, betcheza=3001, others=3000/3005/5000
 # This requires mod_proxy + mod_proxy_http to be enabled in Apache.
-# If your DirectAdmin doesn't support .htaccess ProxyPass, use the
-# CustomHTTP configuration in DirectAdmin > Domains > domain.conf instead.
 cat > .htaccess << 'HTACCESS'
-# Proxy all requests to Node.js server on port 8080
+# Proxy all requests to Node.js server on port 7080
 # Requires mod_proxy and mod_proxy_http in Apache
 DirectoryIndex disabled
 
 RewriteEngine On
-RewriteRule ^(.*)$ http://localhost:8080/$1 [P,L,QSA]
-
-# Fallback for websockets
 RewriteCond %{HTTP:Upgrade} websocket [NC]
 RewriteCond %{HTTP:Connection} upgrade [NC]
-RewriteRule ^(.*)$ ws://localhost:8080/$1 [P,L]
+RewriteRule ^(.*)$ ws://localhost:7080/$1 [P,L]
+RewriteRule ^(.*)$ http://localhost:7080/$1 [P,L,QSA]
 HTACCESS
 
-# Stop PM2 process and wait for port 8080 to be released
+# Stop PM2 process cleanly
 pm2 stop rdn-api 2>/dev/null || true
 pm2 delete rdn-api 2>/dev/null || true
 sleep 2
-# Force-free port 8080 if something is still holding it (EADDRINUSE prevention)
-fuser -k 8080/tcp 2>/dev/null || lsof -ti :8080 | xargs kill -9 2>/dev/null || true
+# Force-free port 7080 if something is still holding it (EADDRINUSE prevention)
+fuser -k 7080/tcp 2>/dev/null || lsof -ti :7080 | xargs kill -9 2>/dev/null || true
 sleep 1
 
 pm2 start ecosystem.config.cjs
@@ -193,7 +191,7 @@ echo ""
 echo "==============================="
 echo "  Deployment Complete! ✓"
 echo "==============================="
-echo "  Node.js: http://localhost:8080"
+echo "  Node.js: http://localhost:7080"
 echo "  Site:    https://richdatingnetwork.com"
 echo ""
 echo "  Status:  pm2 status"
