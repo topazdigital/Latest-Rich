@@ -46,7 +46,7 @@ export default function AdminPage() {
   }, [user, loading])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: '2rem', height: '2rem', border: '2px solid #FF192C', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
@@ -54,22 +54,22 @@ export default function AdminPage() {
   if (!user || (user.admin ?? 0) < 2) return null
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex' }}>
       {/* Sidebar */}
       <aside style={{
         position: 'fixed', inset: '0 auto 0 0', zIndex: 50,
-        width: '16rem', background: '#0f172a',
-        borderRight: '1px solid #1e293b',
+        width: '16rem', background: '#ffffff',
+        borderRight: '1px solid #e2e8f0',
         transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.2s',
         display: 'flex', flexDirection: 'column',
       }} className="admin-sidebar">
         {/* Logo */}
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{ width: '2rem', height: '2rem', borderRadius: '0.625rem', background: 'linear-gradient(135deg,#FF192C,#ff5f6b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', boxShadow: '0 3px 8px rgba(255,25,44,0.35)' }}>❤️</div>
             <div>
-              <p style={{ color: '#fff', fontWeight: 800, fontSize: '0.78rem' }}>Rich Dating Network</p>
+              <p style={{ color: '#1e293b', fontWeight: 800, fontSize: '0.78rem' }}>Rich Dating Network</p>
               <p style={{ color: '#FF192C', fontSize: '0.65rem', fontWeight: 700 }}>Admin Panel</p>
             </div>
           </div>
@@ -77,12 +77,12 @@ export default function AdminPage() {
 
         {/* Admin user */}
         <div style={{ padding: '0.625rem 0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.625rem', padding: '0.5rem 0.625rem', background: '#1e293b', borderRadius: '0.625rem', border: '1px solid #334155' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.625rem', padding: '0.5rem 0.625rem', background: '#fef2f2', borderRadius: '0.625rem', border: '1px solid #fecaca' }}>
             <div style={{ width: '1.875rem', height: '1.875rem', borderRadius: '50%', background: '#FF192C', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>
               {user.name?.[0]?.toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</p>
+              <p style={{ color: '#1e293b', fontSize: '0.78rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</p>
               <p style={{ color: '#FF192C', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em' }}>ADMINISTRATOR</p>
             </div>
           </div>
@@ -93,12 +93,12 @@ export default function AdminPage() {
                 width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
                 padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
                 background: tab === m.key ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
-                color: tab === m.key ? '#fff' : '#94a3b8',
+                color: tab === m.key ? '#fff' : '#475569',
                 fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
                 fontFamily: 'inherit',
                 boxShadow: tab === m.key ? '0 3px 8px rgba(255,25,44,0.25)' : 'none',
               }}
-                onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#1e293b' }}
+                onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#f1f5f9' }}
                 onMouseLeave={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                 <span style={{ fontSize: '0.875rem' }}>{m.icon}</span>
                 <span>{m.label}</span>
@@ -106,11 +106,11 @@ export default function AdminPage() {
             ))}
           </nav>
 
-          <div style={{ marginTop: '0.875rem', paddingTop: '0.875rem', borderTop: '1px solid #1e293b' }}>
+          <div style={{ marginTop: '0.875rem', paddingTop: '0.875rem', borderTop: '1px solid #e2e8f0' }}>
             <button onClick={() => setLocation("/discover")} style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
               padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: '#94a3b8', fontSize: '0.78rem', fontFamily: 'inherit', fontWeight: 600,
+              background: 'transparent', color: '#64748b', fontSize: '0.78rem', fontFamily: 'inherit', fontWeight: 600,
             }}>
               <span>🏠</span> Back to App
             </button>
@@ -120,24 +120,24 @@ export default function AdminPage() {
 
       {/* Overlay */}
       {sidebarOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.6)' }} onClick={() => setSidebarOpen(false)} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.4)' }} onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }} className="admin-main">
-        <header style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.875rem', position: 'sticky', top: 0, zIndex: 10 }}>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex' }} className="sidebar-toggle">
+        <header style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.875rem', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', display: 'flex' }} className="sidebar-toggle">
             <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <div>
-            <h1 style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{MENU.find(m => m.key === tab)?.label}</h1>
-            <p style={{ color: '#475569', fontSize: '0.72rem' }}>Rich Dating Network · Admin</p>
+            <h1 style={{ color: '#1e293b', fontWeight: 700, fontSize: '1rem' }}>{MENU.find(m => m.key === tab)?.label}</h1>
+            <p style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Rich Dating Network · Admin</p>
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: '1rem 1.25rem', overflowY: 'auto' }}>
+        <main style={{ flex: 1, padding: '1rem 1.25rem', overflowY: 'auto' }} className="admin-content">
           {tab === "dashboard" && <AdminDashboard />}
           {tab === "users" && <AdminUsers />}
           {tab === "verifications" && <AdminVerifications />}
@@ -161,6 +161,19 @@ export default function AdminPage() {
           .admin-main { margin-left: 0; }
           .sidebar-toggle { display: none !important; }
         }
+        /* Light-theme overrides for admin content panels */
+        .admin-content input:not([type="checkbox"]):not([type="radio"]),
+        .admin-content select,
+        .admin-content textarea {
+          color: #1e293b !important;
+        }
+        .admin-content input:not([type="checkbox"]):not([type="radio"]).bg-gray-50,
+        .admin-content input:not([type="checkbox"]):not([type="radio"]).bg-white,
+        .admin-content select.bg-gray-50,
+        .admin-content select.bg-white {
+          background: #ffffff !important;
+        }
+        .admin-content .placeholder-gray-600::placeholder { color: #9ca3af; }
       `}</style>
     </div>
   )

@@ -102,7 +102,7 @@ export default function AdminFakeMessages() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white">{templates.length} Message Templates</h2>
+          <h2 className="text-lg font-bold text-gray-900">{templates.length} Message Templates</h2>
           <p className="text-gray-400 text-xs mt-0.5">{activeCount} active — same message never sent twice to same user</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -129,30 +129,30 @@ export default function AdminFakeMessages() {
         </div>
       </div>
 
-      <div className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
         <div className="grid grid-cols-3 gap-3 text-center text-xs">
-          <div className="bg-gray-900 rounded-lg p-3">
+          <div className="bg-white rounded-lg p-3">
             <div className="text-purple-400 font-bold text-lg">{templates.length}</div>
             <div className="text-gray-500">Total Templates</div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-3">
+          <div className="bg-white rounded-lg p-3">
             <div className="text-green-400 font-bold text-lg">{activeCount}</div>
             <div className="text-gray-500">Active</div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-3">
+          <div className="bg-white rounded-lg p-3">
             <div className="text-red-400 font-bold text-lg">{templates.length - activeCount}</div>
             <div className="text-gray-500">Paused</div>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800">
-        <label className="text-gray-300 text-sm font-medium mb-2 block">Add New Template</label>
+      <div className="bg-white rounded-2xl p-4 border border-gray-200">
+        <label className="text-gray-600 text-sm font-medium mb-2 block">Add New Template</label>
         <div className="flex gap-2">
           <textarea
             value={newMsg} onChange={e => setNewMsg(e.target.value)}
             placeholder="Type a new fake message template..."
-            className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 resize-none"
+            className="flex-1 bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 resize-none"
             rows={2}
           />
           <button onClick={addMessage} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm self-end">Add</button>
@@ -164,11 +164,11 @@ export default function AdminFakeMessages() {
       ) : (
         <div className="space-y-2">
           {templates.map(t => (
-            <div key={t.id} className={`rounded-xl p-4 border flex items-start justify-between gap-4 transition-opacity ${t.active === 1 ? 'bg-gray-900 border-gray-800' : 'bg-gray-900/50 border-gray-800/50 opacity-60'}`}>
+            <div key={t.id} className={`rounded-xl p-4 border flex items-start justify-between gap-4 transition-opacity ${t.active === 1 ? 'bg-white border-gray-200' : 'bg-white/50 border-gray-200/50 opacity-60'}`}>
               <p className="text-gray-200 text-sm flex-1">{t.message}</p>
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => toggleActive(t.id, t.active)}
-                  className={`text-xs px-2 py-1 rounded-md font-medium ${t.active === 1 ? 'bg-green-900/50 text-green-400 hover:bg-red-900/50 hover:text-red-400' : 'bg-gray-800 text-gray-500 hover:bg-green-900/50 hover:text-green-400'}`}>
+                  className={`text-xs px-2 py-1 rounded-md font-medium ${t.active === 1 ? 'bg-green-900/50 text-green-400 hover:bg-red-900/50 hover:text-red-400' : 'bg-gray-50 text-gray-500 hover:bg-green-900/50 hover:text-green-400'}`}>
                   {t.active === 1 ? 'Active' : 'Paused'}
                 </button>
                 <button onClick={() => deleteMessage(t.id)} className="text-red-400 hover:text-red-300 text-xs">Delete</button>

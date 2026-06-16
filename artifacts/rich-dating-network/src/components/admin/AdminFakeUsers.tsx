@@ -56,7 +56,7 @@ export default function AdminFakeUsers() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">{users.length} Fake Users</h2>
+        <h2 className="text-lg font-bold text-gray-900">{users.length} Fake Users</h2>
         <div className="flex gap-2">
           <button onClick={importFromSite} disabled={importing}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm disabled:opacity-50">
@@ -69,33 +69,33 @@ export default function AdminFakeUsers() {
       </div>
 
       {showCreate && (
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-4">
-          <h3 className="text-white font-semibold">Create Fake User</h3>
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-4">
+          <h3 className="text-gray-900 font-semibold">Create Fake User</h3>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="text-gray-400 text-xs mb-1 block">Name</label>
-              <input className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div><label className="text-gray-400 text-xs mb-1 block">Age</label>
-              <input type="number" className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
+              <input type="number" className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
             <div><label className="text-gray-400 text-xs mb-1 block">Gender</label>
-              <select className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+              <select className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
                 <option value="1">Man</option><option value="2">Woman</option>
               </select></div>
             <div><label className="text-gray-400 text-xs mb-1 block">Looking For</label>
-              <select className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.looking} onChange={e => setForm(f => ({ ...f, looking: e.target.value }))}>
+              <select className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.looking} onChange={e => setForm(f => ({ ...f, looking: e.target.value }))}>
                 <option value="1">Men</option><option value="2">Women</option><option value="3">Both</option>
               </select></div>
             <div><label className="text-gray-400 text-xs mb-1 block">City</label>
-              <input className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
             <div><label className="text-gray-400 text-xs mb-1 block">Country</label>
-              <input className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} /></div>
+              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} /></div>
             <div className="col-span-2"><label className="text-gray-400 text-xs mb-1 block">Photo URL (from richdatingnetwork.com)</label>
-              <input className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://richdatingnetwork.com/assets/..." /></div>
+              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://richdatingnetwork.com/assets/..." /></div>
             <div className="col-span-2"><label className="text-gray-400 text-xs mb-1 block">Bio</label>
-              <textarea className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700" rows={3} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></div>
+              <textarea className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" rows={3} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></div>
           </div>
           <div className="flex gap-2">
             <button onClick={createFake} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm">Create</button>
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm">Cancel</button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-600 text-white rounded-lg text-sm">Cancel</button>
           </div>
         </div>
       )}
@@ -105,8 +105,8 @@ export default function AdminFakeUsers() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {users.map(u => (
-            <div key={u.id} className="bg-gray-900 rounded-2xl overflow-hidden border border-gray-800">
-              <div className="aspect-square bg-gray-800">
+            <div key={u.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200">
+              <div className="aspect-square bg-gray-50">
                 <img src={getPhotoUrl(u.photo)} alt={u.name} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
               </div>
               <div className="p-3">

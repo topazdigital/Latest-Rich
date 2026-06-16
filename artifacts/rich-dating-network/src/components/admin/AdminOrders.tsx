@@ -23,15 +23,15 @@ export default function AdminOrders() {
     <div className="space-y-4">
       <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
         <div className="text-green-400 text-sm">Page Revenue</div>
-        <div className="text-2xl font-bold text-white">${totalRevenue.toFixed(2)}</div>
+        <div className="text-2xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-800">
+            <thead className="border-b border-gray-200">
               <tr className="text-gray-400 text-left">
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Type</th>
@@ -42,7 +42,7 @@ export default function AdminOrders() {
             </thead>
             <tbody>
               {orders.map((row: any, i) => (
-                <tr key={i} className="border-b border-gray-800/50">
+                <tr key={i} className="border-b border-gray-200/50">
                   <td className="px-4 py-3">
                     <div className="text-white font-medium">{row.user?.name || "Unknown"}</div>
                     <div className="text-gray-500 text-xs">{row.user?.email}</div>
@@ -67,9 +67,9 @@ export default function AdminOrders() {
       )}
 
       <div className="flex items-center gap-2 justify-center">
-        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm disabled:opacity-40">Previous</button>
+        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Previous</button>
         <span className="text-gray-400 text-sm">Page {page}</span>
-        <button disabled={orders.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
+        <button disabled={orders.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
       </div>
     </div>
   )

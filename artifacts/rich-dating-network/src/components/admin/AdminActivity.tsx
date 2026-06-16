@@ -44,11 +44,11 @@ export default function AdminActivity() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-lg font-bold text-white">Activity Log</h2>
+          <h2 className="text-lg font-bold text-gray-900">Activity Log</h2>
           <p className="text-gray-500 text-xs">{activity.length} events loaded</p>
         </div>
         <button onClick={() => load()}
-          className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-colors">
+          className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-sm border border-gray-200 transition-colors">
           ↻ Refresh
         </button>
       </div>
@@ -57,7 +57,7 @@ export default function AdminActivity() {
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === f.key ? "bg-brand-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === f.key ? "bg-brand-600 text-white" : "bg-gray-50 text-gray-400 hover:text-white hover:bg-gray-100"}`}>
             {f.label}
           </button>
         ))}
@@ -75,7 +75,7 @@ export default function AdminActivity() {
         </div>
       ) : (
         <>
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {activity.map((row: any, i) => {
               const type = row.activity?.type || 'default'
               const color = TYPE_COLORS[type] || TYPE_COLORS.default
@@ -86,7 +86,7 @@ export default function AdminActivity() {
                 if (parsed.message) preview = parsed.message
               } catch {}
               return (
-                <div key={i} className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-800/50 ${i < activity.length - 1 ? 'border-b border-gray-800' : ''}`}>
+                <div key={i} className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 ${i < activity.length - 1 ? 'border-b border-gray-200' : ''}`}>
                   {/* Avatar / icon */}
                   <div className="relative flex-shrink-0">
                     {row.user?.photo ? (
@@ -94,7 +94,7 @@ export default function AdminActivity() {
                         className="w-8 h-8 rounded-full object-cover"
                         onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-base">
+                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-base">
                         {icon}
                       </div>
                     )}
@@ -129,7 +129,7 @@ export default function AdminActivity() {
           {activity.length >= limit && (
             <div className="text-center">
               <button onClick={() => { const nl = limit + 100; setLimit(nl); load(nl) }}
-                className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm border border-gray-700 transition-colors">
+                className="px-6 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-sm border border-gray-200 transition-colors">
                 Load more
               </button>
             </div>

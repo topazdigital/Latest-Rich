@@ -717,7 +717,9 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       }); return
     }
 
-    // Create transporter directly — any SMTP error propagates to the catch block below
+    // Create transporter directly — any SMTP error propagates to the catch block below.
+    // connectionTimeout/greetingTimeout/socketTimeout ensure we fail fast (10s) instead
+    // of waiting up to 60s for an unreachable host to time out.
     const nodemailer = await import("nodemailer")
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -725,6 +727,9 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       secure: smtpSecure,
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     })
 
     await transporter.sendMail({

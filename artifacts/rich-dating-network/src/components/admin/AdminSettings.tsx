@@ -257,7 +257,7 @@ export default function AdminSettings() {
     if (f.type === 'select') return (
       <select value={config[f.key] ?? (f.options?.[0]?.[0] || "")}
         onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
-        className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500">
+        className="w-full bg-gray-50 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500">
         {f.options?.map(([v, l]: string[]) => <option key={v} value={v}>{l}</option>)}
       </select>
     )
@@ -267,9 +267,9 @@ export default function AdminSettings() {
           value={config[f.key] ?? ""}
           onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
           placeholder={f.placeholder}
-          className="w-full bg-gray-800 text-white px-3 py-2.5 pr-10 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
+          className="w-full bg-gray-50 text-white px-3 py-2.5 pr-10 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
         <button type="button" onClick={() => togglePassword(f.key)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600">
           {showPasswords.has(f.key) ? <EyeOff size={15} /> : <Eye size={15} />}
         </button>
       </div>
@@ -278,7 +278,7 @@ export default function AdminSettings() {
       <input type={f.type || "text"} value={config[f.key] ?? ""}
         onChange={e => setConfig(c => ({ ...c, [f.key]: e.target.value }))}
         placeholder={f.placeholder}
-        className="w-full bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
+        className="w-full bg-gray-50 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 placeholder-gray-600" />
     )
   }
 
@@ -292,7 +292,7 @@ export default function AdminSettings() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Site Settings</h2>
+          <h2 className="text-xl font-bold text-gray-900">Site Settings</h2>
           <p className="text-gray-400 text-sm mt-1">Configure all platform settings</p>
         </div>
         <button onClick={save} disabled={saving}
@@ -303,26 +303,26 @@ export default function AdminSettings() {
       </div>
 
       {/* Branding — full width */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-800">
-          <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-pink-400">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-200">
+          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-pink-400">
             <Image size={16} />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">Branding & Logo</h3>
+            <h3 className="text-gray-900 font-semibold text-sm">Branding & Logo</h3>
             <p className="text-gray-500 text-xs">Upload your site logo and favicon</p>
           </div>
         </div>
         <div className="p-4 grid grid-cols-3 gap-4">
           {[
-            { label: "Site Logo", url: logoUrl, ref: logoRef, uploading: uploadingLogo, type: "logo" as const, btnClass: "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700" },
-            { label: "Favicon", url: faviconUrl, ref: faviconRef, uploading: uploadingFavicon, type: "favicon" as const, btnClass: "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700" },
+            { label: "Site Logo", url: logoUrl, ref: logoRef, uploading: uploadingLogo, type: "logo" as const, btnClass: "bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200" },
+            { label: "Favicon", url: faviconUrl, ref: faviconRef, uploading: uploadingFavicon, type: "favicon" as const, btnClass: "bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200" },
             { label: "Verification Gesture", url: gestureImageUrl, ref: gestureRef, uploading: uploadingGesture, type: "gesture" as const, btnClass: "bg-pink-900 hover:bg-pink-800 text-pink-300 border-pink-800" },
           ].map(b => (
             <div key={b.type}>
-              <label className="text-gray-300 text-xs font-medium mb-2 block">{b.label}</label>
+              <label className="text-gray-600 text-xs font-medium mb-2 block">{b.label}</label>
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-14 h-14 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {b.url ? <img src={b.url} alt={b.label} className="w-full h-full object-contain p-1.5" /> : <Camera size={18} className="text-gray-600" />}
                 </div>
                 <div>
@@ -344,18 +344,18 @@ export default function AdminSettings() {
         {SECTIONS.map((section) => {
           const SectionIcon = section.icon
           return (
-            <div key={section.title} className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
-                <div className={`w-7 h-7 rounded-lg bg-gray-800 flex items-center justify-center ${section.color} flex-shrink-0`}>
+            <div key={section.title} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
+                <div className={`w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center ${section.color} flex-shrink-0`}>
                   <SectionIcon size={14} />
                 </div>
-                <h3 className="text-white font-semibold text-sm">{section.title}</h3>
+                <h3 className="text-gray-900 font-semibold text-sm">{section.title}</h3>
               </div>
               <div className="p-4 space-y-3">
                 {section.fields.map((f: any) => (
                   <div key={f.key}>
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <label className="text-gray-300 text-xs font-medium leading-tight">{f.label}</label>
+                      <label className="text-gray-600 text-xs font-medium leading-tight">{f.label}</label>
                       {f.help && <span className="text-gray-600 text-[10px] leading-tight text-right max-w-[140px] flex-shrink-0">{f.help}</span>}
                     </div>
                     {renderField(f)}
@@ -371,20 +371,20 @@ export default function AdminSettings() {
       <div className="grid grid-cols-2 gap-4 items-start">
 
       {/* Email / SMTP Settings */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800">
-          <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-blue-400">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200">
+          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-blue-400">
             <Mail size={16} />
           </div>
           <div>
-            <h3 className="text-white font-semibold text-sm">Email / SMTP Settings</h3>
+            <h3 className="text-gray-900 font-semibold text-sm">Email / SMTP Settings</h3>
             <p className="text-gray-500 text-xs">Configure outgoing mail for password resets, verification, and notifications</p>
           </div>
         </div>
         <div className="p-4 space-y-3">
-          <div className="bg-gray-800/50 rounded-xl p-3">
+          <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-gray-400 text-xs leading-relaxed">
-              <strong className="text-gray-300">SMTP examples:</strong> Gmail: host=smtp.gmail.com port=587. Your host: mail.yourdomain.com port=587.
+              <strong className="text-gray-600">SMTP examples:</strong> Gmail: host=smtp.gmail.com port=587. Your host: mail.yourdomain.com port=587.
               Use an App Password for Gmail (not your regular password).
             </p>
           </div>
@@ -392,7 +392,7 @@ export default function AdminSettings() {
           <div className="grid grid-cols-2 gap-3">
             {EMAIL_FIELDS.filter(f => f.key !== "smtp_secure").map((f: any) => (
               <div key={f.key}>
-                <label className="text-gray-300 text-xs font-medium mb-1.5 block">{f.label}</label>
+                <label className="text-gray-600 text-xs font-medium mb-1.5 block">{f.label}</label>
                 {renderField({ ...f })}
               </div>
             ))}
@@ -400,16 +400,16 @@ export default function AdminSettings() {
           {/* TLS select spans full width */}
           {EMAIL_FIELDS.filter(f => f.key === "smtp_secure").map((f: any) => (
             <div key={f.key}>
-              <label className="text-gray-300 text-xs font-medium mb-1.5 block">{f.label}</label>
+              <label className="text-gray-600 text-xs font-medium mb-1.5 block">{f.label}</label>
               {renderField({ ...f })}
             </div>
           ))}
 
-          <div className="border-t border-gray-800 pt-4">
-            <label className="text-gray-300 text-sm font-medium mb-2 block">Test Email</label>
+          <div className="border-t border-gray-200 pt-4">
+            <label className="text-gray-600 text-sm font-medium mb-2 block">Test Email</label>
             <div className="flex gap-2">
               <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
-                className="flex-1 bg-gray-800 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 placeholder-gray-600"
+                className="flex-1 bg-gray-50 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 placeholder-gray-600"
                 placeholder="your@email.com" />
               <button onClick={sendTestEmail} disabled={testingEmail}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">
@@ -422,20 +422,20 @@ export default function AdminSettings() {
       </div>
 
       {/* Premium Packages Management */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-yellow-400">
+            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-yellow-400">
               <Crown size={16} />
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">Premium Packages</h3>
+              <h3 className="text-gray-900 font-semibold text-sm">Premium Packages</h3>
               <p className="text-gray-500 text-xs">Control what plans users can subscribe to</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button onClick={addPkg}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition-colors border border-gray-700">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium transition-colors border border-gray-200">
               <Plus size={13} /> Add Plan
             </button>
             <button onClick={savePremiumPackages} disabled={savingPkg}
@@ -453,14 +453,14 @@ export default function AdminSettings() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gray-800/50 rounded-xl p-3 mb-4">
+              <div className="bg-gray-50 rounded-xl p-3 mb-4">
                 <p className="text-gray-400 text-xs leading-relaxed">
-                  <strong className="text-gray-300">Premium unlocks:</strong> Sharing contact info (phone, email, social handles, links) in chat, seeing profile visitors, VIP badge, priority placement, and more.
+                  <strong className="text-gray-600">Premium unlocks:</strong> Sharing contact info (phone, email, social handles, links) in chat, seeing profile visitors, VIP badge, priority placement, and more.
                 </p>
               </div>
 
               {packages.map((pkg, i) => (
-                <div key={i} className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <div key={i} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <span className="text-gray-500 text-xs font-mono">Plan {i + 1}</span>
@@ -485,25 +485,25 @@ export default function AdminSettings() {
                     <div>
                       <label className="text-gray-400 text-xs mb-1 block">Plan Name</label>
                       <input value={pkg.name} onChange={e => updatePkg(i, 'name', e.target.value)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-yellow-500"
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="e.g. 1 Month" />
                     </div>
                     <div>
                       <label className="text-gray-400 text-xs mb-1 block">Duration (days)</label>
                       <input type="number" value={pkg.days} onChange={e => updatePkg(i, 'days', parseInt(e.target.value) || 30)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-yellow-500"
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="30" min="1" />
                     </div>
                     <div>
                       <label className="text-gray-400 text-xs mb-1 block">Price (USD)</label>
                       <input type="number" value={pkg.price} step="0.01" onChange={e => updatePkg(i, 'price', parseFloat(e.target.value) || 0)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-yellow-500"
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="9.99" min="0" />
                     </div>
                     <div>
                       <label className="text-gray-400 text-xs mb-1 block">Tag Line</label>
                       <input value={pkg.description} onChange={e => updatePkg(i, 'description', e.target.value)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-yellow-500"
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="e.g. Save 17%" />
                     </div>
                   </div>
@@ -523,20 +523,20 @@ export default function AdminSettings() {
       </div>{/* end email+premium 2-col grid */}
 
       {/* Credits Packages Management */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-green-400">
+            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-green-400">
               <Coins size={16} />
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">Credits Packages</h3>
+              <h3 className="text-gray-900 font-semibold text-sm">Credits Packages</h3>
               <p className="text-gray-500 text-xs">Configure credit bundles users can purchase</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button onClick={addCreditPkg}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition-colors border border-gray-700">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium transition-colors border border-gray-200">
               <Plus size={13} /> Add Bundle
             </button>
             <button onClick={saveCreditPackages} disabled={savingCreditPkg}
@@ -554,15 +554,15 @@ export default function AdminSettings() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gray-800/50 rounded-xl p-3 mb-4">
+              <div className="bg-gray-50 rounded-xl p-3 mb-4">
                 <p className="text-gray-400 text-xs leading-relaxed">
-                  <strong className="text-gray-300">Credits are used for:</strong> sending messages, sending gifts, boosting your profile, superlikes, and unlocking private photos.
+                  <strong className="text-gray-600">Credits are used for:</strong> sending messages, sending gifts, boosting your profile, superlikes, and unlocking private photos.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {creditPackages.map((pkg, i) => (
-                  <div key={i} className="bg-gray-800 rounded-xl p-4 border border-gray-700 flex flex-col gap-3">
+                  <div key={i} className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 text-xs font-mono">Bundle {i + 1}</span>
                       <div className="flex items-center gap-2">
@@ -581,19 +581,19 @@ export default function AdminSettings() {
                       <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Credits</label>
                       <input type="number" value={pkg.credits} min="1"
                         onChange={e => updateCreditPkg(i, 'credits', parseInt(e.target.value) || 100)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500 font-bold" />
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500 font-bold" />
                     </div>
                     <div>
                       <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Price (USD)</label>
                       <input type="number" value={pkg.price} step="0.01" min="0"
                         onChange={e => updateCreditPkg(i, 'price', parseFloat(e.target.value) || 0)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500" />
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500" />
                     </div>
                     <div>
                       <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Label</label>
                       <input value={pkg.description}
                         onChange={e => updateCreditPkg(i, 'description', e.target.value)}
-                        className="w-full bg-gray-900 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-green-500"
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500"
                         placeholder="e.g. Popular" />
                     </div>
                     <label className="flex items-center gap-1.5 cursor-pointer">

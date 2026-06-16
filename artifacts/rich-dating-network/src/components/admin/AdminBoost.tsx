@@ -57,20 +57,20 @@ export default function AdminBoost() {
   return (
     <div className="space-y-6">
       {/* Config card */}
-      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
             <Zap size={20} className="text-orange-400" />
           </div>
           <div>
-            <h2 className="text-white font-bold">Boost Configuration</h2>
+            <h2 className="text-gray-900 font-bold">Boost Configuration</h2>
             <p className="text-gray-400 text-sm">Set the price and duration for profile boosts</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-semibold text-gray-600 mb-2 flex items-center gap-2">
               <Coins size={14} className="text-amber-400" /> Credits Required
             </label>
             <input
@@ -78,13 +78,13 @@ export default function AdminBoost() {
               min={1}
               value={config.boost_credits}
               onChange={e => setConfig(p => ({ ...p, boost_credits: e.target.value }))}
-              className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all"
+              className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all"
               placeholder="50"
             />
             <p className="text-xs text-gray-500 mt-1.5">Credits a user must spend to activate a boost</p>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-semibold text-gray-600 mb-2 flex items-center gap-2">
               <Clock size={14} className="text-blue-400" /> Duration (minutes)
             </label>
             <input
@@ -92,14 +92,14 @@ export default function AdminBoost() {
               min={1}
               value={config.boost_duration_minutes}
               onChange={e => setConfig(p => ({ ...p, boost_duration_minutes: e.target.value }))}
-              className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all"
+              className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-all"
               placeholder="30"
             />
             <p className="text-xs text-gray-500 mt-1.5">How long a boost stays active</p>
           </div>
         </div>
 
-        <div className="bg-gray-700/50 rounded-xl p-4 mb-5 text-sm text-gray-400 border border-gray-600">
+        <div className="bg-gray-100/50 rounded-xl p-4 mb-5 text-sm text-gray-400 border border-gray-200">
           <strong className="text-gray-200">Preview:</strong> Users pay <span className="text-orange-400 font-bold">{config.boost_credits} credits</span> for <span className="text-blue-400 font-bold">{config.boost_duration_minutes} minutes</span> of top placement in the discovery feed.
         </div>
 
@@ -120,7 +120,7 @@ export default function AdminBoost() {
           { label: 'Active Now', value: history.filter(h => isActive(h.boost)).length, icon: Users, color: 'text-green-400' },
           { label: 'Credits Earned', value: history.reduce((s, h) => s + (h.boost.creditsSpent || 0), 0), icon: Coins, color: 'text-amber-400' },
         ].map((s, i) => (
-          <div key={i} className="bg-gray-800 rounded-2xl p-4 border border-gray-700 text-center">
+          <div key={i} className="bg-gray-50 rounded-2xl p-4 border border-gray-200 text-center">
             <s.icon size={20} className={`${s.color} mx-auto mb-2`} />
             <div className="text-2xl font-black text-white">{s.value}</div>
             <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
@@ -129,9 +129,9 @@ export default function AdminBoost() {
       </div>
 
       {/* History */}
-      <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <h3 className="text-white font-bold flex items-center gap-2">
+      <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-gray-900 font-bold flex items-center gap-2">
             <Clock size={16} className="text-gray-400" /> Boost History
           </h3>
         </div>
@@ -142,8 +142,8 @@ export default function AdminBoost() {
         ) : (
           <div className="divide-y divide-gray-700/50">
             {history.map((record) => (
-              <div key={record.boost.id} className="flex items-center gap-4 p-4 hover:bg-gray-700/30 transition-colors">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+              <div key={record.boost.id} className="flex items-center gap-4 p-4 hover:bg-gray-100/30 transition-colors">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
                   {record.user?.photo ? (
                     <img src={getPhotoUrl(record.user.photo)} alt="" className="w-full h-full object-cover" />
                   ) : (

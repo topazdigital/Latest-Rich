@@ -65,7 +65,7 @@ export default function AdminUsers() {
         <div className="flex gap-2">
           {FILTERS.map(f => (
             <button key={f} onClick={() => { setFilter(f); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? "bg-brand-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? "bg-brand-600 text-white" : "bg-gray-50 text-gray-400 hover:text-white"}`}>
               {f}
             </button>
           ))}
@@ -73,8 +73,8 @@ export default function AdminUsers() {
         <div className="flex gap-2">
           <input value={search} onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === "Enter" && load()}
-            placeholder="Search users..." className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-brand-500 w-48" />
-          <button onClick={load} className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm">Search</button>
+            placeholder="Search users..." className="bg-gray-50 text-white px-3 py-1.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 w-48" />
+          <button onClick={load} className="px-3 py-1.5 bg-gray-100 text-white rounded-lg text-sm">Search</button>
         </div>
       </div>
 
@@ -85,10 +85,10 @@ export default function AdminUsers() {
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-800">
+              <thead className="border-b border-gray-200">
                 <tr className="text-gray-400 text-left">
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
@@ -100,17 +100,17 @@ export default function AdminUsers() {
               </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                  <tr key={u.id} className="border-b border-gray-200/50 hover:bg-gray-50/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <img src={getPhotoUrl(u.photo)} alt="" className="w-9 h-9 rounded-full object-cover bg-gray-700" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                        <img src={getPhotoUrl(u.photo)} alt="" className="w-9 h-9 rounded-full object-cover bg-gray-100" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
                         <div>
                           <div className="text-white font-medium">{u.name}</div>
                           <div className="text-gray-500 text-xs">{u.email} · #{u.id}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-300 text-xs">{u.city}{u.city && u.country ? ', ' : ''}{u.country}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{u.city}{u.city && u.country ? ', ' : ''}{u.country}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                       {u.lastAccess && Number(u.lastAccess) > 0 ? (() => {
                         const diff = Math.floor(Date.now() / 1000) - Number(u.lastAccess)
@@ -146,7 +146,7 @@ export default function AdminUsers() {
                               toast.success(newLevel === 2 ? "Set as Admin" : newLevel === 1 ? "Set as Moderator" : "Set as User")
                               load()
                             }}
-                            className="text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 py-0.5 cursor-pointer focus:outline-none focus:border-brand-500"
+                            className="text-xs bg-gray-50 text-gray-600 border border-gray-200 rounded px-1 py-0.5 cursor-pointer focus:outline-none focus:border-brand-500"
                           >
                             <option value="0">User</option>
                             <option value="1">Moderator</option>
@@ -159,7 +159,7 @@ export default function AdminUsers() {
                       <div className="flex items-center gap-2">
                         <span className="text-white">{u.credits}</span>
                         <div className="flex items-center gap-1">
-                          <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)} className="w-14 bg-gray-800 text-white text-xs px-1.5 py-1 rounded border border-gray-700" />
+                          <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)} className="w-14 bg-gray-50 text-white text-xs px-1.5 py-1 rounded border border-gray-200" />
                           <button onClick={() => addCredits(u)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">+</button>
                         </div>
                       </div>
@@ -173,7 +173,7 @@ export default function AdminUsers() {
                         <button onClick={() => banUser(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white"}`}>
                           {u.banned ? "Unban" : "Ban"}
                         </button>
-                        <button onClick={() => deleteUser(u)} className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-red-600 text-gray-300 hover:text-white transition-colors">Del</button>
+                        <button onClick={() => deleteUser(u)} className="px-2 py-1 rounded text-xs bg-gray-100 hover:bg-red-600 text-gray-600 hover:text-white transition-colors">Del</button>
                       </div>
                     </td>
                   </tr>
@@ -186,9 +186,9 @@ export default function AdminUsers() {
 
       {/* Pagination */}
       <div className="flex items-center gap-2 justify-center">
-        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm disabled:opacity-40">Previous</button>
+        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Previous</button>
         <span className="text-gray-400 text-sm">Page {page}</span>
-        <button disabled={users.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
+        <button disabled={users.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
       </div>
 
       {detailUserId !== null && (

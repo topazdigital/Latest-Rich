@@ -298,10 +298,6 @@ function Router() {
           <Route path="/profile/:id">
             {(params: { id: string }) => <ProfilePage params={params} />}
           </Route>
-          {/* Username-based profile URLs: /@username */}
-          <Route path="/@:username">
-            {(params: { username: string }) => <UsernameProfilePage params={params} />}
-          </Route>
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/settings" component={SettingsPageWrapper} />
           <Route path="/premium" component={PremiumPageWrapper} />
@@ -317,6 +313,17 @@ function Router() {
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/:rest*" component={AdminPage} />
           <Route path="/moderator" component={ModeratorPage} />
+          {/* Username-based profile URLs: /@username — must come last so it
+              doesn't shadow any of the named routes above.
+              Wouter/regexparam doesn't treat @ as a valid param prefix, so
+              /@:username never matches; we use /:atusername and check for @. */}
+          <Route path="/:atusername">
+            {(params: { atusername: string }) =>
+              params.atusername?.startsWith('@')
+                ? <UsernameProfilePage params={{ username: params.atusername.slice(1) }} />
+                : <NotFound />
+            }
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </AppLayout>
