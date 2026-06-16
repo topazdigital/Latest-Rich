@@ -19,18 +19,29 @@
 set -e
 cd "$(dirname "$0")"
 
+# ── Self-update guard ───────────────────────────────────────
+# git pull replaces this file on disk while bash is reading it, which causes
+# bash to read from the wrong byte offset and silently skip all remaining steps.
+# Fix: pull first, then re-exec the updated script with --skip-pull so the
+# fresh version runs completely from the start.
+if [[ "$1" != "--skip-pull" ]]; then
+  echo "==============================="
+  echo "  Rich Dating Network Deploy"
+  echo "==============================="
+  echo "[0/7] Pulling latest code from GitHub..."
+  git stash --quiet 2>/dev/null || true
+  git pull origin main
+  git stash pop --quiet 2>/dev/null || true
+  echo "      Code updated ✓"
+  echo "      Re-launching with updated script..."
+  exec bash "$0" --skip-pull
+fi
+
+# ── Script body (runs after re-exec with updated code) ─────
 echo "==============================="
 echo "  Rich Dating Network Deploy"
 echo "==============================="
-
-# ── 0. Pull latest code from GitHub ────────────────────────
-echo "[0/7] Pulling latest code from GitHub..."
-# Stash local files (.env, uploads, etc.) so pull never fails
-git stash --quiet 2>/dev/null || true
-git pull origin main
-# Restore stashed changes — use || true so empty stash never breaks the chain
-git stash pop --quiet 2>/dev/null || true
-echo "      Code updated ✓"
+echo "[0/7] Code already up to date ✓"
 
 # ── Load .env ──────────────────────────────────────────────
 if [ -f ".env" ]; then
