@@ -292,9 +292,9 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex-1 flex flex-col min-h-screen bg-white overflow-y-auto">
-        <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-14 xl:px-20 max-w-md mx-auto w-full">
-          <div className="lg:hidden mb-8 text-center">
+      <div className="flex-1 flex flex-col bg-white overflow-y-auto min-h-screen">
+        <div className="flex-1 flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-14 xl:px-20 max-w-md mx-auto w-full">
+          <div className="lg:hidden mb-4 text-center">
             <Link href="/" className="inline-flex items-center gap-2">
               <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center shadow-lg">
                 <Heart className="w-5 h-5 text-white fill-white" />
@@ -303,9 +303,9 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome back 👋</h1>
-            <p className="text-gray-500">Sign in to your account</p>
+          <div className="mb-5 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 mb-1">Welcome back 👋</h1>
+            <p className="text-gray-500 text-sm">Sign in to your account</p>
           </div>
 
           {socialConfig.googleClientId && (
@@ -366,7 +366,7 @@ export default function LoginPage() {
                       <ChevronDown size={12} className="text-gray-400" />
                     </button>
                     {showDialPicker && (
-                      <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden">
+                      <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 max-w-[calc(100vw-2.5rem)] overflow-hidden">
                         <div className="p-2 border-b border-gray-100">
                           <input autoFocus placeholder="Search country..."
                             value={dialSearch} onChange={e => setDialSearch(e.target.value)}
@@ -445,12 +445,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-gray-500 mt-5">
             Don't have an account?{' '}
             <Link href="/register" className="text-brand-500 hover:text-brand-600 font-bold">Join Free</Link>
           </p>
 
-          <p className="text-center text-xs text-gray-300 mt-8">
+          <p className="text-center text-xs text-gray-300 mt-5">
             By signing in, you agree to our{' '}
             <Link href="/terms" className="underline hover:text-gray-500 transition-colors">Terms</Link>{' '}and{' '}
             <Link href="/privacy" className="underline hover:text-gray-500 transition-colors">Privacy Policy</Link>

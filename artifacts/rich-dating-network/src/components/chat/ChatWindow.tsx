@@ -236,7 +236,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-3.5rem)] max-w-2xl mx-auto bg-white">
+    <div className="flex flex-col h-[calc(100dvh-7.75rem)] md:h-[calc(100dvh-3.5rem)] max-w-2xl mx-auto bg-white">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0 shadow-sm">
         <Link href="/chat" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 flex-shrink-0">

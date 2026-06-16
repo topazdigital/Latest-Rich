@@ -560,7 +560,7 @@ export default function RegisterPage() {
                           <ChevronDown size={11} className="text-gray-400" />
                         </button>
                         {showDialDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                          <div className="absolute top-full left-0 mt-1 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
                             <div className="p-2 border-b">
                               <input type="text" value={dialSearch} onChange={e => setDialSearch(e.target.value)}
                                 placeholder="Search country…"
@@ -686,7 +686,7 @@ export default function RegisterPage() {
                           <ChevronDown size={11} className="text-gray-400" />
                         </button>
                         {showDialDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                          <div className="absolute top-full left-0 mt-1 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
                             <div className="p-2 border-b">
                               <input
                                 type="text"
