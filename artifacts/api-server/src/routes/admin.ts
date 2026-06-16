@@ -718,8 +718,11 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
     }
 
     // Create transporter directly — any SMTP error propagates to the catch block below.
-    // connectionTimeout/greetingTimeout/socketTimeout ensure we fail fast (10s) instead
-    // of waiting up to 60s for an unreachable host to time out.
+    // Per-option timeouts cover TCP connect + greeting, but NOT the TLS handshake phase —
+    // a misconfigured port/secure combo (e.g. port 465 with secure:false) can still hang
+    // indefinitely inside the TLS negotiation. Promise.race with a hard deadline guarantees
+    // the request always resolves within SMTP_HARD_TIMEOUT_MS regardless of what hangs.
+    const SMTP_HARD_TIMEOUT_MS = 8000
     const nodemailer = await import("nodemailer")
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -727,24 +730,38 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       secure: smtpSecure,
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000,
     })
 
-    await transporter.sendMail({
-      from: `"${smtpFromName}" <${smtpFrom}>`,
-      to,
-      subject: `Test Email from ${siteName}`,
-      html: `
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(
+          `SMTP connection timed out after ${SMTP_HARD_TIMEOUT_MS / 1000}s. ` +
+          `Check your host (${smtpHost}), port (${smtpPort}), and TLS setting ` +
+          `(port 465 requires TLS=Yes; port 587 requires TLS=No).`
+        )),
+        SMTP_HARD_TIMEOUT_MS
+      )
+    )
+
+    await Promise.race([
+      transporter.sendMail({
+        from: `"${smtpFromName}" <${smtpFrom}>`,
+        to,
+        subject: `Test Email from ${siteName}`,
+        html: `
 <div style="font-family:Arial,sans-serif;padding:24px;max-width:500px">
 <h2 style="color:#FF192C">✅ Test Email</h2>
 <p>This is a test email from <strong>${siteName}</strong>.</p>
 <p>If you received this, your SMTP configuration is working correctly!</p>
 <p style="color:#aaa;font-size:12px;margin-top:24px">Sent from Admin Panel · ${new Date().toISOString()}</p>
 </div>`,
-      text: `Test Email from ${siteName}. If you received this, SMTP is working correctly.`,
-    })
+        text: `Test Email from ${siteName}. If you received this, SMTP is working correctly.`,
+      }),
+      timeoutPromise,
+    ])
 
     res.json({ success: true, message: "Test email sent successfully to " + to })
   } catch (err: any) {
