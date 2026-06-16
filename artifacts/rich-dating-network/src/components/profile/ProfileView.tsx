@@ -179,12 +179,13 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
     <div className="max-w-lg mx-auto px-0 sm:px-4 py-0 sm:py-4">
       {/* Hero photo card — full-height with all overlaid info */}
       <div className="card overflow-hidden mb-3 rounded-none sm:rounded-2xl shadow-xl">
-        <div className="relative bg-gray-900" style={{ minHeight: '480px', height: 'min(80vw, 580px)' }}>
+        {/* Photo hero — card-width drives the height via aspect-ratio; max-h keeps it sane on wide screens */}
+        <div className="relative bg-gray-900" style={{ aspectRatio: '4/5', maxHeight: '560px', minHeight: '340px' }}>
           {/* Main photo */}
           <img
             src={getPhotoUrl(user.photoThumb || user.photo)}
             alt={user.name || 'Profile'}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover object-top"
           />
 
           {/* Gradient — strong at bottom for readability */}

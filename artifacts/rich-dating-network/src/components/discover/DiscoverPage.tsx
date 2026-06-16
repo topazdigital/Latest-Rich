@@ -250,73 +250,72 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               const compat = u._compat as number
               const showCompat = compat > 0 && !isOwnCard(u.id, userId)
               return (
+                /* Card IS the aspect-ratio box — nothing can cause grey space below */
                 <div key={u.id}
                   className={`group relative rounded-2xl overflow-hidden bg-gray-900 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  style={{ aspectRatio: '3/4' }}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(`/profile/${u.id}`) }}>
-                  {/* Photo area — 3:4 aspect ratio, always filled */}
-                  <div className="relative w-full aspect-[3/4]">
-                    {/* Fallback background for no-photo users */}
-                    <div className="absolute inset-0 flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>
-                      <div style={{ fontSize: '3rem', opacity: 0.4, color: '#fff', fontWeight: 800, userSelect: 'none' }}>
-                        {(u.name?.[0] || '?').toUpperCase()}
-                      </div>
+                  {/* Fallback background for no-photo users */}
+                  <div className="absolute inset-0 flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>
+                    <div style={{ fontSize: '3rem', opacity: 0.4, color: '#fff', fontWeight: 800, userSelect: 'none' }}>
+                      {(u.name?.[0] || '?').toUpperCase()}
                     </div>
-                    {(u.photoThumb || u.photo) && (
-                      <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                    )}
-                    {/* Dark gradient at bottom */}
-                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 45%, rgba(0,0,0,0.8) 100%)' }} />
-                    {/* Top-left badge */}
-                    {isBoosted && (
-                      <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
-                        <Zap size={8} className="fill-white" /> BOOST
-                      </div>
-                    )}
-                    {!isBoosted && showCompat && (
-                      <div className={`absolute top-2 left-2 z-10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow ${compat >= 70 ? 'bg-green-500' : compat >= 40 ? 'bg-brand-500' : 'bg-gray-500'}`}>
-                        {compat}%
-                      </div>
-                    )}
-                    {!isBoosted && !showCompat && isNearby && !filterCity && (
-                      <div className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        <MapPin size={8} /> Near
-                      </div>
-                    )}
-                    {/* Top-right badges */}
-                    {(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
-                      <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
-                    )}
-                    {u.premium === 1 && !(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
-                      <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-sm text-white rounded-full p-1">
-                        <Crown size={9} />
-                      </div>
-                    )}
-                    {/* Name overlay at bottom of photo */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 z-10">
-                      <div className="flex items-center gap-0.5">
-                        <span className="text-white text-xs font-bold truncate leading-tight drop-shadow-sm">{u.name}</span>
-                        {u.verified === 1 && <BadgeCheck size={10} className="text-blue-300 flex-shrink-0" />}
-                      </div>
-                      <div className="text-white/75 text-[10px] flex items-center gap-0.5 mt-0.5 truncate">
-                        <span>{u.age}y</span>
-                        {u.city && <><span>·</span><span className="truncate">{u.city}</span></>}
-                      </div>
+                  </div>
+                  {(u.photoThumb || u.photo) && (
+                    <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  )}
+                  {/* Dark gradient at bottom */}
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)' }} />
+                  {/* Top-left badge */}
+                  {isBoosted && (
+                    <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                      <Zap size={8} className="fill-white" /> BOOST
                     </div>
-                    {/* Hover buttons */}
-                    <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-all z-20 flex gap-1.5 bg-gradient-to-t from-black/60 to-transparent pt-8">
-                      <button onClick={e => { e.stopPropagation(); likeUser(u.id) }}
-                        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${likedUsers.has(u.id) ? 'bg-brand-500 text-white' : 'bg-white/90 text-brand-500 hover:bg-brand-500 hover:text-white'}`}>
-                        <Heart size={11} className={likedUsers.has(u.id) ? 'fill-white' : ''} /> Like
-                      </button>
-                      <Link href={`/chat/${u.id}`} onClick={e => e.stopPropagation()}
-                        className="flex items-center justify-center px-2.5 bg-white/90 hover:bg-blue-500 hover:text-white text-blue-500 rounded-lg transition-colors">
-                        <MessageCircle size={13} />
-                      </Link>
+                  )}
+                  {!isBoosted && showCompat && (
+                    <div className={`absolute top-2 left-2 z-10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow ${compat >= 70 ? 'bg-green-500' : compat >= 40 ? 'bg-brand-500' : 'bg-gray-500'}`}>
+                      {compat}%
                     </div>
+                  )}
+                  {!isBoosted && !showCompat && isNearby && !filterCity && (
+                    <div className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <MapPin size={8} /> Near
+                    </div>
+                  )}
+                  {/* Top-right badges */}
+                  {(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
+                    <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
+                  )}
+                  {u.premium === 1 && !(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
+                    <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-sm text-white rounded-full p-1">
+                      <Crown size={9} />
+                    </div>
+                  )}
+                  {/* Name overlay — pinned to bottom of card */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2 z-10">
+                    <div className="flex items-center gap-0.5">
+                      <span className="text-white text-xs font-bold truncate leading-tight drop-shadow-sm">{u.name}</span>
+                      {u.verified === 1 && <BadgeCheck size={10} className="text-blue-300 flex-shrink-0" />}
+                    </div>
+                    <div className="text-white/75 text-[10px] flex items-center gap-0.5 mt-0.5 truncate">
+                      <span>{u.age}y</span>
+                      {u.city && <><span>·</span><span className="truncate">{u.city}</span></>}
+                    </div>
+                  </div>
+                  {/* Hover buttons */}
+                  <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-all z-20 flex gap-1.5 bg-gradient-to-t from-black/60 to-transparent pt-8">
+                    <button onClick={e => { e.stopPropagation(); likeUser(u.id) }}
+                      className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${likedUsers.has(u.id) ? 'bg-brand-500 text-white' : 'bg-white/90 text-brand-500 hover:bg-brand-500 hover:text-white'}`}>
+                      <Heart size={11} className={likedUsers.has(u.id) ? 'fill-white' : ''} /> Like
+                    </button>
+                    <Link href={`/chat/${u.id}`} onClick={e => e.stopPropagation()}
+                      className="flex items-center justify-center px-2.5 bg-white/90 hover:bg-blue-500 hover:text-white text-blue-500 rounded-lg transition-colors">
+                      <MessageCircle size={13} />
+                    </Link>
                   </div>
                 </div>
               )
