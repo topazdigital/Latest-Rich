@@ -695,7 +695,7 @@ router.get("/config/public", async (req, res) => {
 // Returns { phase: "tcp"|"auth"|"ok", message, error? } so the UI can show each step.
 router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { host, port: portRaw, user, pass, secure: secureRaw } = req.body
+    const { host, port: portRaw, user, pass, secure: secureRaw, auth_method: authMethod } = req.body
     const port = parseInt(portRaw) || 587
     const secure = secureRaw === "1" || secureRaw === true
 
@@ -732,9 +732,11 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     }
 
     const nodemailer = await import("nodemailer")
+    const authConfig: any = { user, pass }
+    if (authMethod) authConfig.method = authMethod
     const transporter = nodemailer.createTransport({
       host, port, secure,
-      auth: { user, pass },
+      auth: authConfig,
       tls: { rejectUnauthorized: false },
       connectionTimeout: 5000,
       greetingTimeout: 5000,
@@ -753,9 +755,12 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     await Promise.race([verifyPromise, timeoutPromise])
     res.json({ phase: "ok", message: `✓ Connected and authenticated successfully to ${host}:${port}` })
   } catch (err: any) {
-    const msg = err?.message || "SMTP check failed"
-    console.error("[check-smtp]", msg)
-    // If TCP succeeded but auth failed, msg comes from nodemailer (e.g. "Invalid login")
+    const raw = err?.message || "SMTP check failed"
+    console.error("[check-smtp]", raw)
+    let msg = raw
+    if (raw.includes("535") || raw.toLowerCase().includes("incorrect authentication") || raw.toLowerCase().includes("invalid login")) {
+      msg = `${raw}\n\n💡 Fix: Your credentials were rejected. Try setting Auth Method to "LOGIN (DirectAdmin / cPanel)" — DirectAdmin mail servers often require this. Also double-check your username (full email address) and password in DirectAdmin → Email Accounts.`
+    }
     res.json({ phase: "auth", error: msg })
   }
 })
@@ -778,6 +783,7 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
     const smtpFrom = process.env.SMTP_FROM || await getConf("smtp_from") || smtpUser
     const smtpFromName = process.env.SMTP_FROM_NAME || await getConf("smtp_from_name") || "Rich Dating Network"
     const smtpSecure = (process.env.SMTP_SECURE || await getConf("smtp_secure")) === "1"
+    const smtpAuthMethod = process.env.SMTP_AUTH_METHOD || await getConf("smtp_auth_method") || ""
     const siteName = await getConf("site_name") || "Rich Dating Network"
 
     if (!smtpHost || !smtpUser || !smtpPass) {
@@ -793,11 +799,13 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
     // the request always resolves within SMTP_HARD_TIMEOUT_MS regardless of what hangs.
     const SMTP_HARD_TIMEOUT_MS = 8000
     const nodemailer = await import("nodemailer")
+    const authConfigTE: any = { user: smtpUser, pass: smtpPass }
+    if (smtpAuthMethod) authConfigTE.method = smtpAuthMethod
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      auth: { user: smtpUser, pass: smtpPass },
+      auth: authConfigTE,
       tls: { rejectUnauthorized: false },
       connectionTimeout: 5000,
       greetingTimeout: 5000,

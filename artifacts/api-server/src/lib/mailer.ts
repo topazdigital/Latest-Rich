@@ -25,6 +25,7 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
     const smtpFrom = process.env.SMTP_FROM || await getConfig("smtp_from") || smtpUser
     const smtpFromName = process.env.SMTP_FROM_NAME || await getConfig("smtp_from_name") || await getConfig("site_name") || "Rich Dating Network"
     const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
+    const smtpAuthMethod = process.env.SMTP_AUTH_METHOD || await getConfig("smtp_auth_method") || ""
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       console.warn("[Mailer] SMTP not configured — skipping email to:", opts.to)
@@ -32,11 +33,13 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
     }
 
     const nodemailer = await import("nodemailer")
+    const authConfig: any = { user: smtpUser, pass: smtpPass }
+    if (smtpAuthMethod) authConfig.method = smtpAuthMethod
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      auth: { user: smtpUser, pass: smtpPass },
+      auth: authConfig,
       tls: { rejectUnauthorized: false },
     })
 
