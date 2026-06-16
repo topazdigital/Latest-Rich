@@ -376,32 +376,40 @@ router.post("/profile/questions", requireAuth, async (req, res) => {
 // Look up user by username — case-insensitive on both MySQL and PostgreSQL.
 // Falls back to matching by display name so legacy users without a username field still resolve.
 router.get("/by-username/:username", async (req, res) => {
-  try {
-    const username = req.params.username.replace(/^@/, "").toLowerCase()
+  const raw = req.params.username.replace(/^@/, "")
+  const username = raw.toLowerCase()
 
-    // 1. Try exact username match (case-insensitive)
+  try {
+    // 1. Username lookup: usernames are stored lowercase (sanitizeUsername lowercases on save),
+    //    so a plain eq() is sufficient and avoids any lower() function compatibility issues.
     let [user] = await db.select({
       id: usersTable.id,
       name: usersTable.name,
       username: usersTable.username,
     }).from(usersTable)
-      .where(sql`lower(${usersTable.username}) = ${username}`)
+      .where(eq(usersTable.username, username))
       .limit(1)
 
-    // 2. Fallback: match by display name (covers migrated users whose username field is empty)
+    // 2. Fallback: match by display name (covers migrated users whose username field is empty).
+    //    Names are mixed-case so we use the SQL lower() function here.
     if (!user) {
-      ;[user] = await db.select({
-        id: usersTable.id,
-        name: usersTable.name,
-        username: usersTable.username,
-      }).from(usersTable)
-        .where(sql`lower(${usersTable.name}) = ${username}`)
-        .limit(1)
+      try {
+        ;[user] = await db.select({
+          id: usersTable.id,
+          name: usersTable.name,
+          username: usersTable.username,
+        }).from(usersTable)
+          .where(sql`lower(${usersTable.name}) = ${username}`)
+          .limit(1)
+      } catch (nameErr) {
+        console.error("[by-username] name fallback query failed:", nameErr)
+      }
     }
 
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     res.json({ id: user.id, name: user.name, username: user.username })
-  } catch {
+  } catch (err) {
+    console.error("[by-username] username lookup failed for:", username, err)
     res.status(500).json({ error: "Failed" })
   }
 })

@@ -39,7 +39,8 @@ async function getCreditPackagesFromConfig() {
   }
 }
 
-router.get("/packages", requireAuth, async (req, res) => {
+// Public — no auth needed. Anyone (including the credits page) can fetch packages.
+router.get("/packages", async (req, res) => {
   const packages = await getCreditPackagesFromConfig()
   res.json(packages)
 })
