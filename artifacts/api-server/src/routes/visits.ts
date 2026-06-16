@@ -4,6 +4,7 @@ import { userVisitsTable, usersTable, notificationsTable } from "@workspace/db/s
 import { eq, desc, and, gte } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send } from "../lib/websocket"
+import { sendVisitEmail } from "../lib/mailer"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -49,6 +50,12 @@ router.post("/:id", requireAuth, async (req, res) => {
           },
           time: now(),
         })
+
+        // Email notification (fire-and-forget)
+        if (target.email) {
+          const siteUrl = process.env.SITE_URL || "https://richdatingnetwork.com"
+          sendVisitEmail(target.email, target.name, visitor.name, `/profile/${visitor.id}`, siteUrl).catch(() => {})
+        }
       }
     }
     res.json({ success: true })

@@ -31,6 +31,7 @@ import ReferralsPage from "./pages/ReferralsPage"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
 import WelcomeModal from "./components/common/WelcomeModal"
+import NewSiteModal from "./components/common/NewSiteModal"
 import ProfileQuestionsModal from "./components/common/ProfileQuestionsModal"
 import VideoCallModal from "./components/common/VideoCallModal"
 import NotFound from "./pages/not-found"
@@ -101,6 +102,46 @@ function WelcomeController() {
 
   if (!showWelcome || !user) return null
   return <WelcomeModal userName={user.name} onClose={() => setShowWelcome(false)} />
+}
+
+// Shows new-site onboarding for existing users who have no phone or haven't seen it yet
+function NewSiteOnboardingController() {
+  const { user } = useAuth()
+  const [location] = useLocation()
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    // Only show on main app pages, not immediately on login
+    const isAppPage = (location === '/discover' || location === '/home' || location === '/meet')
+    if (!isAppPage) return
+    // Only show once per browser session (or until dismissed permanently)
+    const done = localStorage.getItem('new_site_onboarding_done') === '1'
+    const isNewReg = localStorage.getItem('show_welcome') === '1'
+    if (done || isNewReg) return
+    // Show for users that registered before the new site (no phone or flag set)
+    const hasPhone = !!(user as any).phone
+    const seenBefore = localStorage.getItem('new_site_seen') === '1'
+    if (!seenBefore && (!hasPhone || true)) {
+      // Show once per account (keyed by user id)
+      const shownKey = `new_site_shown_${user.id}`
+      if (localStorage.getItem(shownKey) === '1') return
+      setTimeout(() => setShow(true), 1200)
+    }
+  }, [user, location])
+
+  if (!show || !user) return null
+  return (
+    <NewSiteModal
+      userName={(user as any).name || 'there'}
+      hasPhone={!!(user as any).phone}
+      onClose={() => {
+        setShow(false)
+        localStorage.setItem(`new_site_shown_${user.id}`, '1')
+        localStorage.setItem('new_site_onboarding_done', '1')
+      }}
+    />
+  )
 }
 
 // Shows profile completion questions after new registration
@@ -219,6 +260,7 @@ function Router() {
       <SEOHead />
       <DynamicFavicon />
       <WelcomeController />
+      <NewSiteOnboardingController />
       <ProfileQuestionsController />
       <VideoCallController />
       <AppLayout>

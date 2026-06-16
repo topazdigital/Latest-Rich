@@ -164,6 +164,54 @@ export async function sendNewMessageEmail(to: string, recipientName: string, sen
   })
 }
 
+export async function sendVisitEmail(to: string, recipientName: string, visitorName: string, profilePath: string, siteUrl: string): Promise<boolean> {
+  const siteName = await getConfig("site_name") || "Rich Dating Network"
+  const profileUrl = `${siteUrl}${profilePath}`
+  return sendEmail({
+    to,
+    subject: `👀 ${visitorName} viewed your profile — ${siteName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 16px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;max-width:600px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+<tr><td style="background:linear-gradient(135deg,#1a0a0e 0%,#3d0d1a 50%,#FF192C 100%);padding:40px 40px 32px;text-align:center">
+  <div style="width:64px;height:64px;background:rgba(255,255,255,0.15);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+    <span style="font-size:28px">👀</span>
+  </div>
+  <h1 style="color:#ffffff;font-size:22px;margin:0 0 6px;font-weight:800;letter-spacing:-0.02em">Someone Viewed Your Profile</h1>
+  <p style="color:rgba(255,255,255,0.65);font-size:13px;margin:0">${siteName}</p>
+</td></tr>
+<tr><td style="padding:36px 40px;text-align:center">
+  <p style="color:#111827;font-size:16px;margin:0 0 8px;font-weight:600">Hi ${recipientName} 👋</p>
+  <p style="color:#6b7280;font-size:15px;line-height:1.7;margin:0 0 28px">
+    <strong style="color:#111827">${visitorName}</strong> just viewed your profile on ${siteName}.<br>
+    They might be interested — don't miss the chance to connect!
+  </p>
+  <a href="${profileUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF192C,#ff5f6b);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:15px;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(255,25,44,0.35)">
+    View Their Profile →
+  </a>
+  <p style="color:#9ca3af;font-size:12px;margin:28px 0 0;line-height:1.6">
+    You can manage your notification preferences in your account settings.<br>
+    © ${new Date().getFullYear()} ${siteName}. All rights reserved.
+  </p>
+</td></tr>
+<tr><td style="background:#fafafa;padding:20px 40px;text-align:center;border-top:1px solid #f3f4f6">
+  <p style="color:#d1d5db;font-size:11px;margin:0">
+    This email was sent to ${to} because you have an account on ${siteName}
+  </p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  })
+}
+
 export async function sendLikeEmail(to: string, recipientName: string, likerName: string, isSuperlike: boolean, siteUrl: string): Promise<boolean> {
   const siteName = await getConfig("site_name") || "Rich Dating Network"
   const emoji = isSuperlike ? "⭐" : "❤️"

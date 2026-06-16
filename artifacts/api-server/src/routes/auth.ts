@@ -7,6 +7,7 @@ import {
 import { eq, or } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
+import { requireAuth } from "../lib/auth-middleware"
 import crypto from "crypto"
 
 const router = Router()
@@ -421,6 +422,27 @@ router.get("/reset-password/:token", async (req, res) => {
     res.json({ valid: true })
   } catch {
     res.status(500).json({ valid: false })
+  }
+})
+
+// Update phone number for authenticated user (used by new-site onboarding)
+router.post("/update-phone", requireAuth, async (req, res) => {
+  try {
+    const { phone } = req.body as { phone?: string }
+    if (!phone || phone.trim().length < 7) {
+      res.status(400).json({ error: "Invalid phone number" }); return
+    }
+    const clean = phone.trim()
+    // Check not taken by someone else
+    const [existing] = await db.select({ id: usersTable.id })
+      .from(usersTable).where(eq(usersTable.phone, clean)).limit(1)
+    if (existing && existing.id !== req.userId) {
+      res.status(409).json({ error: "That phone number is already registered" }); return
+    }
+    await db.update(usersTable).set({ phone: clean }).where(eq(usersTable.id, req.userId!))
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update phone" })
   }
 })
 

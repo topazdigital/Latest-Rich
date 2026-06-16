@@ -15,6 +15,12 @@ export default function ProfilePage({ params }: Props) {
   const { user, token } = useAuth()
   const profileId = parseInt(params.id)
 
+  // Record visit (fire-and-forget, once per page load for non-own profiles)
+  useEffect(() => {
+    if (!token || !profileId || user?.id === profileId) return
+    fetch(`/api/visits/${profileId}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+  }, [profileId, token, user?.id])
+
   useEffect(() => {
     if (!token || !profileId) return
     Promise.all([

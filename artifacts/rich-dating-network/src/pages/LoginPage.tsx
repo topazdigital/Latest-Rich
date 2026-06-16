@@ -1,7 +1,47 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'wouter'
-import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star, Mail, AtSign, Phone } from 'lucide-react'
+import { Heart, Eye, EyeOff, Loader2, Crown, Shield, MapPin, Star, Mail, AtSign, Phone, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+const DIAL_CODES = [
+  { code: 'US', dial: '+1', name: 'United States' },
+  { code: 'GB', dial: '+44', name: 'United Kingdom' },
+  { code: 'KE', dial: '+254', name: 'Kenya' },
+  { code: 'NG', dial: '+234', name: 'Nigeria' },
+  { code: 'ZA', dial: '+27', name: 'South Africa' },
+  { code: 'GH', dial: '+233', name: 'Ghana' },
+  { code: 'UG', dial: '+256', name: 'Uganda' },
+  { code: 'TZ', dial: '+255', name: 'Tanzania' },
+  { code: 'RW', dial: '+250', name: 'Rwanda' },
+  { code: 'ET', dial: '+251', name: 'Ethiopia' },
+  { code: 'EG', dial: '+20', name: 'Egypt' },
+  { code: 'MA', dial: '+212', name: 'Morocco' },
+  { code: 'ZM', dial: '+260', name: 'Zambia' },
+  { code: 'ZW', dial: '+263', name: 'Zimbabwe' },
+  { code: 'CM', dial: '+237', name: 'Cameroon' },
+  { code: 'AE', dial: '+971', name: 'UAE' },
+  { code: 'SA', dial: '+966', name: 'Saudi Arabia' },
+  { code: 'IN', dial: '+91', name: 'India' },
+  { code: 'PK', dial: '+92', name: 'Pakistan' },
+  { code: 'DE', dial: '+49', name: 'Germany' },
+  { code: 'FR', dial: '+33', name: 'France' },
+  { code: 'IT', dial: '+39', name: 'Italy' },
+  { code: 'ES', dial: '+34', name: 'Spain' },
+  { code: 'CA', dial: '+1', name: 'Canada' },
+  { code: 'AU', dial: '+61', name: 'Australia' },
+  { code: 'BR', dial: '+55', name: 'Brazil' },
+  { code: 'MX', dial: '+52', name: 'Mexico' },
+  { code: 'SG', dial: '+65', name: 'Singapore' },
+  { code: 'CN', dial: '+86', name: 'China' },
+  { code: 'JP', dial: '+81', name: 'Japan' },
+  { code: 'KR', dial: '+82', name: 'South Korea' },
+  { code: 'ZZ', dial: '', name: 'Other' },
+]
+
+function getFlagEmoji(code: string) {
+  if (!code || code === 'ZZ') return '🌍'
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))
+}
 
 declare global {
   interface Window {
@@ -76,12 +116,30 @@ export default function LoginPage() {
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
   const [profiles, setProfiles] = useState(PROFILE_POOLS.DEFAULT.slice(0, 3))
+  // Phone tab dial picker
+  const [selectedDial, setSelectedDial] = useState(DIAL_CODES[2]) // default Kenya
+  const [phoneLocal, setPhoneLocal] = useState('')
+  const [showDialPicker, setShowDialPicker] = useState(false)
+  const [dialSearch, setDialSearch] = useState('')
+  const dialRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/auth/social/config').then(r => r.json()).then(d => setSocialConfig(d)).catch(() => {})
     fetch('/api/location/detect').then(r => r.json()).then(d => {
-      if (d.countryCode) setProfiles(getProfiles(d.countryCode))
+      if (d.countryCode) {
+        setProfiles(getProfiles(d.countryCode))
+        const found = DIAL_CODES.find(c => c.code === d.countryCode)
+        if (found) setSelectedDial(found)
+      }
     }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dialRef.current && !dialRef.current.contains(e.target as Node)) setShowDialPicker(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   useEffect(() => {
@@ -121,11 +179,23 @@ export default function LoginPage() {
   function handleTabChange(tab: LoginTab) {
     setActiveTab(tab)
     setIdentifier('')
+    setPhoneLocal('')
   }
+
+  const filteredDials = DIAL_CODES.filter(d =>
+    d.name.toLowerCase().includes(dialSearch.toLowerCase()) || d.dial.includes(dialSearch)
+  )
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    if (!identifier.trim()) {
+    const effectiveIdentifier = activeTab === 'phone'
+      ? (selectedDial.dial + phoneLocal.replace(/\D/g, ''))
+      : identifier.trim()
+    if (!effectiveIdentifier || (activeTab === 'phone' && phoneLocal.trim().length < 5)) {
+      toast.error(`Please enter your phone number`)
+      return
+    }
+    if (activeTab !== 'phone' && !identifier.trim()) {
       toast.error(`Please enter your ${activeTab}`)
       return
     }
@@ -134,7 +204,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim(), password }),
+        body: JSON.stringify({ identifier: effectiveIdentifier, password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Login failed')
@@ -281,22 +351,62 @@ export default function LoginPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 {activeTabConfig.label}
               </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                  {activeTabConfig.icon}
+              {activeTab === 'phone' ? (
+                <div className="flex gap-2">
+                  {/* Dial code picker */}
+                  <div ref={dialRef} className="relative flex-shrink-0">
+                    <button type="button" onClick={() => setShowDialPicker(v => !v)}
+                      className="h-[50px] px-3 border border-gray-200 rounded-2xl text-sm font-semibold flex items-center gap-1.5 bg-gray-50 hover:bg-white transition-all min-w-[96px]">
+                      <span className="text-base leading-none">{getFlagEmoji(selectedDial.code)}</span>
+                      <span className="text-gray-700">{selectedDial.dial || '+'}</span>
+                      <ChevronDown size={12} className="text-gray-400" />
+                    </button>
+                    {showDialPicker && (
+                      <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden">
+                        <div className="p-2 border-b border-gray-100">
+                          <input autoFocus placeholder="Search country..."
+                            value={dialSearch} onChange={e => setDialSearch(e.target.value)}
+                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded-xl border-0 outline-none placeholder-gray-400"
+                          />
+                        </div>
+                        <div className="max-h-52 overflow-y-auto">
+                          {filteredDials.map(d => (
+                            <button key={d.code + d.dial} type="button"
+                              onClick={() => { setSelectedDial(d); setShowDialPicker(false); setDialSearch('') }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left ${selectedDial.code === d.code ? 'bg-red-50 text-brand-600' : 'text-gray-700'}`}>
+                              <span className="text-base leading-none w-6">{getFlagEmoji(d.code)}</span>
+                              <span className="flex-1 font-medium">{d.name}</span>
+                              <span className="text-gray-400 text-xs">{d.dial}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <input key="phone-local" type="tel" value={phoneLocal}
+                    onChange={e => setPhoneLocal(e.target.value)}
+                    placeholder="712 345 678" autoFocus autoComplete="tel-national"
+                    className="flex-1 px-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
+                  />
                 </div>
-                <input
-                  key={activeTab}
-                  type={activeTabConfig.type}
-                  value={identifier}
-                  onChange={e => setIdentifier(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
-                  placeholder={activeTabConfig.placeholder}
-                  required
-                  autoComplete={activeTabConfig.autoComplete}
-                  autoFocus
-                />
-              </div>
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    {activeTabConfig.icon}
+                  </div>
+                  <input
+                    key={activeTab}
+                    type={activeTabConfig.type}
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
+                    placeholder={activeTabConfig.placeholder}
+                    required
+                    autoComplete={activeTabConfig.autoComplete}
+                    autoFocus
+                  />
+                </div>
+              )}
             </div>
 
             <div>
