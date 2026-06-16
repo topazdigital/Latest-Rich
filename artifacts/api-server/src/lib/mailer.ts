@@ -1,12 +1,52 @@
 import { db } from "@workspace/db"
 import { siteConfigTable } from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
+import nodemailer, { type Transporter } from "nodemailer"
 
 async function getConfig(key: string): Promise<string> {
   try {
     const rows = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
     return rows[0]?.value || ""
   } catch { return "" }
+}
+
+// Cache the transporter so we reuse the connection instead of reconnecting per email.
+// Invalidated when any config key changes.
+let _cachedTransporter: {
+  host: string; port: number; user: string; pass: string; secure: boolean
+  transporter: Transporter
+} | null = null
+
+async function getTransporter() {
+  const smtpHost = process.env.SMTP_HOST || await getConfig("smtp_host")
+  const smtpPort = parseInt(process.env.SMTP_PORT || await getConfig("smtp_port") || "587")
+  const smtpUser = process.env.SMTP_USER || await getConfig("smtp_user")
+  const smtpPass = process.env.SMTP_PASS || await getConfig("smtp_pass")
+  const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
+
+  if (!smtpHost || !smtpUser || !smtpPass) return null
+
+  if (
+    _cachedTransporter &&
+    _cachedTransporter.host === smtpHost &&
+    _cachedTransporter.port === smtpPort &&
+    _cachedTransporter.user === smtpUser &&
+    _cachedTransporter.pass === smtpPass &&
+    _cachedTransporter.secure === smtpSecure
+  ) {
+    return _cachedTransporter
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,          // true = implicit TLS (port 465); false = STARTTLS (port 587)
+    requireTLS: !smtpSecure,     // force STARTTLS upgrade on port 587 — critical for DirectAdmin
+    auth: { user: smtpUser, pass: smtpPass },  // no `type` — let nodemailer negotiate LOGIN/PLAIN
+    tls: { rejectUnauthorized: false },        // accept self-signed certs on VPS servers
+  })
+  _cachedTransporter = { host: smtpHost, port: smtpPort, user: smtpUser, pass: smtpPass, secure: smtpSecure, transporter }
+  return _cachedTransporter
 }
 
 export interface MailOptions {
@@ -18,33 +58,15 @@ export interface MailOptions {
 
 export async function sendEmail(opts: MailOptions): Promise<boolean> {
   try {
-    const smtpHost = process.env.SMTP_HOST || await getConfig("smtp_host")
-    const smtpPort = parseInt(process.env.SMTP_PORT || await getConfig("smtp_port") || "587")
-    const smtpUser = process.env.SMTP_USER || await getConfig("smtp_user")
-    const smtpPass = process.env.SMTP_PASS || await getConfig("smtp_pass")
-    const smtpFrom = process.env.SMTP_FROM || await getConfig("smtp_from") || smtpUser
-    const smtpFromName = process.env.SMTP_FROM_NAME || await getConfig("smtp_from_name") || await getConfig("site_name") || "Rich Dating Network"
-    const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
-    const smtpAuthMethod = process.env.SMTP_AUTH_METHOD || await getConfig("smtp_auth_method") || ""
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
+    const ctx = await getTransporter()
+    if (!ctx) {
       console.warn("[Mailer] SMTP not configured — skipping email to:", opts.to)
       return false
     }
+    const smtpFrom = process.env.SMTP_FROM || await getConfig("smtp_from") || ctx.user
+    const smtpFromName = process.env.SMTP_FROM_NAME || await getConfig("smtp_from_name") || await getConfig("site_name") || "Rich Dating Network"
 
-    const nodemailer = await import("nodemailer")
-    const transportOpts: any = {
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      tls: { rejectUnauthorized: false },
-    }
-    if (smtpUser && smtpPass) {
-      transportOpts.auth = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
-    }
-    const transporter = nodemailer.createTransport(transportOpts)
-
-    await transporter.sendMail({
+    await ctx.transporter.sendMail({
       from: `"${smtpFromName}" <${smtpFrom}>`,
       to: opts.to,
       subject: opts.subject,

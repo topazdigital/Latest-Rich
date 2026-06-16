@@ -92,7 +92,6 @@ const EMAIL_FIELDS = [
   { key: "smtp_from", label: "From Email", type: "text", placeholder: "noreply@yourdomain.com" },
   { key: "smtp_from_name", label: "From Name", type: "text", placeholder: "Rich Dating Network" },
   { key: "smtp_secure", label: "Use TLS/SSL", type: "select", options: [["0","No (STARTTLS on port 587)"],["1","Yes (SSL on port 465)"]] },
-  { key: "smtp_auth_method", label: "Auth Method", type: "select", options: [["","Auto-detect"],["LOGIN","LOGIN (DirectAdmin / cPanel)"],["PLAIN","PLAIN"],["CRAM-MD5","CRAM-MD5"]], help: "If you get '535 Incorrect authentication data', set this to LOGIN" },
 ]
 
 const DEFAULT_PACKAGES = [
@@ -448,20 +447,17 @@ export default function AdminSettings() {
           </div>
           {/* Pair fields side-by-side to cut vertical height */}
           <div className="grid grid-cols-2 gap-3">
-            {EMAIL_FIELDS.filter(f => f.key !== "smtp_secure" && f.key !== "smtp_auth_method").map((f: any) => (
+            {EMAIL_FIELDS.filter(f => f.key !== "smtp_secure").map((f: any) => (
               <div key={f.key}>
                 <label className="text-gray-600 text-xs font-medium mb-1.5 block">{f.label}</label>
                 {renderField({ ...f })}
               </div>
             ))}
           </div>
-          {/* TLS + Auth Method — full width with help text */}
-          {EMAIL_FIELDS.filter(f => f.key === "smtp_secure" || f.key === "smtp_auth_method").map((f: any) => (
+          {/* TLS — full width */}
+          {EMAIL_FIELDS.filter(f => f.key === "smtp_secure").map((f: any) => (
             <div key={f.key}>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-gray-600 text-xs font-medium">{f.label}</label>
-                {f.help && <span className="text-yellow-600 text-[10px] font-medium">{f.help}</span>}
-              </div>
+              <label className="text-gray-600 text-xs font-medium mb-1.5 block">{f.label}</label>
               {renderField({ ...f })}
             </div>
           ))}

@@ -733,8 +733,9 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
       socketTimeout: 8000,
     }
     if (user && pass) {
-      transportOpts.auth = { type: authMethod || "LOGIN", user, pass }
+      transportOpts.auth = { user, pass }
     }
+    if (!secure) transportOpts.requireTLS = true
     const transporter = nodemailer.createTransport(transportOpts)
 
     const verifyPromise = transporter.verify()
@@ -753,7 +754,7 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     console.error("[check-smtp]", raw)
     let msg = raw
     if (raw.includes("535") || raw.toLowerCase().includes("incorrect authentication") || raw.toLowerCase().includes("invalid login")) {
-      msg = `${raw}\n\n💡 Fix: Your credentials were rejected. Try setting Auth Method to "LOGIN (DirectAdmin / cPanel)" — DirectAdmin mail servers often require this. Also double-check your username (full email address) and password in DirectAdmin → Email Accounts.`
+      msg = `${raw}\n\n💡 Fix: Your credentials were rejected. Double-check your username (full email address) and password in DirectAdmin → Email Accounts. Also make sure TLS/SSL is set correctly: use "No (STARTTLS on port 587)" for port 587, or "Yes (SSL on port 465)" for port 465.`
     }
     res.json({ phase: "auth", error: msg })
   }
@@ -800,8 +801,9 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       socketTimeout: 8000,
     }
     if (smtpUser && smtpPass) {
-      transportOptsTE.auth = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
+      transportOptsTE.auth = { user: smtpUser, pass: smtpPass }
     }
+    if (!smtpSecure) transportOptsTE.requireTLS = true
     const transporter = nodemailer.createTransport(transportOptsTE)
 
     const timeoutPromise = new Promise<never>((_, reject) =>
