@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'wouter'
 import { getPhotoUrl, isOnline, truncate, profileUrl } from '../../lib/utils'
-import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent } from 'lucide-react'
+import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useWSEvent } from '../../hooks/useWebSocket'
@@ -39,7 +39,18 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   const [showFilters, setShowFilters] = useState(false)
   const [likedUsers, setLikedUsers] = useState<Set<number>>(new Set())
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set())
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const { token } = useAuth()
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 400)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   // Real-time online status updates from WebSocket
   useWSEvent('user_online', (msg) => {
@@ -331,6 +342,17 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
             </p>
           )}
         </>
+      )}
+
+      {/* Scroll to top button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-20 right-4 z-40 w-10 h-10 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all"
+          aria-label="Scroll to top"
+        >
+          <ChevronUp size={18} />
+        </button>
       )}
     </div>
   )

@@ -570,11 +570,11 @@ export default function RegisterPage() {
                             <div className="max-h-48 overflow-y-auto">
                               {filteredDials.map(d => (
                                 <button key={`${d.code}-${d.dial}`} type="button"
-                                  onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
+                                  onClick={() => { update('phoneDialCode', d.dial); update('countryCode', d.code); setShowDialDropdown(false); setDialSearch('') }}
                                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
-                                  <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
-                                  <span className="font-medium truncate">{d.name}</span>
-                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
+                                  <span className="text-base leading-none flex-shrink-0">{d.code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))}</span>
+                                  <span className="font-medium truncate flex-1">{d.name}</span>
+                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.dial}</span>
                                 </button>
                               ))}
                               {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}
@@ -700,11 +700,11 @@ export default function RegisterPage() {
                             <div className="max-h-48 overflow-y-auto">
                               {filteredDials.map(d => (
                                 <button key={`${d.code}-${d.dial}`} type="button"
-                                  onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
+                                  onClick={() => { update('phoneDialCode', d.dial); update('countryCode', d.code); setShowDialDropdown(false); setDialSearch('') }}
                                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
-                                  <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
-                                  <span className="font-medium truncate">{d.name}</span>
-                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
+                                  <span className="text-base leading-none flex-shrink-0">{d.code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))}</span>
+                                  <span className="font-medium truncate flex-1">{d.name}</span>
+                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.dial}</span>
                                 </button>
                               ))}
                               {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}

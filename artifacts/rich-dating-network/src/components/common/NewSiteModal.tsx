@@ -118,31 +118,34 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Progress bar */}
         <div className="h-1.5 bg-gray-100">
           <div className="h-1.5 bg-gradient-to-r from-brand-500 to-pink-400 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
         </div>
 
+        {/* Scrollable step content */}
+        <div className="flex-1 overflow-y-auto">
+
         {/* Step 0 — Welcome */}
         {step === 0 && (
           <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-pink-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
-                <Heart className="w-7 h-7 text-white fill-white" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-pink-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                <Heart className="w-6 h-6 text-white fill-white" />
               </div>
               <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
                 <X size={16} />
               </button>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Welcome back, {userName}! 🎉</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            <h2 className="text-xl font-black text-gray-900 mb-1.5">Welcome back, {userName}! 🎉</h2>
+            <p className="text-gray-500 text-sm leading-relaxed mb-4">
               We've moved to a new platform! Everything you loved is still here, but better. Here's what's new:
             </p>
-            <div className="space-y-3 mb-6">
+            <div className="space-y-2 mb-4">
               {FEATURES.map((f, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-2xl bg-gray-50">
-                  <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-lg flex-shrink-0">{f.icon}</div>
+                <div key={i} className="flex items-start gap-3 p-2.5 rounded-2xl bg-gray-50">
+                  <div className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-base flex-shrink-0">{f.icon}</div>
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">{f.title}</div>
                     <div className="text-gray-500 text-xs leading-relaxed">{f.desc}</div>
@@ -156,32 +159,32 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
         {/* Step 1 — Add Phone (only for users without phone) */}
         {step === 1 && !hasPhone && (
           <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center">
-                <Phone className="w-7 h-7 text-blue-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                <Phone className="w-6 h-6 text-blue-500" />
               </div>
               <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
                 <X size={16} />
               </button>
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Add Your Phone Number</h3>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            <h3 className="text-xl font-black text-gray-900 mb-1.5">Add Your Phone Number</h3>
+            <p className="text-gray-500 text-sm leading-relaxed mb-4">
               Secure your account and enable two-factor login with your phone number. You can skip this and add it later in settings.
             </p>
 
-            <div className="mb-4">
+            <div className="mb-3">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
               <div className="flex gap-2">
                 {/* Dial code picker */}
                 <div ref={dialRef} className="relative flex-shrink-0">
                   <button type="button" onClick={() => setShowDialPicker(v => !v)}
-                    className="h-12 px-3 border border-gray-200 rounded-2xl text-sm font-semibold flex items-center gap-1.5 bg-gray-50 hover:bg-white transition-all min-w-[90px]">
+                    className="h-11 px-2.5 border border-gray-200 rounded-2xl text-sm font-semibold flex items-center gap-1 bg-gray-50 hover:bg-white transition-all min-w-[72px]">
                     <span className="text-base leading-none">{getFlagEmoji(selectedDial.code)}</span>
-                    <span className="text-gray-700">{selectedDial.dial || '+'}</span>
-                    <ChevronDown size={12} className="text-gray-400" />
+                    <span className="text-gray-700 text-xs">{selectedDial.dial || '+'}</span>
+                    <ChevronDown size={11} className="text-gray-400" />
                   </button>
                   {showDialPicker && (
-                    <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 overflow-hidden">
+                    <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 max-w-[calc(100vw-2rem)] overflow-hidden">
                       <div className="p-2 border-b border-gray-100">
                         <input
                           autoFocus
@@ -195,10 +198,10 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
                         {filteredDials.map(d => (
                           <button key={d.code + d.dial} type="button"
                             onClick={() => { setSelectedDial(d); setShowDialPicker(false); setDialSearch('') }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left ${selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
-                            <span className="text-base leading-none w-6">{getFlagEmoji(d.code)}</span>
-                            <span className="flex-1 font-medium">{d.name}</span>
-                            <span className="text-gray-400 text-xs">{d.dial}</span>
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
+                            <span className="text-base leading-none w-6 flex-shrink-0">{getFlagEmoji(d.code)}</span>
+                            <span className="flex-1 font-medium truncate">{d.name}</span>
+                            <span className="text-gray-400 text-xs flex-shrink-0">{d.dial}</span>
                           </button>
                         ))}
                       </div>
@@ -210,31 +213,31 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
                   value={phoneNumber}
                   onChange={e => setPhoneNumber(e.target.value)}
                   placeholder="712 345 678"
-                  className="flex-1 h-12 px-4 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white"
+                  className="flex-1 h-11 px-3 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white"
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-400 mb-4">Your number is stored securely and never shared with other members.</p>
+            <p className="text-xs text-gray-400 mb-3">Your number is stored securely and never shared with other members.</p>
           </div>
         )}
 
         {/* Step 1 (with phone) or Step 2 — Done */}
         {((step === 1 && hasPhone) || step === 2) && (
           <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2 text-center">
-            <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
-              <Check className="w-8 h-8 text-green-500" />
+            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+              <Check className="w-7 h-7 text-green-500" />
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">You're all set! 🚀</h3>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            <h3 className="text-xl font-black text-gray-900 mb-1.5">You're all set! 🚀</h3>
+            <p className="text-gray-500 text-sm leading-relaxed mb-4">
               Your profile is live on the new platform. Start exploring and connecting with people near you!
             </p>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-2 mb-4">
               {[
                 { icon: <Eye size={18} className="text-purple-500" />, bg: 'bg-purple-50', label: 'Visitors' },
                 { icon: <MessageCircle size={18} className="text-blue-500" />, bg: 'bg-blue-50', label: 'Messages' },
                 { icon: <Sparkles size={18} className="text-amber-500" />, bg: 'bg-amber-50', label: 'Discover' },
               ].map((item, i) => (
-                <div key={i} className={`${item.bg} rounded-2xl p-3 flex flex-col items-center gap-1.5`}>
+                <div key={i} className={`${item.bg} rounded-2xl p-2.5 flex flex-col items-center gap-1.5`}>
                   {item.icon}
                   <span className="text-xs font-semibold text-gray-700">{item.label}</span>
                 </div>
@@ -243,8 +246,10 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
           </div>
         )}
 
-        {/* Footer actions */}
-        <div className="px-4 sm:px-8 pb-6 sm:pb-8 pt-2 flex items-center gap-2">
+        </div>{/* end scrollable content */}
+
+        {/* Footer actions — pinned to bottom */}
+        <div className="px-4 sm:px-8 pb-4 sm:pb-6 pt-2 flex items-center gap-2 border-t border-gray-50">
           {step > 0 && !((step === 1 && hasPhone) || step === 2) && (
             <button onClick={() => setStep(s => s - 1)}
               className="px-4 py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors">

@@ -360,10 +360,10 @@ export default function LoginPage() {
                   {/* Dial code picker */}
                   <div ref={dialRef} className="relative flex-shrink-0">
                     <button type="button" onClick={() => setShowDialPicker(v => !v)}
-                      className="h-[50px] px-3 border border-gray-200 rounded-2xl text-sm font-semibold flex items-center gap-1.5 bg-gray-50 hover:bg-white transition-all min-w-[96px]">
+                      className="h-[50px] px-2 border border-gray-200 rounded-2xl text-sm font-semibold flex items-center gap-1 bg-gray-50 hover:bg-white transition-all min-w-[72px]">
                       <span className="text-base leading-none">{getFlagEmoji(selectedDial.code)}</span>
-                      <span className="text-gray-700">{selectedDial.dial || '+'}</span>
-                      <ChevronDown size={12} className="text-gray-400" />
+                      <span className="text-gray-700 text-xs">{selectedDial.dial || '+'}</span>
+                      <ChevronDown size={11} className="text-gray-400 flex-shrink-0" />
                     </button>
                     {showDialPicker && (
                       <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 w-64 max-w-[calc(100vw-2.5rem)] overflow-hidden">

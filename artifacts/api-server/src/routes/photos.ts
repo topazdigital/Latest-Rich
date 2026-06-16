@@ -7,6 +7,27 @@ import multer from "multer"
 import path from "path"
 import fs from "fs"
 
+/** Compress an uploaded image in-place using sharp (if available).
+ *  Resizes to max 1200px on either dimension, converts to JPEG at quality 85.
+ *  Returns true if compression succeeded, false if sharp is unavailable or failed. */
+async function compressImage(filePath: string): Promise<boolean> {
+  try {
+    // Dynamic import with type bypass so sharp is optional (not bundled, loaded at runtime)
+    const sharpMod = await import("sharp" as unknown as string) as any
+    const sharp = sharpMod.default ?? sharpMod
+    const tmpPath = filePath + ".tmp"
+    await sharp(filePath)
+      .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 85, progressive: true })
+      .toFile(tmpPath)
+    fs.renameSync(tmpPath, filePath)
+    return true
+  } catch {
+    // sharp not installed or unsupported — keep original file as-is
+    return false
+  }
+}
+
 const uploadDir = path.join(process.cwd(), "uploads")
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
 
@@ -84,7 +105,21 @@ router.post("/upload", requireAuth, upload.single("photo"), async (req, res) => 
 
     const approved = photoModeration === "1" ? 0 : 1
 
-    const filename = req.file.filename
+    // Compress the uploaded file (shrink to max 1200px, JPEG q85)
+    const compressed = await compressImage(req.file.path)
+
+    // If compression ran, output is always JPEG — rename non-jpeg extensions accordingly
+    let filename = req.file.filename
+    if (compressed) {
+      const uploadedExt = path.extname(filename).toLowerCase()
+      if (uploadedExt !== ".jpg" && uploadedExt !== ".jpeg") {
+        const newFilename = filename.replace(/\.[^.]+$/, ".jpg")
+        const oldPath = path.join(uploadDir, filename)
+        const newPath = path.join(uploadDir, newFilename)
+        if (fs.existsSync(oldPath)) fs.renameSync(oldPath, newPath)
+        filename = newFilename
+      }
+    }
     await db.insert(photosTable).values({
       userId: req.userId!,
       photo: filename,

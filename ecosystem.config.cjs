@@ -4,7 +4,7 @@ module.exports = {
       name: "rdn-api",
       script: "./artifacts/api-server/dist/index.mjs",
       interpreter: "node",
-      cwd: "./",
+      cwd: __dirname,
       env_file: ".env",
       env: {
         NODE_ENV: "production",
