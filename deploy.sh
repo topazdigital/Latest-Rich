@@ -28,8 +28,8 @@ echo "[0/7] Pulling latest code from GitHub..."
 # Stash local files (.env, uploads, etc.) so pull never fails
 git stash --quiet 2>/dev/null || true
 git pull origin main
-# Restore stashed local changes (non-fatal if nothing stashed)
-git stash pop --quiet 2>/dev/null || true
+# Restore stashed changes — use || true so empty stash never breaks the chain
+git stash pop --quiet 2>/dev/null; true
 echo "      Code updated ✓"
 
 # ── Load .env ──────────────────────────────────────────────
