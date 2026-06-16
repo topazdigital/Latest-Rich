@@ -35,7 +35,7 @@ import NewSiteModal from "./components/common/NewSiteModal"
 import ProfileQuestionsModal from "./components/common/ProfileQuestionsModal"
 import VideoCallModal from "./components/common/VideoCallModal"
 import NotFound from "./pages/not-found"
-import { getStoredAuth } from "./lib/auth"
+import { getStoredAuth, authFetch } from "./lib/auth"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
 const ADMIN_PREFIXES = ["/admin"]
@@ -236,7 +236,7 @@ function UsernameProfilePage({ params }: { params: { username: string } }) {
 
   useEffect(() => {
     const username = params.username.replace(/^@/, '')
-    fetch(`/api/users/by-username/${encodeURIComponent(username)}`)
+    authFetch(`/api/users/by-username/${encodeURIComponent(username)}`)
       .then(r => r.json())
       .then(d => {
         if (d.id) setUserId(String(d.id))

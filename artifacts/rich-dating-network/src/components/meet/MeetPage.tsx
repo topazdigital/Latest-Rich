@@ -5,9 +5,9 @@ import { Link } from 'wouter'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 
-interface Props { userId: number; users: any[] }
+interface Props { userId: number; users: any[]; onRefresh?: () => void }
 
-export default function MeetPage({ userId, users }: Props) {
+export default function MeetPage({ userId, users, onRefresh }: Props) {
   const [queue, setQueue] = useState(users)
   const [current, setCurrent] = useState(0)
   const [showInfo, setShowInfo] = useState(false)
@@ -70,9 +70,16 @@ export default function MeetPage({ userId, users }: Props) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
         <div className="text-6xl mb-4">😊</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re all caught up!</h2>
-        <p className="text-gray-500 mb-6">Check back later for more matches</p>
-        <Link href="/discover" className="btn-primary">Browse All Members</Link>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">You're all caught up!</h2>
+        <p className="text-gray-500 mb-6">You've seen everyone in your area. Check back soon for new members.</p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {onRefresh && (
+            <button onClick={onRefresh} className="btn-primary">
+              🔄 Load More
+            </button>
+          )}
+          <Link href="/discover" className="btn-secondary">Browse All Members</Link>
+        </div>
       </div>
     )
   }

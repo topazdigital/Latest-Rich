@@ -93,12 +93,12 @@ export default function NotificationDropdown() {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: '340px', maxHeight: '480px',
+          position: 'fixed', top: '52px', right: '8px',
+          width: 'min(340px, calc(100vw - 16px))', maxHeight: '80vh',
           background: '#fff', borderRadius: '1.25rem',
           boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.06)',
-          zIndex: 100, overflow: 'hidden',
+          zIndex: 200, overflow: 'hidden',
           animation: 'slideDown 0.2s ease',
         }}>
           <style>{`

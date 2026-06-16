@@ -252,22 +252,14 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               return (
                 /* Card IS the aspect-ratio box — nothing can cause grey space below */
                 <div key={u.id}
-                  className={`group relative rounded-2xl overflow-hidden bg-gray-900 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  className={`group relative rounded-2xl overflow-hidden bg-gray-200 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
                   style={{ aspectRatio: '3/4' }}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(profileUrl(u)) }}>
-                  {/* Fallback background for no-photo users */}
-                  <div className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>
-                    <div style={{ fontSize: '3rem', opacity: 0.4, color: '#fff', fontWeight: 800, userSelect: 'none' }}>
-                      {(u.name?.[0] || '?').toUpperCase()}
-                    </div>
-                  </div>
-                  {(u.photoThumb || u.photo) && (
-                    <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  )}
+                  {/* Photo — always rendered; getPhotoUrl returns default-avatar.svg when no photo */}
+                  <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
                   {/* Dark gradient at bottom */}
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)' }} />
                   {/* Top-left badge */}
