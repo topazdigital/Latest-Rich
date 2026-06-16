@@ -537,6 +537,30 @@ CREATE TABLE IF NOT EXISTS `referrals` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `email_campaigns` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` text NOT NULL,
+  `subject` text NOT NULL,
+  `html_body` longtext NOT NULL DEFAULT '',
+  `status` text DEFAULT 'draft',
+  `total_recipients` int(11) DEFAULT 0,
+  `sent_count` int(11) DEFAULT 0,
+  `failed_count` int(11) DEFAULT 0,
+  `batch_size` int(11) DEFAULT 50,
+  `cooling_seconds` int(11) DEFAULT 60,
+  `filter_gender` int(11) DEFAULT 0,
+  `filter_country` text DEFAULT '',
+  `filter_min_age` int(11) DEFAULT 0,
+  `filter_max_age` int(11) DEFAULT 0,
+  `only_real` int(11) DEFAULT 1,
+  `created_by` int(11) DEFAULT 0,
+  `created_at` int(11) DEFAULT 0,
+  `started_at` int(11) DEFAULT 0,
+  `completed_at` int(11) DEFAULT 0,
+  `last_sent_at` int(11) DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `feed` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,

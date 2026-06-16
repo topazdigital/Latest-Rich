@@ -308,6 +308,29 @@ export const referralsTable = pgTable("referrals", {
   created: integer("created").default(0),
 })
 
+export const emailCampaignsTable = pgTable("email_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  htmlBody: text("html_body").notNull().default(""),
+  status: text("status").default("draft"),
+  totalRecipients: integer("total_recipients").default(0),
+  sentCount: integer("sent_count").default(0),
+  failedCount: integer("failed_count").default(0),
+  batchSize: integer("batch_size").default(50),
+  coolingSeconds: integer("cooling_seconds").default(60),
+  filterGender: integer("filter_gender").default(0),
+  filterCountry: text("filter_country").default(""),
+  filterMinAge: integer("filter_min_age").default(0),
+  filterMaxAge: integer("filter_max_age").default(0),
+  onlyReal: integer("only_real").default(1),
+  createdBy: integer("created_by").default(0),
+  createdAt: integer("created_at").default(0),
+  startedAt: integer("started_at").default(0),
+  completedAt: integer("completed_at").default(0),
+  lastSentAt: integer("last_sent_at").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

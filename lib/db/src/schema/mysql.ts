@@ -309,6 +309,29 @@ export const referralsTable = mysqlTable("referrals", {
   created: int("created").default(0),
 })
 
+export const emailCampaignsTable = mysqlTable("email_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  htmlBody: text("html_body").notNull().default(""),
+  status: text("status").default("draft"),
+  totalRecipients: int("total_recipients").default(0),
+  sentCount: int("sent_count").default(0),
+  failedCount: int("failed_count").default(0),
+  batchSize: int("batch_size").default(50),
+  coolingSeconds: int("cooling_seconds").default(60),
+  filterGender: int("filter_gender").default(0),
+  filterCountry: text("filter_country").default(""),
+  filterMinAge: int("filter_min_age").default(0),
+  filterMaxAge: int("filter_max_age").default(0),
+  onlyReal: int("only_real").default(1),
+  createdBy: int("created_by").default(0),
+  createdAt: int("created_at").default(0),
+  startedAt: int("started_at").default(0),
+  completedAt: int("completed_at").default(0),
+  lastSentAt: int("last_sent_at").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

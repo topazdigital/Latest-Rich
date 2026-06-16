@@ -22,7 +22,7 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
     const smtpPort = parseInt(process.env.SMTP_PORT || await getConfig("smtp_port") || "587")
     const smtpUser = process.env.SMTP_USER || await getConfig("smtp_user")
     const smtpPass = process.env.SMTP_PASS || await getConfig("smtp_pass")
-    const smtpFrom = process.env.SMTP_FROM || await getConfig("smtp_from") || "noreply@richdatingnetwork.com"
+    const smtpFrom = process.env.SMTP_FROM || await getConfig("smtp_from") || smtpUser
     const smtpFromName = process.env.SMTP_FROM_NAME || await getConfig("smtp_from_name") || await getConfig("site_name") || "Rich Dating Network"
     const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
 

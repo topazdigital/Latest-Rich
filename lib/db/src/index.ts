@@ -88,6 +88,7 @@ export const customPaymentOrdersTable = schema.customPaymentOrdersTable
 export const chatLocksTable = schema.chatLocksTable
 export const pushSubscriptionsTable = schema.pushSubscriptionsTable
 export const referralsTable = (schema as any).referralsTable
+export const emailCampaignsTable = (schema as any).emailCampaignsTable
 
 export const insertUserSchema = schema.insertUserSchema
 export const insertMessageSchema = schema.insertMessageSchema

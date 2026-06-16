@@ -14,6 +14,7 @@ import AdminPhotos from "../components/admin/AdminPhotos"
 import AdminCustomPayments from "../components/admin/AdminCustomPayments"
 import AdminVerifications from "../components/admin/AdminVerifications"
 import AdminReports from "../components/admin/AdminReports"
+import AdminEmailCampaigns from "../components/admin/AdminEmailCampaigns"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -26,6 +27,7 @@ const MENU = [
   { key: "boost", label: "Boost Config", icon: "⚡" },
   { key: "payments", label: "Payment Providers", icon: "💳" },
   { key: "custom-payments", label: "Manual Gateways", icon: "🏦" },
+  { key: "email-campaigns", label: "Email Campaigns", icon: "📧" },
   { key: "activity", label: "Activity Log", icon: "📋" },
   { key: "orders", label: "Orders / Revenue", icon: "💰" },
   { key: "settings", label: "Settings", icon: "⚙️" },
@@ -146,6 +148,7 @@ export default function AdminPage() {
           {tab === "boost" && <AdminBoost />}
           {tab === "payments" && <AdminPayments />}
           {tab === "custom-payments" && <AdminCustomPayments />}
+          {tab === "email-campaigns" && <AdminEmailCampaigns />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "settings" && <AdminSettings />}

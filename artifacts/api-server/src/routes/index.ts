@@ -25,6 +25,7 @@ import moderatorRouter from "./moderator"
 import customPaymentsRouter from "./custom-payments"
 import verificationRouter from "./verification"
 import referralsRouter from "./referrals"
+import emailCampaignsRouter from "./email-campaigns"
 
 const router: IRouter = Router()
 
@@ -53,6 +54,7 @@ router.use("/moderator", moderatorRouter)
 router.use("/custom-payments", customPaymentsRouter)
 router.use("/verification", verificationRouter)
 router.use("/referrals", referralsRouter)
+router.use("/admin/email-campaigns", emailCampaignsRouter)
 router.use("/", blockRouter)
 
 export default router

@@ -4,7 +4,8 @@ import { authFetch } from '../lib/auth'
 import { Loader2, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const PACKAGES = [
+const PKG_COLORS = ['#6b7280', '#FF192C', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6']
+const FALLBACK_PACKAGES = [
   { id: 1, credits: 100, usdPrice: 4.99, popular: false, label: 'Starter', color: '#6b7280' },
   { id: 2, credits: 250, usdPrice: 9.99, popular: true, label: 'Popular', color: '#FF192C', badge: '🔥 Most Popular' },
   { id: 3, credits: 500, usdPrice: 17.99, popular: false, label: 'Value', color: '#8b5cf6' },
@@ -31,6 +32,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
 
 export default function CreditsPageWrapper() {
   const { user, token } = useAuth()
+  const [packages, setPackages] = useState(FALLBACK_PACKAGES)
   const [orders, setOrders] = useState<any[]>([])
   const [paymentMethod, setPaymentMethod] = useState<any>(null)
   const [selectedPkg, setSelectedPkg] = useState<number | null>(null)
@@ -48,6 +50,23 @@ export default function CreditsPageWrapper() {
   const [activeTab, setActiveTab] = useState<'auto' | 'manual'>('auto')
 
   useEffect(() => {
+    fetch('/api/credits/packages').then(r => r.json()).then((d: any[]) => {
+      if (Array.isArray(d) && d.length > 0) {
+        const mapped = d.filter(p => p.active !== 0).map((p, i) => ({
+          id: i + 1,
+          credits: p.credits,
+          usdPrice: p.price,
+          popular: !!p.popular,
+          label: p.description || '',
+          color: PKG_COLORS[i] || PKG_COLORS[0],
+          badge: p.popular ? '🔥 Most Popular' : undefined,
+        }))
+        if (mapped.length > 0) setPackages(mapped)
+      }
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (!token) return
     authFetch('/api/payments/method').then(r => r.json()).then(setPaymentMethod).catch(() => {})
     authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
@@ -62,7 +81,7 @@ export default function CreditsPageWrapper() {
 
   const provider = paymentMethod?.provider || 'stripe'
   const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.stripe
-  const pkg = PACKAGES.find(p => p.id === selectedPkg)
+  const pkg = packages.find(p => p.id === selectedPkg)
 
   async function handleBuy(pkgId: number) {
     setSelectedPkg(pkgId)
@@ -216,7 +235,7 @@ export default function CreditsPageWrapper() {
             {paymentMethod?.country && <span style={{ color: '#9ca3af' }}>({paymentMethod.country})</span>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem', marginBottom: '1.5rem' }}>
-            {PACKAGES.map(pkg => (
+            {packages.map(pkg => (
               <div key={pkg.id} onClick={() => handleBuy(pkg.id)} style={{
                 border: `2px solid ${pkg.popular ? pkg.color : '#e5e7eb'}`,
                 borderRadius: '1.25rem', padding: '1.25rem', cursor: 'pointer',
@@ -281,7 +300,7 @@ export default function CreditsPageWrapper() {
             <>
               <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Select Package:</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.625rem', marginBottom: '1.25rem' }}>
-                {PACKAGES.map(pkg => (
+                {packages.map(pkg => (
                   <div key={pkg.id} onClick={() => setSelectedPkg(pkg.id)} style={{
                     padding: '0.875rem', borderRadius: '0.875rem', cursor: 'pointer',
                     border: `2px solid ${selectedPkg === pkg.id ? pkg.color : '#e5e7eb'}`,
