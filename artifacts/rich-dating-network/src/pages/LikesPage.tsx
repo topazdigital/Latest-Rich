@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'wouter'
-import { getPhotoUrl, timeAgo, isOnline } from '../lib/utils'
+import { getPhotoUrl, timeAgo, isOnline, profileUrl } from '../lib/utils'
 import { Heart, Star, MessageCircle, BadgeCheck, Crown, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
@@ -103,25 +103,27 @@ function MatchCard({ item, tab, token }: { item: any; tab: string; token: string
 
   return (
     <div className="card overflow-hidden group">
-      <div className="relative aspect-[3/4]">
-        <Link href={`/profile/${user.id}`}>
-          <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name} className="w-full h-full object-cover" />
-        </Link>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <div className="relative overflow-hidden bg-gray-200" style={{ aspectRatio: '3/4' }}>
+        <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          onError={e => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
+        <Link href={profileUrl(user)} className="absolute inset-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
         {isOnline(user.lastAccess) && (
-          <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+          <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white pointer-events-none" />
         )}
         {item.superlike === 1 && (
-          <div className="absolute top-2 left-2 bg-blue-500 text-white rounded-full px-1.5 py-0.5 flex items-center gap-0.5 text-xs">
+          <div className="absolute top-2 left-2 bg-blue-500 text-white rounded-full px-1.5 py-0.5 flex items-center gap-0.5 text-xs pointer-events-none">
             <Star size={10} className="fill-white" /> Super
           </div>
         )}
         {tab === 'Matches' && (
-          <div className="absolute top-2 left-2 bg-brand-500 text-white rounded-full px-2 py-0.5 text-xs font-semibold flex items-center gap-1">
+          <div className="absolute top-2 left-2 bg-brand-500 text-white rounded-full px-2 py-0.5 text-xs font-semibold flex items-center gap-1 pointer-events-none">
             <Heart size={10} className="fill-white" /> Match
           </div>
         )}
-        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+        <div className="absolute bottom-0 left-0 right-0 p-3 text-white pointer-events-none">
           <div className="flex items-center gap-1 mb-0.5">
             <p className="font-semibold text-sm truncate">{user.name}</p>
             {user.verified === 1 && <BadgeCheck size={13} className="text-blue-300 flex-shrink-0" />}
@@ -130,7 +132,7 @@ function MatchCard({ item, tab, token }: { item: any; tab: string; token: string
         </div>
       </div>
       <div className="p-2 flex gap-2">
-        <Link href={`/profile/${user.id}`}
+        <Link href={profileUrl(user)}
           className="flex-1 text-center text-xs font-medium py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
           Profile
         </Link>

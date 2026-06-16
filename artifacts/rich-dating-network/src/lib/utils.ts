@@ -73,3 +73,7 @@ export function currencySymbol(currency: string): string {
 export function supportsMpesa(countryCode: string): boolean {
   return ['KE', 'TZ', 'UG', 'RW', 'ET', 'GH'].includes(countryCode?.toUpperCase())
 }
+
+export function profileUrl(user: { id: number; username?: string | null }): string {
+  return user?.username ? `/@${user.username}` : `/profile/${user.id}`
+}

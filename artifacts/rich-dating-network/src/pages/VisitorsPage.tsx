@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useLocation } from "wouter"
 import { authFetch } from "../lib/auth"
-import { getPhotoUrl, timeAgo } from "../lib/utils"
+import { getPhotoUrl, timeAgo, profileUrl } from "../lib/utils"
 import { Eye, Crown, Lock } from "lucide-react"
 import { useAuth } from "../hooks/useAuth"
 
@@ -102,7 +102,7 @@ export default function VisitorsPage() {
                 </div>
                 <div className="text-xs text-gray-400 mt-0.5">{timeAgo(row.visit?.time)}</div>
               </div>
-              <button onClick={() => setLocation(`/profile/${row.visitor?.id}`)}
+              <button onClick={() => setLocation(profileUrl(row.visitor))}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-sm hover:shadow-md flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
                 View

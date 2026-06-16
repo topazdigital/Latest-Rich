@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getPhotoUrl, timeAgo, isOnline } from '../../lib/utils'
+import { getPhotoUrl, timeAgo, isOnline, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
 import { Heart, MessageCircle, Plus, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight, Search, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -184,14 +184,14 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
                 {posts.map((post: any) => (
                   <div key={post.id} className="card" style={{ padding: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <Link href={`/profile/${post.user?.id}`}>
+                      <Link href={post.user ? profileUrl(post.user) : '#'}>
                         <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', overflow: 'hidden', outline: '2px solid #f3f4f6' }}>
                           <img src={getPhotoUrl(post.user?.photoThumb || post.user?.photo)} alt={post.user?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       </Link>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <Link href={`/profile/${post.user?.id}`} style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111827', textDecoration: 'none' }}>{post.user?.name}</Link>
+                          <Link href={post.user ? profileUrl(post.user) : '#'} style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111827', textDecoration: 'none' }}>{post.user?.name}</Link>
                           {post.user?.verified === 1 && <BadgeCheck size={14} color="#3b82f6" />}
                         </div>
                         <p style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{timeAgo(post.time)}</p>
@@ -241,7 +241,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                   {suggestedUsers.slice(0, 8).map((u: any) => (
                     <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <Link href={`/profile/${u.id}`}>
+                      <Link href={profileUrl(u)}>
                         <div style={{ position: 'relative', width: '2.5rem', height: '2.5rem', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
                           <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           {isOnline(u.lastAccess) && (
@@ -251,7 +251,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
                       </Link>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <Link href={`/profile/${u.id}`} style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</Link>
+                          <Link href={profileUrl(u)} style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</Link>
                           {u.premium === 1 && <Crown size={11} color="#f59e0b" />}
                         </div>
                         <p style={{ fontSize: '0.75rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.city || u.country}</p>
@@ -348,7 +348,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
               <p style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>{activeStory.story.user?.name}</p>
             </div>
             <div style={{ position: 'absolute', bottom: '1rem', left: '1rem', right: '1rem' }}>
-              <Link href={`/profile/${activeStory.story.user?.id}`}
+              <Link href={activeStory.story.user ? profileUrl(activeStory.story.user) : '#'}
                 style={{ display: 'block', textAlign: 'center', padding: '0.65rem', background: '#fff', color: '#111827', borderRadius: '0.875rem', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none' }}
                 onClick={() => setActiveStory(null)}>
                 View Profile

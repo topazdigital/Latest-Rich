@@ -3,7 +3,7 @@ import { useAuth } from './useAuth'
 import { useWSEvent } from './useWebSocket'
 import { useLocation } from 'wouter'
 import toast from 'react-hot-toast'
-import { getPhotoUrl } from '../lib/utils'
+import { getPhotoUrl, profileUrl } from '../lib/utils'
 
 // ── Sound engine using Web Audio API ──────────────────────────────────────────
 function playChime(type: 'message' | 'like' | 'match' | 'visit' = 'message') {
@@ -143,7 +143,7 @@ export function useNotifications() {
       showPushNotification(
         isSuperlike ? `⭐ ${msg.fromUser.name} super liked you!` : `❤️ ${msg.fromUser.name} liked you!`,
         'View their profile',
-        `/profile/${msg.fromUser.id}`
+        profileUrl(msg.fromUser)
       )
       toast.custom((t) => (
         <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white shadow-xl rounded-2xl border border-pink-100 p-3 flex items-center gap-3 max-w-xs`}>
@@ -154,7 +154,7 @@ export function useNotifications() {
             <p className="text-sm font-bold text-gray-900">
               {isSuperlike ? '⭐ ' : '❤️ '}{msg.fromUser.name} {isSuperlike ? 'super liked you!' : 'liked you!'}
             </p>
-            <a href={`/profile/${msg.fromUser.id}`} className="text-xs text-brand-500 font-medium">View profile</a>
+            <a href={profileUrl(msg.fromUser)} className="text-xs text-brand-500 font-medium">View profile</a>
           </div>
         </div>
       ), { duration: 4000 })

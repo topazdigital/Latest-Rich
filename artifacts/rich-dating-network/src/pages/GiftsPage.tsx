@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useLocation, Link } from "wouter"
 import { authFetch } from "../lib/auth"
-import { getPhotoUrl } from "../lib/utils"
+import { getPhotoUrl, profileUrl } from "../lib/utils"
 import toast from "react-hot-toast"
 import { useAuth } from "../hooks/useAuth"
 import { ArrowLeft, Gift as GiftIcon } from "lucide-react"
@@ -86,7 +86,7 @@ export default function GiftsPage() {
                 <div className="text-sm text-gray-500">from <span className="text-brand-500 font-medium">{row.sender?.name}</span></div>
                 {row.gift?.message && <div className="text-sm text-gray-600 mt-1 italic">"{row.gift.message}"</div>}
               </div>
-              <Link href={`/profile/${row.sender?.id}`} className="text-brand-500 text-sm font-medium hover:text-brand-600">View →</Link>
+              <Link href={profileUrl(row.sender)} className="text-brand-500 text-sm font-medium hover:text-brand-600">View →</Link>
             </div>
           ))}
         </div>
@@ -101,7 +101,7 @@ export default function GiftsPage() {
                 <p className="font-semibold text-gray-900">Sending gift to</p>
                 <p className="text-brand-500 font-medium">{targetUser.name}</p>
               </div>
-              <Link href={`/profile/${targetUser.id}`} className="text-sm text-gray-400 hover:text-gray-600">View profile</Link>
+              <Link href={profileUrl(targetUser)} className="text-sm text-gray-400 hover:text-gray-600">View profile</Link>
             </div>
           ) : (
             <div>

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useLocation } from 'wouter'
-import { getPhotoUrl, isOnline, truncate } from '../../lib/utils'
+import { getPhotoUrl, isOnline, truncate, profileUrl } from '../../lib/utils'
 import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -254,7 +254,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                 <div key={u.id}
                   className={`group relative rounded-2xl overflow-hidden bg-gray-900 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
                   style={{ aspectRatio: '3/4' }}
-                  onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(`/profile/${u.id}`) }}>
+                  onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(profileUrl(u)) }}>
                   {/* Fallback background for no-photo users */}
                   <div className="absolute inset-0 flex items-center justify-center"
                     style={{ background: `linear-gradient(135deg, hsl(${(u.id * 47) % 360}, 45%, 22%), hsl(${(u.id * 47 + 60) % 360}, 40%, 18%))` }}>

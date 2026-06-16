@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getPhotoUrl, isOnline, timeAgo } from '../../lib/utils'
+import { getPhotoUrl, isOnline, timeAgo, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
 import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -250,7 +250,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
-            <Link href={`/profile/${other.id}`} className="font-semibold text-gray-900 hover:text-brand-500 truncate">{other.name}</Link>
+            <Link href={profileUrl(other)} className="font-semibold text-gray-900 hover:text-brand-500 truncate">{other.name}</Link>
             {other.verified === 1 && <BadgeCheck size={14} className="text-blue-500 flex-shrink-0" />}
             {other.premium === 1 && <Crown size={14} className="text-amber-500 flex-shrink-0" />}
           </div>
