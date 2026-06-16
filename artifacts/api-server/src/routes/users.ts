@@ -391,8 +391,8 @@ router.get("/by-username/:username", async (req, res) => {
       .where(sql`lower(${usersTable.username}) = ${username}`)
       .limit(1)
 
-    // 2. Fallback: match by display name (covers migrated users whose username field is empty).
-    //    Names are mixed-case so we use the SQL lower() function here.
+    // 2. Fallback: match by display name — exact full name OR starts with the given username
+    //    (e.g. 'rodolf' matches 'Rodolf Mwangi' whose username field may be empty).
     if (!user) {
       try {
         ;[user] = await db.select({
@@ -400,7 +400,7 @@ router.get("/by-username/:username", async (req, res) => {
           name: usersTable.name,
           username: usersTable.username,
         }).from(usersTable)
-          .where(sql`lower(${usersTable.name}) = ${username}`)
+          .where(sql`lower(${usersTable.name}) = ${username} OR lower(${usersTable.name}) LIKE ${username + " %"}`)
           .limit(1)
       } catch (nameErr) {
         console.error("[by-username] name fallback query failed:", nameErr)

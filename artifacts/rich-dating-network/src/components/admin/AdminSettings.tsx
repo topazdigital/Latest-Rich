@@ -381,19 +381,27 @@ export default function AdminSettings() {
             <p className="text-gray-500 text-xs">Configure outgoing mail for password resets, verification, and notifications</p>
           </div>
         </div>
-        <div className="p-5 space-y-4">
-          <div className="bg-gray-800/50 rounded-xl p-3 mb-2">
+        <div className="p-4 space-y-3">
+          <div className="bg-gray-800/50 rounded-xl p-3">
             <p className="text-gray-400 text-xs leading-relaxed">
               <strong className="text-gray-300">SMTP examples:</strong> Gmail: host=smtp.gmail.com port=587. Your host: mail.yourdomain.com port=587.
-              Use an App Password for Gmail (not your regular password). These settings are used for sending password reset links, email verification, and new message notifications.
+              Use an App Password for Gmail (not your regular password).
             </p>
           </div>
-          {EMAIL_FIELDS.map((f: any) => (
-            <div key={f.key}>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-gray-300 text-sm font-medium">{f.label}</label>
+          {/* Pair fields side-by-side to cut vertical height */}
+          <div className="grid grid-cols-2 gap-3">
+            {EMAIL_FIELDS.filter(f => f.key !== "smtp_secure").map((f: any) => (
+              <div key={f.key}>
+                <label className="text-gray-300 text-xs font-medium mb-1.5 block">{f.label}</label>
+                {renderField({ ...f })}
               </div>
-              {renderField({ ...f, options: f.options })}
+            ))}
+          </div>
+          {/* TLS select spans full width */}
+          {EMAIL_FIELDS.filter(f => f.key === "smtp_secure").map((f: any) => (
+            <div key={f.key}>
+              <label className="text-gray-300 text-xs font-medium mb-1.5 block">{f.label}</label>
+              {renderField({ ...f })}
             </div>
           ))}
 

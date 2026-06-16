@@ -691,14 +691,44 @@ router.get("/config/public", async (req, res) => {
   } catch { res.json({}) }
 })
 
-// Test email endpoint
+// Test email endpoint — uses nodemailer directly so the real SMTP error is surfaced to the admin
 router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { to } = req.body
     if (!to) { res.status(400).json({ error: "Recipient email required" }); return }
-    const { sendEmail } = await import("../lib/mailer")
-    const siteName = (await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, "site_name")).limit(1))[0]?.value || "Rich Dating Network"
-    const sent = await sendEmail({
+
+    // Read SMTP config from DB
+    const getConf = async (key: string) => {
+      const r = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
+      return r[0]?.value || ""
+    }
+    const smtpHost = process.env.SMTP_HOST || await getConf("smtp_host")
+    const smtpPort = parseInt(process.env.SMTP_PORT || await getConf("smtp_port") || "587")
+    const smtpUser = process.env.SMTP_USER || await getConf("smtp_user")
+    const smtpPass = process.env.SMTP_PASS || await getConf("smtp_pass")
+    const smtpFrom = process.env.SMTP_FROM || await getConf("smtp_from") || smtpUser
+    const smtpFromName = process.env.SMTP_FROM_NAME || await getConf("smtp_from_name") || "Rich Dating Network"
+    const smtpSecure = (process.env.SMTP_SECURE || await getConf("smtp_secure")) === "1"
+    const siteName = await getConf("site_name") || "Rich Dating Network"
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      res.status(400).json({
+        error: `SMTP not fully configured. Missing: ${[!smtpHost && "Host", !smtpUser && "Username", !smtpPass && "Password"].filter(Boolean).join(", ")}.`
+      }); return
+    }
+
+    // Create transporter directly — any SMTP error propagates to the catch block below
+    const nodemailer = await import("nodemailer")
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: { user: smtpUser, pass: smtpPass },
+      tls: { rejectUnauthorized: false },
+    })
+
+    await transporter.sendMail({
+      from: `"${smtpFromName}" <${smtpFrom}>`,
       to,
       subject: `Test Email from ${siteName}`,
       html: `
@@ -708,11 +738,15 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
 <p>If you received this, your SMTP configuration is working correctly!</p>
 <p style="color:#aaa;font-size:12px;margin-top:24px">Sent from Admin Panel · ${new Date().toISOString()}</p>
 </div>`,
+      text: `Test Email from ${siteName}. If you received this, SMTP is working correctly.`,
     })
-    if (sent) res.json({ success: true, message: "Test email sent successfully" })
-    else res.status(500).json({ error: "Failed to send. Check your SMTP settings in the Settings panel." })
+
+    res.json({ success: true, message: "Test email sent successfully to " + to })
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to send test email" })
+    // Surface the real nodemailer/SMTP error to the admin UI
+    const msg = err?.message || "Failed to send test email"
+    console.error("[test-email] SMTP error:", msg)
+    res.status(500).json({ error: msg })
   }
 })
 
