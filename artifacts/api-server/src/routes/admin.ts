@@ -723,18 +723,31 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
       }); return
     }
 
-    // ── Phase 2: SMTP auth verify (skip auth for localhost/no-creds) ────────
+    // ── Phase 2: SMTP auth verify with full debug logging ───────────────────
     const nodemailer = await import("nodemailer")
+    const smtpLog: string[] = []
+    const customLogger = {
+      level() { return true },
+      trace(...args: any[]) { smtpLog.push("T " + args.join(" ")) },
+      debug(...args: any[]) { smtpLog.push("D " + args.join(" ")) },
+      info(...args: any[])  { smtpLog.push("I " + args.join(" ")) },
+      warn(...args: any[])  { smtpLog.push("W " + args.join(" ")) },
+      error(...args: any[]) { smtpLog.push("E " + args.join(" ")) },
+      fatal(...args: any[]) { smtpLog.push("F " + args.join(" ")) },
+    }
     const transportOpts: any = {
       host, port, secure,
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 8000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+      logger: customLogger,
+      debug: true,
     }
     if (user && pass) {
       transportOpts.auth = { user, pass }
     }
+    // Only force STARTTLS on port 587; port 465 uses implicit SSL (secure=true)
     if (!secure) transportOpts.requireTLS = true
     transportOpts.authMethod = 'LOGIN'
     const transporter = nodemailer.createTransport(transportOpts)
@@ -742,14 +755,18 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     const verifyPromise = transporter.verify()
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error(
-        `Auth verification timed out after 8s on ${host}:${port}. ` +
+        `Auth verification timed out after 10s on ${host}:${port}. ` +
         `Port is reachable but SMTP handshake is stalling — ` +
         `check that TLS setting matches the port (465=TLS Yes, 587=TLS No).`
-      )), 8000)
+      )), 10000)
     )
 
     await Promise.race([verifyPromise, timeoutPromise])
-    res.json({ phase: "ok", message: `✓ Connected and authenticated successfully to ${host}:${port}` })
+    res.json({
+      phase: "ok",
+      message: `✓ Connected and authenticated successfully to ${host}:${port}`,
+      log: smtpLog,
+    })
   } catch (err: any) {
     const raw = err?.message || "SMTP check failed"
     console.error("[check-smtp]", raw)
@@ -757,7 +774,7 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     if (raw.includes("535") || raw.toLowerCase().includes("incorrect authentication") || raw.toLowerCase().includes("invalid login")) {
       msg = `${raw}\n\n💡 Fix: Your credentials were rejected. Double-check your username (full email address) and password in DirectAdmin → Email Accounts. Also make sure TLS/SSL is set correctly: use "No (STARTTLS on port 587)" for port 587, or "Yes (SSL on port 465)" for port 465.`
     }
-    res.json({ phase: "auth", error: msg })
+    res.json({ phase: "auth", error: msg, log: smtpLog })
   }
 })
 

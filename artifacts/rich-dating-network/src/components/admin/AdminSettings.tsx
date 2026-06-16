@@ -119,7 +119,7 @@ export default function AdminSettings() {
   const [savingCreditPkg, setSavingCreditPkg] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
   const [checkingSmtp, setCheckingSmtp] = useState(false)
-  const [smtpCheckResult, setSmtpCheckResult] = useState<{ ok: boolean; phase?: string; message: string } | null>(null)
+  const [smtpCheckResult, setSmtpCheckResult] = useState<{ ok: boolean; phase?: string; message: string; log?: string[] } | null>(null)
   const [showPasswords, setShowPasswords] = useState<Set<string>>(new Set())
   const [packages, setPackages] = useState<PremiumPkg[]>(DEFAULT_PACKAGES)
   const [pkgLoading, setPkgLoading] = useState(true)
@@ -217,9 +217,9 @@ export default function AdminSettings() {
       })
       const data = await res.json()
       if (data.error) {
-        setSmtpCheckResult({ ok: false, phase: data.phase, message: data.error })
+        setSmtpCheckResult({ ok: false, phase: data.phase, message: data.error, log: data.log })
       } else {
-        setSmtpCheckResult({ ok: true, phase: data.phase, message: data.message || "Connection OK" })
+        setSmtpCheckResult({ ok: true, phase: data.phase, message: data.message || "Connection OK", log: data.log })
       }
     } catch {
       setSmtpCheckResult({ ok: false, message: "Request failed — check your network connection" })
@@ -475,9 +475,19 @@ export default function AdminSettings() {
             </div>
             <p className="text-gray-400 text-xs mb-2">Verify the server can reach your SMTP host and authenticate — before trying to send mail</p>
             {smtpCheckResult && (
-              <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed border whitespace-pre-line ${smtpCheckResult.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                <span className="font-semibold mr-1">{smtpCheckResult.ok ? "✓" : "✗"}</span>
-                {smtpCheckResult.message}
+              <div>
+                <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed border whitespace-pre-line ${smtpCheckResult.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                  <span className="font-semibold mr-1">{smtpCheckResult.ok ? "✓" : "✗"}</span>
+                  {smtpCheckResult.message}
+                </div>
+                {smtpCheckResult.log && smtpCheckResult.log.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-gray-400 text-[10px] cursor-pointer hover:text-gray-600 select-none">▶ SMTP debug log ({smtpCheckResult.log.length} lines)</summary>
+                    <pre className="mt-1 bg-gray-900 text-green-400 text-[10px] rounded-lg p-3 overflow-x-auto max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap break-all">
+                      {smtpCheckResult.log.join("\n")}
+                    </pre>
+                  </details>
+                )}
               </div>
             )}
           </div>
