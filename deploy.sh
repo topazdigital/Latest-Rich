@@ -23,6 +23,15 @@ echo "==============================="
 echo "  Rich Dating Network Deploy"
 echo "==============================="
 
+# ── 0. Pull latest code from GitHub ────────────────────────
+echo "[0/7] Pulling latest code from GitHub..."
+# Stash local files (.env, uploads, etc.) so pull never fails
+git stash --quiet 2>/dev/null || true
+git pull origin main
+# Restore stashed local changes (non-fatal if nothing stashed)
+git stash pop --quiet 2>/dev/null || true
+echo "      Code updated ✓"
+
 # ── Load .env ──────────────────────────────────────────────
 if [ -f ".env" ]; then
   set -a
