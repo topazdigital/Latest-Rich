@@ -73,6 +73,7 @@ onlyBuiltDependencies:
   - bcrypt
   - esbuild
   - msw
+  - sharp
   - unrs-resolver
 
 overrides:
