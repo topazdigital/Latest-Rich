@@ -416,10 +416,24 @@ export default function AdminSettings() {
           </div>
         </div>
         <div className="p-4 space-y-3">
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-gray-400 text-xs leading-relaxed">
-              <strong className="text-gray-600">SMTP examples:</strong> Gmail: host=smtp.gmail.com port=587. Your host: mail.yourdomain.com port=587.
-              Use an App Password for Gmail (not your regular password).
+          {/* Quick Setup Presets */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <p className="text-blue-700 text-xs font-semibold mb-2">⚡ Quick Setup — click to fill settings</p>
+            <div className="flex gap-2 flex-wrap">
+              <button type="button"
+                onClick={() => setConfig(c => ({ ...c, smtp_host: "localhost", smtp_port: "25", smtp_secure: "0", smtp_auth_method: "" }))}
+                className="px-3 py-1.5 bg-white border border-blue-300 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold transition-colors">
+                🖥 DirectAdmin / Same Server
+              </button>
+              <button type="button"
+                onClick={() => setConfig(c => ({ ...c, smtp_host: "smtp.gmail.com", smtp_port: "587", smtp_secure: "0", smtp_auth_method: "LOGIN" }))}
+                className="px-3 py-1.5 bg-white border border-blue-300 hover:bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold transition-colors">
+                📧 Gmail
+              </button>
+            </div>
+            <p className="text-blue-600 text-[10px] mt-2 leading-relaxed">
+              <strong>DirectAdmin / Same Server:</strong> Use this if your Node.js app runs on the same DirectAdmin server — connects via localhost, no auth needed.<br/>
+              <strong>Gmail:</strong> Use an App Password (Google Account → Security → 2-Step Verification → App Passwords).
             </p>
           </div>
           {/* Pair fields side-by-side to cut vertical height */}

@@ -723,24 +723,19 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
       }); return
     }
 
-    // ── Phase 2: SMTP auth verify ───────────────────────────────────────────
-    if (!user || !pass) {
-      res.json({
-        phase: "tcp",
-        message: `✓ Port ${port} on ${host} is reachable. Enter your username and password to test authentication.`,
-      }); return
-    }
-
+    // ── Phase 2: SMTP auth verify (skip auth for localhost/no-creds) ────────
     const nodemailer = await import("nodemailer")
-    const authConfig: any = { type: authMethod || "LOGIN", user, pass }
-    const transporter = nodemailer.createTransport({
+    const transportOpts: any = {
       host, port, secure,
-      auth: authConfig,
       tls: { rejectUnauthorized: false },
       connectionTimeout: 5000,
       greetingTimeout: 5000,
       socketTimeout: 8000,
-    })
+    }
+    if (user && pass) {
+      transportOpts.auth = { type: authMethod || "LOGIN", user, pass }
+    }
+    const transporter = nodemailer.createTransport(transportOpts)
 
     const verifyPromise = transporter.verify()
     const timeoutPromise = new Promise<never>((_, reject) =>

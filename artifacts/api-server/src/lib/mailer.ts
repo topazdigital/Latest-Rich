@@ -33,14 +33,16 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
     }
 
     const nodemailer = await import("nodemailer")
-    const authConfig: any = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
-    const transporter = nodemailer.createTransport({
+    const transportOpts: any = {
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
-      auth: authConfig,
       tls: { rejectUnauthorized: false },
-    })
+    }
+    if (smtpUser && smtpPass) {
+      transportOpts.auth = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
+    }
+    const transporter = nodemailer.createTransport(transportOpts)
 
     await transporter.sendMail({
       from: `"${smtpFromName}" <${smtpFrom}>`,
