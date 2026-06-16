@@ -1,49 +1,28 @@
 import { Router } from "express"
+import express from "express"
 import path from "path"
 import fs from "fs"
 
 const router = Router()
 
-function getSearchDirs(): string[] {
-  const dirs = [
-    path.join(process.cwd(), "assets", "sources", "uploads"),
-    path.join(process.cwd(), "uploads"),
-  ]
-  if (process.env.LEGACY_UPLOADS_DIR) {
-    dirs.unshift(process.env.LEGACY_UPLOADS_DIR)
-  }
-  return dirs
+// Determine which upload directories actually exist on this machine.
+// Evaluated once at startup — process.cwd() is set to the project root via ecosystem.config.cjs.
+const uploadDirs = [
+  path.join(process.cwd(), "assets", "sources", "uploads"),  // production: old PHP site uploads
+  path.join(process.cwd(), "uploads"),                         // dev / symlink target
+  ...(process.env.LEGACY_UPLOADS_DIR ? [process.env.LEGACY_UPLOADS_DIR] : []),
+].filter(d => { try { return fs.existsSync(d) && fs.statSync(d).isDirectory() } catch { return false } })
+
+console.log("[uploads] Serving from directories:", uploadDirs.length ? uploadDirs : ["(none found)"])
+
+// express.static handles any subdirectory depth (e.g., "2023/photo.jpg") transparently and securely.
+// fallthrough:true means we try the next dir if the file isn't found in this one.
+for (const dir of uploadDirs) {
+  router.use(express.static(dir, { fallthrough: true, dotfiles: "deny" }))
 }
 
-// Handle any path, including subdirectory paths like "2023/photo.jpg"
-// (The old PHP site stored photos in date-based subfolders)
-router.use((req, res) => {
-  // req.url is relative to the router mount point, e.g. "/2023/photo.jpg"
-  const rawUrl = req.url.split('?')[0]  // ignore query strings
-  const rawPath = rawUrl.startsWith('/') ? rawUrl.slice(1) : rawUrl
-
-  // Decode each segment individually to prevent encoded traversal attacks
-  const parts = rawPath.split('/').map(seg => {
-    try { return decodeURIComponent(seg) } catch { return seg }
-  })
-
-  // Block path traversal and empty paths
-  if (!parts[0] || parts.some(p => p === '..' || p === '.')) {
-    res.status(400).send("Invalid path")
-    return
-  }
-
-  const filename = parts.join(path.sep)
-
-  for (const dir of getSearchDirs()) {
-    const full = path.resolve(dir, filename)
-    // Ensure resolved path is still inside the search directory
-    if (!full.startsWith(path.resolve(dir))) continue
-    if (fs.existsSync(full) && fs.statSync(full).isFile()) {
-      res.sendFile(full)
-      return
-    }
-  }
+// 404 fallback — file not found in any known upload directory
+router.use((_req, res) => {
   res.status(404).send("Not found")
 })
 

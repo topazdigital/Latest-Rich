@@ -33,6 +33,14 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Serve old PHP uploads directory at the legacy URL path as well.
+// The old site used absolute URLs like /assets/sources/uploads/2023/photo.jpg in the DB.
+// Apache proxies everything to Node.js, so without this middleware Express would serve index.html.
+const legacyUploadsOnDisk = path.join(process.cwd(), "assets", "sources", "uploads");
+if (fs.existsSync(legacyUploadsOnDisk)) {
+  app.use("/assets/sources/uploads", express.static(legacyUploadsOnDisk, { dotfiles: "deny" }));
+}
+
 // Serve built React frontend in production
 // Looks for the dist relative to CWD (project root) or next to dist/
 const possibleFrontendDirs = [

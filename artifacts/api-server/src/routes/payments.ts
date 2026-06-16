@@ -14,11 +14,35 @@ const PREMIUM_PACKAGES: Record<number, { days: number; price: number; name: stri
   4: { days: 365, price: 59.99, name: "1 Year Premium" },
 }
 
-const CREDIT_PACKAGES: Record<number, { credits: number; price: number; name: string }> = {
+// Fallback credit packages used only when DB config is unavailable
+const DEFAULT_CREDIT_PACKAGES: Record<number, { credits: number; price: number; name: string }> = {
   1: { credits: 100, price: 4.99, name: "100 Credits" },
   2: { credits: 250, price: 9.99, name: "250 Credits" },
   3: { credits: 500, price: 17.99, name: "500 Credits" },
   4: { credits: 1000, price: 29.99, name: "1000 Credits" },
+}
+
+// Load credit packages from admin-configured DB values (same logic as credits.ts)
+async function getCreditPackages(): Promise<Record<number, { credits: number; price: number; name: string }>> {
+  try {
+    const configs = await db.select().from(siteConfigTable)
+    const map = new Map<string, string>(
+      configs.map(c => [c.key, String(c.value ?? "")] as [string, string])
+    )
+    const result: Record<number, { credits: number; price: number; name: string }> = {}
+    for (let i = 1; i <= 8; i++) {
+      const creditsVal = map.get(`credits_pkg_${i}_credits`)
+      if (!creditsVal) continue
+      const credits = parseInt(creditsVal, 10)
+      const price = parseFloat(map.get(`credits_pkg_${i}_price`) ?? "9.99")
+      const active = parseInt(map.get(`credits_pkg_${i}_active`) ?? "1", 10)
+      if (active === 0) continue
+      result[i] = { credits, price, name: `${credits} Credits` }
+    }
+    return Object.keys(result).length > 0 ? result : DEFAULT_CREDIT_PACKAGES
+  } catch {
+    return DEFAULT_CREDIT_PACKAGES
+  }
 }
 
 // Countries that use each provider
@@ -72,7 +96,8 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
       if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
       lineItem = { name: pkg.name, amount: Math.round(pkg.price * 100) }
     } else {
-      const pkg = CREDIT_PACKAGES[packageId]
+      const creditPkgs = await getCreditPackages()
+      const pkg = creditPkgs[packageId]
       if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
       lineItem = { name: pkg.name, amount: Math.round(pkg.price * 100) }
     }
@@ -127,14 +152,15 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
   const { phone, packageId, type } = req.body
   if (!phone) { res.status(400).json({ error: "Phone number required (format: 0712345678)" }); return }
 
-  let amount = 0, description = ""
+  const creditPkgs = await getCreditPackages()
+  let amount = 0, description = "", creditsToAward = 0
   if (type === "credits") {
-    const pkg = CREDIT_PACKAGES[packageId]
+    const pkg = creditPkgs[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
-    // Convert USD to KES approximately (rough rate — admin should set exact local prices)
     const kesToUsdRate = Number(await getConfig("kes_rate") || "130")
     amount = Math.round(pkg.price * kesToUsdRate)
     description = pkg.name
+    creditsToAward = pkg.credits
   } else {
     const pkg = PREMIUM_PACKAGES[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
@@ -142,6 +168,12 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     amount = Math.round(pkg.price * kesToUsdRate)
     description = pkg.name
   }
+
+  // Determine callback URL — APP_URL env var must be set in production (.env or ecosystem.config.cjs)
+  const appUrl = process.env.APP_URL
+    || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "")
+    || await getConfig("app_url")
+    || "https://richdatingnetwork.com"
 
   const credentials = Buffer.from(`${apiUsername}:${apiPassword}`).toString("base64")
   const ref = `RDN-${req.userId}-${Date.now()}`
@@ -153,10 +185,10 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
       body: JSON.stringify({
         amount,
         phone_number: phone,
-        channel_id: channelId || 1,
+        channel_id: parseInt(channelId) || 1,
         provider: "m-pesa",
         external_reference: ref,
-        callback_url: `${process.env.APP_URL || "https://" + process.env.REPLIT_DEV_DOMAIN}/api/payments/payhero/callback`,
+        callback_url: `${appUrl}/api/payments/payhero/callback`,
         description,
       }),
     })
@@ -167,7 +199,7 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     }
     await db.insert(ordersTable).values({
       userId: req.userId!, amount, currency: "KES", type, description,
-      status: "pending", stripeSessionId: ref, credits: type === "credits" ? CREDIT_PACKAGES[packageId]?.credits || 0 : 0, time: now(),
+      status: "pending", stripeSessionId: ref, credits: creditsToAward, time: now(),
     })
     res.json({ success: true, reference: ref, checkoutRequestId: data.CheckoutRequestID, message: "STK push sent to your phone. Enter your M-Pesa PIN to complete." })
   } catch (err: any) {
@@ -183,9 +215,11 @@ router.post("/payhero/callback", async (req, res) => {
     if (order && order.status === "pending") {
       await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
       if (order.type === "credits") {
-        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-        const pkg = Object.values(CREDIT_PACKAGES).find(p => p.name === order.description)
-        if (user && pkg) await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, order.userId))
+        const creditsToAdd = order.credits || 0
+        if (creditsToAdd > 0) {
+          const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+          if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+        }
       } else if (order.type === "premium") {
         const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
         if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
@@ -226,9 +260,10 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
   const rateKey = `${currency.toLowerCase()}_rate`
   const rate = Number(await getConfig(rateKey) || (currency === "NGN" ? "1600" : currency === "GHS" ? "12" : "19"))
 
+  const creditPkgsPaystack = await getCreditPackages()
   let amount = 0, description = "", credits = 0
   if (type === "credits") {
-    const pkg = CREDIT_PACKAGES[packageId]
+    const pkg = creditPkgsPaystack[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents
     description = pkg.name; credits = pkg.credits
@@ -286,9 +321,10 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
   const { packageId, type, paymentMethod = "gcash" } = req.body
   const phpRate = Number(await getConfig("php_rate") || "56")
 
+  const creditPkgsPaymongo = await getCreditPackages()
   let amount = 0, description = ""
   if (type === "credits") {
-    const pkg = CREDIT_PACKAGES[packageId]
+    const pkg = creditPkgsPaymongo[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * phpRate * 100) // centavos
     description = pkg.name
@@ -383,7 +419,8 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
     const pkg = PREMIUM_PACKAGES[packageId]
     if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, userId))
   } else if (type === "credits") {
-    const pkg = CREDIT_PACKAGES[packageId]
+    const pkgs = await getCreditPackages()
+    const pkg = pkgs[packageId]
     if (pkg) {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
       if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, userId))

@@ -373,17 +373,31 @@ router.post("/profile/questions", requireAuth, async (req, res) => {
   }
 })
 
-// Look up user by username — case-insensitive on both MySQL and PostgreSQL
+// Look up user by username — case-insensitive on both MySQL and PostgreSQL.
+// Falls back to matching by display name so legacy users without a username field still resolve.
 router.get("/by-username/:username", async (req, res) => {
   try {
     const username = req.params.username.replace(/^@/, "").toLowerCase()
-    const [user] = await db.select({
+
+    // 1. Try exact username match (case-insensitive)
+    let [user] = await db.select({
       id: usersTable.id,
       name: usersTable.name,
       username: usersTable.username,
     }).from(usersTable)
       .where(sql`lower(${usersTable.username}) = ${username}`)
       .limit(1)
+
+    // 2. Fallback: match by display name (covers migrated users whose username field is empty)
+    if (!user) {
+      ;[user] = await db.select({
+        id: usersTable.id,
+        name: usersTable.name,
+        username: usersTable.username,
+      }).from(usersTable)
+        .where(sql`lower(${usersTable.name}) = ${username}`)
+        .limit(1)
+    }
 
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     res.json({ id: user.id, name: user.name, username: user.username })

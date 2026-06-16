@@ -28,8 +28,28 @@ export function formatDate(timestamp: number | string) {
 
 export function getPhotoUrl(photo: string | null | undefined): string {
   if (!photo) return '/images/default-avatar.svg'
-  if (photo.startsWith('http')) return photo
-  // Strip all known legacy directory prefixes — only pass the bare filename to the uploads endpoint
+
+  let p = photo
+
+  // Strip same-domain absolute URLs — the old PHP site stored full absolute URLs in the DB.
+  // With Apache proxying everything to Node.js, these would return index.html instead of the image.
+  if (p.startsWith('http')) {
+    const sameDomainPrefixes = [
+      'https://richdatingnetwork.com/',
+      'http://richdatingnetwork.com/',
+      'https://www.richdatingnetwork.com/',
+      'http://www.richdatingnetwork.com/',
+      'https://test.richdatingnetwork.com/',
+      'http://test.richdatingnetwork.com/',
+    ]
+    let stripped = false
+    for (const prefix of sameDomainPrefixes) {
+      if (p.startsWith(prefix)) { p = p.slice(prefix.length); stripped = true; break }
+    }
+    if (!stripped) return p  // genuinely external URL — return as-is
+  }
+
+  // Strip all known legacy directory prefixes so only the bare path goes to the uploads endpoint
   const prefixes = [
     '/assets/sources/uploads/',
     'assets/sources/uploads/',
@@ -38,12 +58,11 @@ export function getPhotoUrl(photo: string | null | undefined): string {
     '/photos/',
     'photos/',
   ]
-  let filename = photo
-  for (const p of prefixes) {
-    if (filename.startsWith(p)) { filename = filename.slice(p.length); break }
+  for (const prefix of prefixes) {
+    if (p.startsWith(prefix)) { p = p.slice(prefix.length); break }
   }
-  if (filename.startsWith('/')) return filename
-  return `/api/uploads/${filename}`
+  if (p.startsWith('/')) return p
+  return `/api/uploads/${p}`
 }
 
 export function isOnline(lastAccess: string | null | undefined): boolean {
