@@ -608,6 +608,44 @@ ALTER TABLE `users`
 -- Drizzle reads it as `legacyPass` via: legacyPass: text("pass").
 -- No extra column or copy needed — auth.ts falls back to `user.legacyPass` automatically.
 
+-- ---------------------------------------------------------------------------
+-- 17. IMPORT config_credits → site_config (credit packages)
+--     The old PHP site stores credit packages in config_credits (id, credits, price).
+--     The new app reads credit packages from site_config with keys like
+--     credits_pkg_1_credits, credits_pkg_1_price, etc.
+--     Import them once so admin-configured prices carry over automatically.
+--     INSERT IGNORE means re-runs are safe — existing site_config rows are kept.
+-- ---------------------------------------------------------------------------
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('credits_pkg_', `id`, '_credits'), CAST(`credits` AS CHAR)
+FROM `config_credits`
+WHERE `credits` > 0;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('credits_pkg_', `id`, '_price'), CAST(`price` AS CHAR)
+FROM `config_credits`
+WHERE `credits` > 0;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('credits_pkg_', `id`, '_active'), '1'
+FROM `config_credits`
+WHERE `credits` > 0;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('credits_pkg_', `id`, '_description'), ''
+FROM `config_credits`
+WHERE `credits` > 0;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('credits_pkg_', `id`, '_popular'), '0'
+FROM `config_credits`
+WHERE `credits` > 0;
+
+-- ---------------------------------------------------------------------------
+-- 18. Populate created from join_date_time for old users
+-- ---------------------------------------------------------------------------
+
 -- Populate created from join_date_time for old users
 UPDATE `users`
 SET `created` = CAST(`join_date_time` AS UNSIGNED)

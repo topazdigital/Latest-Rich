@@ -380,14 +380,15 @@ router.get("/by-username/:username", async (req, res) => {
   const username = raw.toLowerCase()
 
   try {
-    // 1. Username lookup: usernames are stored lowercase (sanitizeUsername lowercases on save),
-    //    so a plain eq() is sufficient and avoids any lower() function compatibility issues.
+    // 1. Username lookup — always use lower() so it matches regardless of MySQL collation
+    //    (some servers use case-sensitive collation like utf8mb4_bin) and old PHP usernames
+    //    that were stored in mixed-case (e.g. 'Rodolf') are found by visiting /@Rodolf.
     let [user] = await db.select({
       id: usersTable.id,
       name: usersTable.name,
       username: usersTable.username,
     }).from(usersTable)
-      .where(eq(usersTable.username, username))
+      .where(sql`lower(${usersTable.username}) = ${username}`)
       .limit(1)
 
     // 2. Fallback: match by display name (covers migrated users whose username field is empty).
