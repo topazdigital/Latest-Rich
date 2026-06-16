@@ -1,15 +1,18 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable } from "@workspace/db/schema"
+import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable, storiesTable } from "@workspace/db/schema"
 import { eq, and, ne, desc, sql, gt, lt, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
+import { decodeHtml } from "../lib/html-decode"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
 
 function safeUser(u: any) {
   const { password, ...rest } = u
+  // Decode HTML entities from legacy PHP data (htmlspecialchars'd before storage)
+  if (rest.bio) rest.bio = decodeHtml(rest.bio)
   return rest
 }
 
@@ -370,7 +373,7 @@ router.post("/profile/questions", requireAuth, async (req, res) => {
   }
 })
 
-// Look up user by username (for /@username routes)
+// Look up user by username — case-insensitive on both MySQL and PostgreSQL
 router.get("/by-username/:username", async (req, res) => {
   try {
     const username = req.params.username.replace(/^@/, "").toLowerCase()
@@ -378,12 +381,27 @@ router.get("/by-username/:username", async (req, res) => {
       id: usersTable.id,
       name: usersTable.name,
       username: usersTable.username,
-    }).from(usersTable).where(eq(usersTable.username, username)).limit(1)
+    }).from(usersTable)
+      .where(sql`lower(${usersTable.username}) = ${username}`)
+      .limit(1)
 
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     res.json({ id: user.id, name: user.name, username: user.username })
   } catch {
     res.status(500).json({ error: "Failed" })
+  }
+})
+
+// Get all stories (photos + videos) for a user profile
+router.get("/:id/stories", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    const stories = await db.select().from(storiesTable)
+      .where(eq(storiesTable.userId, userId))
+      .orderBy(desc(storiesTable.created))
+    res.json(stories)
+  } catch {
+    res.status(500).json([])
   }
 })
 

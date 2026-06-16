@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { getPhotoUrl, isOnline, genderLabel, timeAgo } from '../../lib/utils'
+import { useState, useRef, useEffect } from 'react'
+import { getPhotoUrl, isOnline, genderLabel, timeAgo, htmlDecode } from '../../lib/utils'
 import { Link, useLocation } from 'wouter'
 import { Heart, MessageCircle, BadgeCheck, Crown, MapPin, Edit3, Gift, Flag, ShieldOff, ChevronLeft, ChevronRight, X, Send, Video, Smile } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -77,9 +77,19 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   const [msgText, setMsgText] = useState('')
   const [sending, setSending] = useState(false)
   const [showQuick, setShowQuick] = useState(false)
+  const [stories, setStories] = useState<any[]>([])
+  const [activeVideo, setActiveVideo] = useState<string | null>(null)
   const msgRef = useRef<HTMLInputElement>(null)
   const [, setLocation] = useLocation()
   const { token } = useAuth()
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`/api/users/${user.id}/stories`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setStories(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [user?.id])
 
   const allPhotos = [
     ...(user.photo ? [{ id: 0, photo: user.photo, thumb: user.photoThumb }] : []),
@@ -322,7 +332,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
 
             {/* Bio snippet */}
             {user.bio && (
-              <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 pt-0.5" dangerouslySetInnerHTML={{ __html: user.bio }} />
+              <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 pt-0.5">{htmlDecode(user.bio)}</p>
             )}
 
             {/* Block/Report */}
@@ -349,7 +359,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               </div>
             )}
             {user.bio && (
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: user.bio }} />
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{htmlDecode(user.bio)}</p>
             )}
           </div>
         )}
@@ -452,6 +462,61 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Stories / Videos */}
+      {stories.length > 0 && (
+        <div className="card p-4 mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2.5">
+            Photos &amp; Videos ({stories.length})
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {stories.map((s: any) => {
+              const hasVideo = !!s.video
+              const thumb = s.photo ? getPhotoUrl(s.photo) : null
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => hasVideo ? setActiveVideo(getPhotoUrl(s.video)) : null}
+                  className={`relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 ${hasVideo ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  {thumb && (
+                    <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  )}
+                  {!thumb && hasVideo && (
+                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                      <Video size={24} className="text-white/60" />
+                    </div>
+                  )}
+                  {hasVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Video size={18} className="text-white fill-white" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Video lightbox */}
+      {activeVideo && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setActiveVideo(null)}>
+          <button className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 z-10"
+            onClick={() => setActiveVideo(null)}>
+            <X size={20} />
+          </button>
+          <video
+            src={activeVideo}
+            controls
+            autoPlay
+            className="max-w-[92vw] max-h-[90vh] rounded-xl"
+            onClick={e => e.stopPropagation()}
+          />
         </div>
       )}
 

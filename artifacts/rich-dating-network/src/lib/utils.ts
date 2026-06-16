@@ -77,3 +77,20 @@ export function supportsMpesa(countryCode: string): boolean {
 export function profileUrl(user: { id: number; username?: string | null }): string {
   return user?.username ? `/@${user.username}` : `/profile/${user.id}`
 }
+
+/** Decode HTML entities from legacy PHP data (e.g. &#039; → ', &amp; → &).
+ *  Safe to call on any string — returns '' for null/undefined. */
+export function htmlDecode(input: string | null | undefined): string {
+  if (!input) return ''
+  return input
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+}

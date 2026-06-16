@@ -3,6 +3,7 @@ import { db } from "@workspace/db"
 import { messagesTable, usersTable, siteConfigTable, activityTable } from "@workspace/db/schema"
 import { eq, and, or, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { decodeHtml } from "../lib/html-decode"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -42,7 +43,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
     for (const m of msgs) {
       const otherId = m.u1 === myId ? m.u2 : m.u1
       if (!convMap.has(otherId)) {
-        convMap.set(otherId, { otherId, lastMsg: m.message, lastTime: m.time, unread: 0 })
+        convMap.set(otherId, { otherId, lastMsg: decodeHtml(m.message), lastTime: m.time, unread: 0 })
       }
       if (m.u2 === myId && m.read === 0) convMap.get(otherId).unread++
     }
@@ -74,7 +75,7 @@ router.get("/:otherId/messages", requireAuth, async (req, res) => {
       .orderBy(messagesTable.time)
     await db.update(messagesTable).set({ read: 1 })
       .where(and(eq(messagesTable.u1, otherId), eq(messagesTable.u2, myId), eq(messagesTable.read, 0)))
-    res.json(msgs)
+    res.json(msgs.map(m => ({ ...m, message: decodeHtml(m.message) })))
   } catch {
     res.status(500).json([])
   }

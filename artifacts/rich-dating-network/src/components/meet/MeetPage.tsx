@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { getPhotoUrl, truncate } from '../../lib/utils'
+import { getPhotoUrl, truncate, htmlDecode } from '../../lib/utils'
 import { Heart, X, Star, MapPin, Info, MessageCircle, BadgeCheck, Crown } from 'lucide-react'
 import { Link } from 'wouter'
 import toast from 'react-hot-toast'
@@ -125,7 +125,7 @@ export default function MeetPage({ userId, users, onRefresh }: Props) {
                 </button>
               </div>
               {showInfo && user.bio && (
-                <p className="mt-2 text-sm text-white/90 leading-relaxed">{truncate(user.bio?.replace(/<[^>]*>/g, ''), 150)}</p>
+                <p className="mt-2 text-sm text-white/90 leading-relaxed">{truncate(htmlDecode(user.bio), 150)}</p>
               )}
             </div>
           </div>
