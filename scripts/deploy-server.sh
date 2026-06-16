@@ -1,69 +1,86 @@
 #!/bin/bash
 ##############################################################
-# Production Deployment Script — Rich Dating Network
-# Run this on your server AFTER pushing changes to GitHub.
+# Rich Dating Network — Production Deploy Script
 #
-# PowerShell / SSH usage:
-#   ssh admin@157.250.205.180
-#   cd /home/admin/domains/test.richdatingnetwork.com/public_html
-#   bash scripts/deploy-server.sh
+# USAGE (always the same command):
+#   bash /home/admin/domains/test.richdatingnetwork.com/public_html/scripts/deploy-server.sh
+#
+# What it does:
+#   1. Pulls latest code from GitHub (safe even with local changes)
+#   2. Installs/updates dependencies
+#   3. Builds API + frontend
+#   4. Restarts the PM2 process
 ##############################################################
 set -e
 
 SITE_DIR="/home/admin/domains/test.richdatingnetwork.com/public_html"
-OLD_SITE_UPLOADS="/home/admin/domains/richdatingnetwork.com/public_html/assets/sources/uploads"
-NEW_SITE_UPLOADS="$SITE_DIR/assets/sources/uploads"
-
-echo "==> 1. Pulling latest code from GitHub..."
-cd "$SITE_DIR"
-git pull origin main
-
-echo "==> 2. Installing / updating dependencies..."
-pnpm install --frozen-lockfile
-
-echo "==> 3. Building API server..."
-pnpm --filter @workspace/api-server run build
-
-echo "==> 3b. Building frontend..."
-BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
-
-echo "==> 3c. Copying frontend build to public_html..."
-cp -r "$SITE_DIR/artifacts/rich-dating-network/dist/public/." "$SITE_DIR/"
-echo "    ✅ Frontend deployed"
-
-echo "==> 4. Restarting PM2 API process..."
-pm2 restart rdn-api --update-env
-
-echo "==> 5. Ensuring uploads symlink exists..."
-mkdir -p "$SITE_DIR/assets/sources"
-if [ ! -e "$NEW_SITE_UPLOADS" ]; then
-  if [ -d "$OLD_SITE_UPLOADS" ]; then
-    ln -s "$OLD_SITE_UPLOADS" "$NEW_SITE_UPLOADS"
-    echo "    ✅ Symlink created: $NEW_SITE_UPLOADS -> $OLD_SITE_UPLOADS"
-  else
-    mkdir -p "$NEW_SITE_UPLOADS"
-    echo "    ✅ Created fresh uploads dir (old site uploads not found at $OLD_SITE_UPLOADS)"
-  fi
-else
-  echo "    ✅ Uploads path already exists"
-fi
-
-echo "==> 6. Running data migrations (likes, photos, passwords)..."
-export DATABASE_URL=$(grep DATABASE_URL "$SITE_DIR/.env" | cut -d= -f2-)
-OLD_DB_URL="mysql://admin_richdatingnetwork:dj@Topaz2016@localhost/admin_richdatingnetwork"
-
-if node "$SITE_DIR/scripts/migrate-photos.mjs"; then
-  echo "    ✅ Photo migration complete"
-else
-  echo "    ⚠️  Photo migration skipped (old_activity not found)"
-fi
-
-if OLD_DB_URL="$OLD_DB_URL" node "$SITE_DIR/scripts/import-likes.mjs"; then
-  echo "    ✅ Likes import complete"
-else
-  echo "    ⚠️  Likes import skipped (old likes table not found)"
-fi
 
 echo ""
-echo "✅ Deployment complete! API is restarting in the background."
-echo "   Check logs with: pm2 logs rdn-api --lines 50"
+echo "============================================"
+echo "  Rich Dating Network — Deploy"
+echo "============================================"
+
+cd "$SITE_DIR"
+
+# ── 1. Pull latest code ─────────────────────────────────────
+echo ""
+echo "[1/4] Pulling latest code from GitHub..."
+
+# Stash any local changes (config files, .env, etc.) so pull never fails
+git stash --quiet 2>/dev/null || true
+
+# Pull
+git pull origin main
+
+# Restore stashed local changes (non-fatal if nothing was stashed)
+git stash pop --quiet 2>/dev/null || true
+
+echo "      ✅ Code updated"
+
+# ── 2. Install dependencies ─────────────────────────────────
+echo ""
+echo "[2/4] Installing dependencies..."
+pnpm install --frozen-lockfile --silent
+echo "      ✅ Dependencies ready"
+
+# ── 3. Build ────────────────────────────────────────────────
+echo ""
+echo "[3/4] Building..."
+
+pnpm --filter @workspace/api-server run build
+echo "      ✅ API server built"
+
+BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
+echo "      ✅ Frontend built"
+
+# ── 4. Restart PM2 ──────────────────────────────────────────
+echo ""
+echo "[4/4] Restarting server..."
+
+if pm2 describe rdn-api > /dev/null 2>&1; then
+  pm2 restart rdn-api --update-env
+  echo "      ✅ PM2 process restarted"
+else
+  # First time — start it fresh from ecosystem config
+  if [ -f "$SITE_DIR/ecosystem.config.cjs" ]; then
+    pm2 start ecosystem.config.cjs
+    pm2 save
+    echo "      ✅ PM2 process started (first time)"
+  else
+    echo "      ⚠️  No ecosystem.config.cjs found — run deploy.sh first for initial setup"
+    exit 1
+  fi
+fi
+
+# ── Done ────────────────────────────────────────────────────
+echo ""
+echo "============================================"
+echo "  ✅ Deploy complete!"
+echo "  Site: https://test.richdatingnetwork.com"
+echo ""
+echo "  Useful commands:"
+echo "    pm2 status              — process health"
+echo "    pm2 logs rdn-api        — live logs"
+echo "    pm2 logs rdn-api --lines 100  — last 100 lines"
+echo "============================================"
+echo ""
