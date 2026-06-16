@@ -126,7 +126,7 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
 
         {/* Step 0 — Welcome */}
         {step === 0 && (
-          <div className="px-8 pt-8 pb-2">
+          <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2">
             <div className="flex items-center justify-between mb-6">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-pink-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
                 <Heart className="w-7 h-7 text-white fill-white" />
@@ -155,7 +155,7 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
 
         {/* Step 1 — Add Phone (only for users without phone) */}
         {step === 1 && !hasPhone && (
-          <div className="px-8 pt-8 pb-2">
+          <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2">
             <div className="flex items-center justify-between mb-6">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center">
                 <Phone className="w-7 h-7 text-blue-500" />
@@ -220,7 +220,7 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
 
         {/* Step 1 (with phone) or Step 2 — Done */}
         {((step === 1 && hasPhone) || step === 2) && (
-          <div className="px-8 pt-8 pb-2 text-center">
+          <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-2 text-center">
             <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
               <Check className="w-8 h-8 text-green-500" />
             </div>
@@ -244,7 +244,7 @@ export default function NewSiteModal({ userName, hasPhone, onClose }: Props) {
         )}
 
         {/* Footer actions */}
-        <div className="px-8 pb-8 pt-2 flex items-center gap-2">
+        <div className="px-4 sm:px-8 pb-6 sm:pb-8 pt-2 flex items-center gap-2">
           {step > 0 && !((step === 1 && hasPhone) || step === 2) && (
             <button onClick={() => setStep(s => s - 1)}
               className="px-4 py-3 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors">
