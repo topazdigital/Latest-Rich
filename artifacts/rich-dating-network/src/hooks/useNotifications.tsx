@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { useWSEvent } from './useWebSocket'
+import { useLocation } from 'wouter'
 import toast from 'react-hot-toast'
 import { getPhotoUrl } from '../lib/utils'
 
@@ -74,6 +75,7 @@ export function requestNotificationPermission() {
 // ── Main hook ──────────────────────────────────────────────────────────────────
 export function useNotifications() {
   const { user, token } = useAuth()
+  const [location] = useLocation()
   const [unread, setUnread] = useState(0)
   const [chatUnread, setChatUnread] = useState(0)
 
@@ -97,9 +99,19 @@ export function useNotifications() {
     return () => clearInterval(interval)
   }, [user, token, fetchCounts])
 
+  // Clear chat badge instantly when user navigates to any chat page
+  useEffect(() => {
+    if (location.startsWith('/chat')) {
+      setChatUnread(0)
+    }
+  }, [location])
+
   // New chat message — sound + push notification + toast + badge
   useWSEvent('new_message', (msg) => {
-    setChatUnread(prev => prev + 1)
+    // Don't increment badge if user is already on a chat page
+    if (!window.location.pathname.startsWith('/chat')) {
+      setChatUnread(prev => prev + 1)
+    }
     playChime('message')
     if (msg.from) {
       showPushNotification(
