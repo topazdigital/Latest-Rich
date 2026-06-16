@@ -83,8 +83,13 @@ else
 fi
 
 # ── 4. Install deps ────────────────────────────────────────
+# NOTE: Do NOT use --frozen-lockfile here. If pnpm-lock.yaml drifts from the
+# node_modules state (e.g. after Replit updates packages), --frozen-lockfile
+# causes pnpm to exit with an error, which stops the entire script via set -e
+# and silently skips the build step.
 echo "[4/7] Installing dependencies..."
-pnpm install --frozen-lockfile
+pnpm install
+echo "      Dependencies installed ✓"
 
 # ── 5. DB migration + schema sync ──────────────────────────
 # This single SQL script handles EVERYTHING:
@@ -115,12 +120,29 @@ echo "      Linking legacy photos to user profiles..."
 node scripts/import-legacy-photos.mjs && echo "      Photo import OK ✓" || echo "      Photo import warning (non-fatal)"
 
 # ── 6. Build ───────────────────────────────────────────────
-echo "[6/7] Building..."
-pnpm --filter @workspace/api-server run build
+# Both builds must succeed — if either fails, deployment stops here with a
+# clear error message rather than starting PM2 with stale/missing code.
+BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+echo "[6/7] Building... (started at $BUILD_TIME)"
+
+echo "      Building API server..."
+if ! pnpm --filter @workspace/api-server run build; then
+  echo ""
+  echo "  ✗ ERROR: API server build failed! Fix the error above and re-run deploy.sh"
+  echo "  The server has NOT been restarted — your live site is still running the old code."
+  exit 1
+fi
 echo "      API server built ✓"
 
-BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build
-echo "      Frontend built ✓"
+echo "      Building frontend (React)..."
+if ! BASE_PATH=/ pnpm --filter @workspace/rich-dating-network run build; then
+  echo ""
+  echo "  ✗ ERROR: Frontend build failed! Fix the error above and re-run deploy.sh"
+  echo "  The server has NOT been restarted — your live site is still running the old code."
+  exit 1
+fi
+echo "      Frontend built ✓  (output: artifacts/rich-dating-network/dist/public)"
+echo "      Build completed at $(date '+%Y-%m-%d %H:%M:%S')"
 
 # ── 7. Configure Apache + start PM2 ───────────────────────
 echo "[7/7] Configuring Apache proxy & starting PM2..."
