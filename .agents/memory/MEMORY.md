@@ -1,2 +1,3 @@
 - [MySQL migration patterns](mysql-migration.md) — all MySQL-incompatible Drizzle patterns found and fixed across the codebase
 - [Production vs dev database](production-db.md) — production=MySQL, Replit dev=PostgreSQL; code auto-detects; never remove PG support
+- [MySQL only — never PostgreSQL](mysql-only.md) — user explicitly demands MySQL always; never provision PG, never run drizzle-kit push for this project

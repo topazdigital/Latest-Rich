@@ -156,7 +156,11 @@ export default function LoginPage() {
         if (!res.ok) throw new Error(data.error || 'Google login failed')
         const { setStoredAuth } = await import('../lib/auth')
         setStoredAuth({ user: data.user, token: data.token })
-        window.location.href = '/discover'
+        if (data.needsCompletion) {
+          window.location.href = '/register?social=1'
+        } else {
+          window.location.href = '/discover'
+        }
       } catch (err: any) {
         toast.error(err.message || 'Google login failed')
       } finally { setSocialLoading(null) }

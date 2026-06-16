@@ -114,6 +114,7 @@ export default function RegisterPage() {
   const [, setLocation] = useLocation()
   const searchStr = useSearch()
   const params = new URLSearchParams(searchStr)
+  const isSocial = params.get('social') === '1'
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -166,6 +167,18 @@ export default function RegisterPage() {
   }, [])
 
   useEffect(() => {
+    if (!isSocial) return
+    const auth = getStoredAuth()
+    if (!auth?.user) { window.location.href = '/login'; return }
+    setForm(p => ({
+      ...p,
+      name: auth.user.name || p.name,
+      email: auth.user.email || p.email,
+      phoneDialCode: auth.user.countryCode ? getDialFromCountryCode(auth.user.countryCode) : p.phoneDialCode,
+    }))
+  }, [isSocial])
+
+  useEffect(() => {
     fetch('/api/auth/social/config').then(r => r.json()).then(d => setSocialConfig(d)).catch(() => {})
   }, [])
 
@@ -183,7 +196,11 @@ export default function RegisterPage() {
         if (!res.ok) throw new Error(data.error || 'Google sign up failed')
         const { setStoredAuth } = await import('../lib/auth')
         setStoredAuth({ user: data.user, token: data.token })
-        window.location.href = '/discover'
+        if (data.needsCompletion) {
+          window.location.href = '/register?social=1'
+        } else {
+          window.location.href = '/discover'
+        }
       } catch (err: any) {
         toast.error(err.message || 'Google sign up failed')
       } finally { setSocialLoading(false) }
@@ -302,9 +319,40 @@ export default function RegisterPage() {
     }
     if (!form.username.trim() || form.username.trim().length < 3) { toast.error('Username is required (min 3 characters)'); return }
     if (!form.phone.trim() || form.phone.replace(/[\s\-()]/g, '').length < 5) { toast.error('Phone number is required'); return }
-    if (emailStatus === 'taken') { toast.error('Email already registered'); return }
     if (usernameStatus === 'taken') { toast.error('Username already taken'); return }
     if (phoneStatus === 'taken') { toast.error('Phone number already registered'); return }
+
+    if (isSocial) {
+      const auth = getStoredAuth()
+      if (!auth?.token) { toast.error('Session expired, please log in again'); window.location.href = '/login'; return }
+      setLoading(true)
+      try {
+        const res = await fetch('/api/auth/social/complete', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
+          body: JSON.stringify({
+            username: form.username,
+            phone: fullPhone(),
+            gender: form.gender,
+            lookingFor: form.lookingFor,
+            birthday: form.birthday,
+            city: form.city,
+            country: form.country,
+            countryCode: form.countryCode,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) { toast.error(data.error || 'Failed to save profile'); return }
+        const { setStoredAuth } = await import('../lib/auth')
+        setStoredAuth({ user: data.user, token: auth.token })
+        toast.success('Profile saved! Now add your photo…')
+        setStep(4)
+      } catch { toast.error('Something went wrong') }
+      finally { setLoading(false) }
+      return
+    }
+
+    if (emailStatus === 'taken') { toast.error('Email already registered'); return }
 
     setLoading(true)
     try {
@@ -356,6 +404,13 @@ export default function RegisterPage() {
     form.username.trim().length >= 3 &&
     phoneDigits.length >= 5 &&
     emailStatus !== 'taken' &&
+    usernameStatus !== 'taken' &&
+    usernameStatus !== 'invalid' &&
+    phoneStatus !== 'taken'
+
+  const isStep1SocialValid =
+    form.username.trim().length >= 3 &&
+    phoneDigits.length >= 5 &&
     usernameStatus !== 'taken' &&
     usernameStatus !== 'invalid' &&
     phoneStatus !== 'taken'
@@ -428,8 +483,8 @@ export default function RegisterPage() {
 
       {/* Right form panel */}
       <div className="flex-1 bg-white overflow-y-auto">
-        <div className="min-h-screen flex flex-col justify-center px-5 py-6 sm:px-8 lg:px-12 xl:px-14 max-w-lg mx-auto w-full">
-          <div className="lg:hidden mb-4">
+        <div className="flex flex-col px-4 py-4 sm:min-h-screen sm:justify-center sm:px-8 lg:px-12 xl:px-14 max-w-lg mx-auto w-full">
+          <div className="lg:hidden mb-2">
             <Link href="/" className="inline-flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl gradient-brand flex items-center justify-center">
                 <Heart className="w-4 h-4 text-white fill-white" />
@@ -438,13 +493,17 @@ export default function RegisterPage() {
             </Link>
           </div>
 
-          <div className="mb-4">
-            <h1 className="text-xl font-black text-gray-900 mb-0.5">Create your account</h1>
-            <p className="text-gray-500 text-xs">Find your perfect match — free, fast, and secure</p>
+          <div className="mb-2">
+            <h1 className="text-xl font-black text-gray-900 mb-0.5">
+              {isSocial ? 'Complete your profile' : 'Create your account'}
+            </h1>
+            <p className="text-gray-500 text-xs">
+              {isSocial ? 'Just a few more details to start matching' : 'Find your perfect match — free, fast, and secure'}
+            </p>
           </div>
 
           {/* Step indicators */}
-          <div className="flex items-center gap-1 mb-4 overflow-x-auto">
+          <div className="flex items-center gap-1 mb-3 overflow-x-auto">
             {steps.map((s, i) => (
               <div key={i} className="flex items-center gap-1 shrink-0">
                 <div className="flex items-center gap-1.5">
@@ -460,139 +519,222 @@ export default function RegisterPage() {
             ))}
           </div>
 
-          {/* STEP 1: Account */}
+          {/* STEP 1: Account / Social completion */}
           {step === 1 && (
-            <div className="space-y-3">
-              {socialConfig.googleClientId && (
+            <div className="space-y-2.5">
+              {isSocial ? (
+                /* Social completion — only username + phone needed */
                 <>
-                  <button onClick={handleGoogleSignUp} disabled={socialLoading}
-                    className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-2.5 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm disabled:opacity-50">
-                    {socialLoading ? <Loader2 size={17} className="animate-spin" /> : (
-                      <svg width="17" height="17" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                    )}
-                    Sign up with Google
-                  </button>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
-                    <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-gray-400 font-medium">or register with email</span></div>
+                  <div className="bg-brand-50 border border-brand-100 rounded-xl p-3">
+                    <p className="text-sm font-semibold text-brand-700">Welcome{form.name ? `, ${form.name.split(' ')[0]}` : ''}!</p>
+                    <p className="text-xs text-brand-600 mt-0.5">Choose a username and add your phone to finish setting up.</p>
                   </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                      Username <span className="text-red-400 font-normal">*your unique profile link</span>
+                    </label>
+                    <div className="relative">
+                      <AtSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={form.username} onChange={e => { update('username', e.target.value); checkUsername(e.target.value) }}
+                        className={`w-full pl-9 pr-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${usernameStatus === 'taken' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                        placeholder="e.g. johndoe (letters, numbers, _)" maxLength={30} />
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between">
+                      <AvailBadge status={usernameStatus} field="Username" />
+                      {usernameStatus === 'available' && <span className="text-xs text-gray-400">/@{form.username.toLowerCase()}</span>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                      Phone Number <span className="text-red-400 font-normal">*for account security</span>
+                    </label>
+                    <div className="flex gap-0 relative">
+                      <div ref={dialRef} className="relative shrink-0">
+                        <button type="button"
+                          onClick={() => { setShowDialDropdown(v => !v); setDialSearch('') }}
+                          className="h-full flex items-center gap-1 px-2.5 border border-r-0 border-gray-200 rounded-l-xl bg-gray-50 hover:bg-white text-sm font-medium text-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-w-[76px]">
+                          <span className="text-base leading-none">{selectedDial.code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))}</span>
+                          <span className="text-gray-500 text-xs">{form.phoneDialCode}</span>
+                          <ChevronDown size={11} className="text-gray-400" />
+                        </button>
+                        {showDialDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                            <div className="p-2 border-b">
+                              <input type="text" value={dialSearch} onChange={e => setDialSearch(e.target.value)}
+                                placeholder="Search country…"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                autoFocus />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                              {filteredDials.map(d => (
+                                <button key={`${d.code}-${d.dial}`} type="button"
+                                  onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
+                                  <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
+                                  <span className="font-medium truncate">{d.name}</span>
+                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
+                                </button>
+                              ))}
+                              {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="relative flex-1">
+                        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="tel" value={form.phone} onChange={e => { update('phone', e.target.value); checkPhone(e.target.value) }}
+                          className={`w-full pl-9 pr-3 py-2 border rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${phoneStatus === 'taken' ? 'border-red-300' : phoneStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                          placeholder="712 345 678" />
+                      </div>
+                    </div>
+                    <div className="mt-0.5"><AvailBadge status={phoneStatus} field="Phone" /></div>
+                  </div>
+
+                  <button onClick={() => setStep(2)} disabled={!isStep1SocialValid}
+                    className="w-full py-2.5 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 shadow-lg shadow-brand-500/20"
+                    style={{ background: isStep1SocialValid ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
+                    Continue <ChevronRight size={16} />
+                  </button>
+                  <p className="text-center text-xs text-gray-400">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-brand-500 font-semibold">Sign in</Link>
+                  </p>
+                </>
+              ) : (
+                /* Normal registration */
+                <>
+                  {socialConfig.googleClientId && (
+                    <>
+                      <button onClick={handleGoogleSignUp} disabled={socialLoading}
+                        className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-2 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm disabled:opacity-50">
+                        {socialLoading ? <Loader2 size={17} className="animate-spin" /> : (
+                          <svg width="17" height="17" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                          </svg>
+                        )}
+                        Sign up with Google
+                      </button>
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
+                        <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-gray-400 font-medium">or register with email</span></div>
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Full Name</label>
+                    <div className="relative">
+                      <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={form.name} onChange={e => update('name', e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
+                        placeholder="Your full name" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Email</label>
+                    <input type="email" value={form.email} onChange={e => { update('email', e.target.value); checkEmail(e.target.value) }}
+                      className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${emailStatus === 'taken' ? 'border-red-300' : emailStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                      placeholder="your@email.com" />
+                    <div className="mt-0.5"><AvailBadge status={emailStatus} field="Email" /></div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Password</label>
+                    <div className="relative">
+                      <input type={showPass ? 'text' : 'password'} value={form.password} onChange={e => update('password', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white pr-10 placeholder-gray-400"
+                        placeholder="Min. 6 characters" />
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                      Username <span className="text-red-400 font-normal">*required — your unique profile link</span>
+                    </label>
+                    <div className="relative">
+                      <AtSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={form.username} onChange={e => { update('username', e.target.value); checkUsername(e.target.value) }}
+                        className={`w-full pl-9 pr-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${usernameStatus === 'taken' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                        placeholder="e.g. johndoe (letters, numbers, _)" maxLength={30} />
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between">
+                      <AvailBadge status={usernameStatus} field="Username" />
+                      {usernameStatus === 'available' && <span className="text-xs text-gray-400">/@{form.username.toLowerCase()}</span>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                      Phone Number <span className="text-red-400 font-normal">*required — for account security</span>
+                    </label>
+                    <div className="flex gap-0 relative">
+                      <div ref={dialRef} className="relative shrink-0">
+                        <button type="button"
+                          onClick={() => { setShowDialDropdown(v => !v); setDialSearch('') }}
+                          className="h-full flex items-center gap-1 px-2.5 border border-r-0 border-gray-200 rounded-l-xl bg-gray-50 hover:bg-white text-sm font-medium text-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-w-[76px]">
+                          <span className="text-base leading-none">{selectedDial.code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))}</span>
+                          <span className="text-gray-500 text-xs">{form.phoneDialCode}</span>
+                          <ChevronDown size={11} className="text-gray-400" />
+                        </button>
+                        {showDialDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                            <div className="p-2 border-b">
+                              <input
+                                type="text"
+                                value={dialSearch}
+                                onChange={e => setDialSearch(e.target.value)}
+                                placeholder="Search country…"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                              {filteredDials.map(d => (
+                                <button key={`${d.code}-${d.dial}`} type="button"
+                                  onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
+                                  <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
+                                  <span className="font-medium truncate">{d.name}</span>
+                                  <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
+                                </button>
+                              ))}
+                              {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative flex-1">
+                        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="tel" value={form.phone} onChange={e => { update('phone', e.target.value); checkPhone(e.target.value) }}
+                          className={`w-full pl-9 pr-3 py-2.5 border rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${phoneStatus === 'taken' ? 'border-red-300' : phoneStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
+                          placeholder="712 345 678" />
+                      </div>
+                    </div>
+                    <div className="mt-0.5"><AvailBadge status={phoneStatus} field="Phone" /></div>
+                  </div>
+
+                  <button onClick={() => setStep(2)} disabled={!isStep1Valid}
+                    className="w-full py-3 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 shadow-lg shadow-brand-500/20"
+                    style={{ background: isStep1Valid ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
+                    Continue <ChevronRight size={16} />
+                  </button>
+
+                  <p className="text-center text-xs text-gray-400">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-brand-500 font-semibold">Sign in</Link>
+                  </p>
                 </>
               )}
-
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Full Name</label>
-                <div className="relative">
-                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" value={form.name} onChange={e => update('name', e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400"
-                    placeholder="Your full name" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Email</label>
-                <input type="email" value={form.email} onChange={e => { update('email', e.target.value); checkEmail(e.target.value) }}
-                  className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${emailStatus === 'taken' ? 'border-red-300' : emailStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
-                  placeholder="your@email.com" />
-                <div className="mt-0.5"><AvailBadge status={emailStatus} field="Email" /></div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Password</label>
-                <div className="relative">
-                  <input type={showPass ? 'text' : 'password'} value={form.password} onChange={e => update('password', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white pr-10 placeholder-gray-400"
-                    placeholder="Min. 6 characters" />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Username <span className="text-red-400 font-normal">*required — your unique profile link</span>
-                </label>
-                <div className="relative">
-                  <AtSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" value={form.username} onChange={e => { update('username', e.target.value); checkUsername(e.target.value) }}
-                    className={`w-full pl-9 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${usernameStatus === 'taken' ? 'border-red-300' : usernameStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
-                    placeholder="e.g. johndoe (letters, numbers, _)" maxLength={30} />
-                </div>
-                <div className="mt-0.5 flex items-center justify-between">
-                  <AvailBadge status={usernameStatus} field="Username" />
-                  {usernameStatus === 'available' && <span className="text-xs text-gray-400">/@{form.username.toLowerCase()}</span>}
-                </div>
-              </div>
-
-              {/* Phone with country code */}
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Phone Number <span className="text-red-400 font-normal">*required — for account security</span>
-                </label>
-                <div className="flex gap-0 relative">
-                  {/* Country code selector */}
-                  <div ref={dialRef} className="relative shrink-0">
-                    <button type="button"
-                      onClick={() => { setShowDialDropdown(v => !v); setDialSearch('') }}
-                      className="h-full flex items-center gap-1 px-2.5 border border-r-0 border-gray-200 rounded-l-xl bg-gray-50 hover:bg-white text-sm font-medium text-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-w-[76px]">
-                      <span className="text-base leading-none">{selectedDial.code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))}</span>
-                      <span className="text-gray-500 text-xs">{form.phoneDialCode}</span>
-                      <ChevronDown size={11} className="text-gray-400" />
-                    </button>
-                    {showDialDropdown && (
-                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
-                        <div className="p-2 border-b">
-                          <input
-                            type="text"
-                            value={dialSearch}
-                            onChange={e => setDialSearch(e.target.value)}
-                            placeholder="Search country…"
-                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                            autoFocus
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                          {filteredDials.map(d => (
-                            <button key={`${d.code}-${d.dial}`} type="button"
-                              onClick={() => { update('phoneDialCode', d.dial); setShowDialDropdown(false); setDialSearch('') }}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left ${form.phoneDialCode === d.dial && selectedDial.code === d.code ? 'bg-brand-50 text-brand-600' : 'text-gray-700'}`}>
-                              <span className="font-mono text-xs text-gray-500 w-10 shrink-0">{d.dial}</span>
-                              <span className="font-medium truncate">{d.name}</span>
-                              <span className="text-xs text-gray-400 ml-auto shrink-0">{d.code}</span>
-                            </button>
-                          ))}
-                          {filteredDials.length === 0 && <div className="px-3 py-4 text-sm text-gray-400 text-center">No results</div>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="relative flex-1">
-                    <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="tel" value={form.phone} onChange={e => { update('phone', e.target.value); checkPhone(e.target.value) }}
-                      className={`w-full pl-9 pr-3 py-2.5 border rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all bg-gray-50 hover:bg-white placeholder-gray-400 ${phoneStatus === 'taken' ? 'border-red-300' : phoneStatus === 'available' ? 'border-green-300' : 'border-gray-200'}`}
-                      placeholder="712 345 678" />
-                  </div>
-                </div>
-                <div className="mt-0.5"><AvailBadge status={phoneStatus} field="Phone" /></div>
-              </div>
-
-              <button onClick={() => setStep(2)} disabled={!isStep1Valid}
-                className="w-full py-3 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 shadow-lg shadow-brand-500/20"
-                style={{ background: isStep1Valid ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
-                Continue <ChevronRight size={16} />
-              </button>
-
-              <p className="text-center text-xs text-gray-400">
-                Already have an account?{' '}
-                <Link href="/login" className="text-brand-500 font-semibold">Sign in</Link>
-              </p>
             </div>
           )}
 

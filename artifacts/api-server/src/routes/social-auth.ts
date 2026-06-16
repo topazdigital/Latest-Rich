@@ -3,6 +3,7 @@ import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, activityTable, siteConfigTable } from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
+import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -36,8 +37,10 @@ router.post("/google", async (req, res) => {
 
     // Find or create user
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
+    let isNew = false
 
     if (!user) {
+      isNew = true
       const googleEmail = email.toLowerCase()
       await db.insert(usersTable).values({
         name: name || email.split("@")[0],
@@ -68,7 +71,7 @@ router.post("/google", async (req, res) => {
 
     const token = signToken({ userId: user.id })
     const { password: _, ...safeUser } = user
-    res.json({ token, user: safeUser })
+    res.json({ token, user: safeUser, needsCompletion: isNew })
   } catch (err: any) {
     console.error("Google auth error:", err)
     res.status(500).json({ error: "Google login failed" })
@@ -99,8 +102,10 @@ router.post("/facebook", async (req, res) => {
     const picture = profile.picture?.data?.url || ""
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1)
+    let isFbNew = false
 
     if (!user) {
+      isFbNew = true
       const fbEmail = email.toLowerCase()
       await db.insert(usersTable).values({
         name: profile.name || email.split("@")[0],
@@ -128,10 +133,72 @@ router.post("/facebook", async (req, res) => {
 
     const token = signToken({ userId: user.id })
     const { password: _, ...safeUser } = user
-    res.json({ token, user: safeUser })
+    res.json({ token, user: safeUser, needsCompletion: isFbNew })
   } catch (err: any) {
     console.error("Facebook auth error:", err)
     res.status(500).json({ error: "Facebook login failed" })
+  }
+})
+
+// Complete social profile — called after Google/Facebook signup to fill in missing fields
+router.patch("/complete", requireAuth, async (req, res) => {
+  try {
+    const { username, phone, gender, lookingFor, birthday, city, country, countryCode } = req.body
+    const userId = req.userId!
+
+    if (!username || username.trim().length < 3) {
+      res.status(400).json({ error: "Username must be at least 3 characters" }); return
+    }
+    if (!phone || phone.replace(/[\s\-()]/g, "").length < 7) {
+      res.status(400).json({ error: "Phone number is required" }); return
+    }
+
+    const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 30)
+    const cleanPhone = phone.replace(/\s/g, "")
+
+    // Check username uniqueness (allow same user)
+    const [existingUser] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.username, cleanUsername)).limit(1)
+    if (existingUser && existingUser.id !== userId) {
+      res.status(409).json({ error: "Username already taken" }); return
+    }
+
+    // Check phone uniqueness (allow same user)
+    const [existingPhone] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.phone, cleanPhone)).limit(1)
+    if (existingPhone && existingPhone.id !== userId) {
+      res.status(409).json({ error: "Phone number already registered" }); return
+    }
+
+    const calcAge = (bd: string) => {
+      if (!bd) return 0
+      const d = new Date(bd)
+      const t = new Date()
+      let age = t.getFullYear() - d.getFullYear()
+      const m = t.getMonth() - d.getMonth()
+      if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--
+      return age
+    }
+
+    await db.update(usersTable).set({
+      username: cleanUsername,
+      phone: cleanPhone,
+      gender: parseInt(gender) || 1,
+      looking: parseInt(lookingFor) || 2,
+      birthday: birthday || "",
+      age: calcAge(birthday || ""),
+      city: city || "",
+      country: country || "",
+      countryCode: countryCode || "",
+      lastAccess: String(now()),
+    }).where(eq(usersTable.id, userId))
+
+    const [updatedUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+    const { password: _, ...safeUser } = updatedUser
+    res.json({ success: true, user: safeUser })
+  } catch (err: any) {
+    console.error("Social complete error:", err)
+    res.status(500).json({ error: "Failed to complete profile" })
   }
 })
 
