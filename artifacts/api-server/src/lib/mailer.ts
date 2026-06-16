@@ -40,10 +40,11 @@ async function getTransporter() {
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
-    secure: smtpSecure,          // true = implicit TLS (port 465); false = STARTTLS (port 587)
-    requireTLS: !smtpSecure,     // force STARTTLS upgrade on port 587 — critical for DirectAdmin
-    auth: { user: smtpUser, pass: smtpPass },  // no `type` — let nodemailer negotiate LOGIN/PLAIN
-    tls: { rejectUnauthorized: false },        // accept self-signed certs on VPS servers
+    secure: smtpSecure,       // true = implicit TLS (port 465); false = STARTTLS (port 587)
+    requireTLS: !smtpSecure,  // force STARTTLS upgrade on port 587
+    authMethod: 'LOGIN',      // DirectAdmin/Exim rejects PLAIN — force LOGIN mechanism
+    auth: { user: smtpUser, pass: smtpPass },
+    tls: { rejectUnauthorized: false },
   })
   _cachedTransporter = { host: smtpHost, port: smtpPort, user: smtpUser, pass: smtpPass, secure: smtpSecure, transporter }
   return _cachedTransporter

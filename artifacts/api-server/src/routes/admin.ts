@@ -736,6 +736,7 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
       transportOpts.auth = { user, pass }
     }
     if (!secure) transportOpts.requireTLS = true
+    transportOpts.authMethod = 'LOGIN'
     const transporter = nodemailer.createTransport(transportOpts)
 
     const verifyPromise = transporter.verify()
@@ -804,6 +805,7 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       transportOptsTE.auth = { user: smtpUser, pass: smtpPass }
     }
     if (!smtpSecure) transportOptsTE.requireTLS = true
+    transportOptsTE.authMethod = 'LOGIN'
     const transporter = nodemailer.createTransport(transportOptsTE)
 
     const timeoutPromise = new Promise<never>((_, reject) =>
