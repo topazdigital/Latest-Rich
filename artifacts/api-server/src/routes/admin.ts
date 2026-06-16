@@ -691,6 +691,75 @@ router.get("/config/public", async (req, res) => {
   } catch { res.json({}) }
 })
 
+// Check SMTP connectivity — two-phase: TCP reachability first, then SMTP auth verify.
+// Returns { phase: "tcp"|"auth"|"ok", message, error? } so the UI can show each step.
+router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { host, port: portRaw, user, pass, secure: secureRaw } = req.body
+    const port = parseInt(portRaw) || 587
+    const secure = secureRaw === "1" || secureRaw === true
+
+    if (!host || !port) {
+      res.status(400).json({ phase: "tcp", error: "Host and port are required" }); return
+    }
+
+    // ── Phase 1: TCP reachability ───────────────────────────────────────────
+    const net = await import("net")
+    const tcpOk = await new Promise<boolean>(resolve => {
+      const socket = net.createConnection({ host, port })
+      const done = (ok: boolean) => { try { socket.destroy() } catch {} resolve(ok) }
+      socket.setTimeout(5000)
+      socket.on("connect", () => done(true))
+      socket.on("timeout", () => done(false))
+      socket.on("error", () => done(false))
+    })
+
+    if (!tcpOk) {
+      res.json({
+        phase: "tcp",
+        error: `Cannot reach ${host}:${port}. The port is closed or blocked by a firewall. ` +
+          `Try port 587 (TLS=No) or port 465 (TLS=Yes). ` +
+          `If using cPanel/DirectAdmin mail, the SMTP port may need to be opened in the server firewall.`,
+      }); return
+    }
+
+    // ── Phase 2: SMTP auth verify ───────────────────────────────────────────
+    if (!user || !pass) {
+      res.json({
+        phase: "tcp",
+        message: `✓ Port ${port} on ${host} is reachable. Enter your username and password to test authentication.`,
+      }); return
+    }
+
+    const nodemailer = await import("nodemailer")
+    const transporter = nodemailer.createTransport({
+      host, port, secure,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000,
+    })
+
+    const verifyPromise = transporter.verify()
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(
+        `Auth verification timed out after 8s on ${host}:${port}. ` +
+        `Port is reachable but SMTP handshake is stalling — ` +
+        `check that TLS setting matches the port (465=TLS Yes, 587=TLS No).`
+      )), 8000)
+    )
+
+    await Promise.race([verifyPromise, timeoutPromise])
+    res.json({ phase: "ok", message: `✓ Connected and authenticated successfully to ${host}:${port}` })
+  } catch (err: any) {
+    const msg = err?.message || "SMTP check failed"
+    console.error("[check-smtp]", msg)
+    // If TCP succeeded but auth failed, msg comes from nodemailer (e.g. "Invalid login")
+    res.json({ phase: "auth", error: msg })
+  }
+})
+
 // Test email endpoint — uses nodemailer directly so the real SMTP error is surfaced to the admin
 router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
   try {

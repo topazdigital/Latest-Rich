@@ -118,6 +118,8 @@ export default function AdminSettings() {
   const [savingPkg, setSavingPkg] = useState(false)
   const [savingCreditPkg, setSavingCreditPkg] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
+  const [checkingSmtp, setCheckingSmtp] = useState(false)
+  const [smtpCheckResult, setSmtpCheckResult] = useState<{ ok: boolean; phase?: string; message: string } | null>(null)
   const [showPasswords, setShowPasswords] = useState<Set<string>>(new Set())
   const [packages, setPackages] = useState<PremiumPkg[]>(DEFAULT_PACKAGES)
   const [pkgLoading, setPkgLoading] = useState(true)
@@ -193,6 +195,36 @@ export default function AdminSettings() {
       if (res.ok) toast.success("Credits packages saved!")
       else toast.error("Failed to save credit packages")
     } catch { toast.error("Failed to save credit packages") } finally { setSavingCreditPkg(false) }
+  }
+
+  const checkSmtpConnection = async () => {
+    const host = config["smtp_host"] || ""
+    const port = config["smtp_port"] || "587"
+    if (!host) { toast.error("Enter SMTP Host first"); return }
+    setCheckingSmtp(true)
+    setSmtpCheckResult(null)
+    try {
+      const res = await authFetch("/api/admin/check-smtp", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          host,
+          port,
+          user: config["smtp_user"] || "",
+          pass: config["smtp_pass"] || "",
+          secure: config["smtp_secure"] || "0",
+        })
+      })
+      const data = await res.json()
+      if (data.error) {
+        setSmtpCheckResult({ ok: false, phase: data.phase, message: data.error })
+      } else {
+        setSmtpCheckResult({ ok: true, phase: data.phase, message: data.message || "Connection OK" })
+      }
+    } catch {
+      setSmtpCheckResult({ ok: false, message: "Request failed — check your network connection" })
+    } finally {
+      setCheckingSmtp(false)
+    }
   }
 
   const sendTestEmail = async () => {
@@ -405,8 +437,29 @@ export default function AdminSettings() {
             </div>
           ))}
 
+          {/* Connection check */}
           <div className="border-t border-gray-200 pt-4">
-            <label className="text-gray-600 text-sm font-medium mb-2 block">Test Email</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-gray-600 text-sm font-medium">Connection Check</label>
+              <button onClick={checkSmtpConnection} disabled={checkingSmtp}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium border border-gray-200 disabled:opacity-50 transition-colors">
+                {checkingSmtp ? (
+                  <><span className="w-3 h-3 border border-gray-500 border-t-transparent rounded-full animate-spin inline-block" /> Checking...</>
+                ) : "Test Connection"}
+              </button>
+            </div>
+            <p className="text-gray-400 text-xs mb-2">Verify the server can reach your SMTP host and authenticate — before trying to send mail</p>
+            {smtpCheckResult && (
+              <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed border ${smtpCheckResult.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                <span className="font-semibold mr-1">{smtpCheckResult.ok ? "✓" : "✗"}</span>
+                {smtpCheckResult.message}
+              </div>
+            )}
+          </div>
+
+          {/* Send test email */}
+          <div className="border-t border-gray-200 pt-4">
+            <label className="text-gray-600 text-sm font-medium mb-2 block">Send Test Email</label>
             <div className="flex gap-2">
               <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
                 className="flex-1 bg-gray-50 text-white px-3 py-2.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 placeholder-gray-600"
