@@ -732,8 +732,7 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     }
 
     const nodemailer = await import("nodemailer")
-    const authConfig: any = { user, pass }
-    if (authMethod) authConfig.method = authMethod
+    const authConfig: any = { type: authMethod || "LOGIN", user, pass }
     const transporter = nodemailer.createTransport({
       host, port, secure,
       auth: authConfig,
@@ -799,8 +798,7 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
     // the request always resolves within SMTP_HARD_TIMEOUT_MS regardless of what hangs.
     const SMTP_HARD_TIMEOUT_MS = 8000
     const nodemailer = await import("nodemailer")
-    const authConfigTE: any = { user: smtpUser, pass: smtpPass }
-    if (smtpAuthMethod) authConfigTE.method = smtpAuthMethod
+    const authConfigTE: any = { type: smtpAuthMethod || "LOGIN", user: smtpUser, pass: smtpPass }
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
