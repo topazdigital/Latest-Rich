@@ -138,19 +138,25 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     if (!name || !subject || !htmlBody) { res.status(400).json({ error: "name, subject and htmlBody are required" }); return }
 
     await db.insert(emailCampaignsTable).values({
-      name: name.trim(),
-      subject: subject.trim(),
-      htmlBody,
+      name: String(name).trim(),
+      subject: String(subject).trim(),
+      htmlBody: String(htmlBody),
       status: "draft",
+      totalRecipients: 0,
+      sentCount: 0,
+      failedCount: 0,
       batchSize: parseInt(batchSize) || 50,
       coolingSeconds: parseInt(coolingSeconds) || 60,
       filterGender: parseInt(filterGender) || 0,
-      filterCountry: filterCountry || "",
+      filterCountry: String(filterCountry || ""),
       filterMinAge: parseInt(filterMinAge) || 0,
       filterMaxAge: parseInt(filterMaxAge) || 0,
       onlyReal: onlyReal === false ? 0 : 1,
       createdBy: req.userId ?? 0,
       createdAt: now(),
+      startedAt: 0,
+      completedAt: 0,
+      lastSentAt: 0,
     })
 
     const campaigns = await db.select().from(emailCampaignsTable).orderBy(desc(emailCampaignsTable.id)).limit(1)

@@ -311,10 +311,10 @@ export const referralsTable = mysqlTable("referrals", {
 
 export const emailCampaignsTable = mysqlTable("email_campaigns", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  subject: text("subject").notNull(),
+  name: varchar("name", { length: 500 }).notNull().default(""),
+  subject: varchar("subject", { length: 500 }).notNull().default(""),
   htmlBody: text("html_body").notNull().default(""),
-  status: text("status").default("draft"),
+  status: varchar("status", { length: 50 }).default("draft"),
   totalRecipients: int("total_recipients").default(0),
   sentCount: int("sent_count").default(0),
   failedCount: int("failed_count").default(0),
