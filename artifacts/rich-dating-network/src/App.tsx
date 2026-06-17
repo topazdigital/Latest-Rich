@@ -1,6 +1,7 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter"
 import { Toaster } from "react-hot-toast"
 import { useEffect, useState, useCallback } from "react"
+import { usePWAInstall } from "./hooks/usePWAInstall"
 
 import { AuthContext, useAuth, useAuthState } from "./hooks/useAuth"
 import LandingPage from "./components/landing/LandingPage"
@@ -207,6 +208,37 @@ function VideoCallController() {
   )
 }
 
+function PWAInstallBanner() {
+  const { canInstall, install } = usePWAInstall()
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('pwa_banner_dismissed') === '1')
+
+  if (!canInstall || dismissed) return null
+
+  return (
+    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
+      <div className="bg-gray-900 text-white rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl">
+        <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0 text-lg">❤️</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold leading-tight">Install Rich Dating</p>
+          <p className="text-xs text-gray-400 leading-tight mt-0.5">Add to home screen for the best experience</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => { setDismissed(true); localStorage.setItem('pwa_banner_dismissed', '1') }}
+            className="text-gray-500 hover:text-gray-300 text-xs px-2 py-1">
+            Later
+          </button>
+          <button
+            onClick={async () => { const ok = await install(); if (!ok) setDismissed(true) }}
+            className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors">
+            Install
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DynamicFavicon() {
   useEffect(() => {
     fetch('/api/branding/public').then(r => r.json()).then((d: Record<string, string>) => {
@@ -279,6 +311,7 @@ function Router() {
       <NewSiteOnboardingController />
       <ProfileQuestionsController />
       <VideoCallController />
+      <PWAInstallBanner />
       <AppLayout>
         <Switch>
           <Route path="/" component={LandingPage} />

@@ -180,6 +180,31 @@ export default function LoginPage() {
     return () => window.google?.accounts?.id?.cancel()
   }, [socialConfig.googleClientId])
 
+  function handleGoogleLogin() {
+    if (!socialConfig.googleClientId) { toast.error('Google login not configured'); return }
+    setSocialLoading('google')
+    function doPrompt() {
+      if (!window.google?.accounts) { setSocialLoading(null); toast.error('Google SDK failed to load. Check your internet connection.'); return }
+      window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleOneTap, auto_select: false })
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+          setSocialLoading(null)
+          toast.error('Google sign-in was blocked by your browser. Try opening this page in a regular (non-incognito) window, or make sure popups are allowed.', { duration: 6000 })
+        }
+      })
+    }
+    const existing = document.getElementById('google-gsi-script')
+    if (!existing) {
+      const script = document.createElement('script')
+      script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true
+      document.head.appendChild(script)
+      script.onload = doPrompt
+      script.onerror = () => { setSocialLoading(null); toast.error('Failed to load Google SDK') }
+    } else {
+      doPrompt()
+    }
+  }
+
   function handleTabChange(tab: LoginTab) {
     setActiveTab(tab)
     setIdentifier('')
@@ -310,7 +335,7 @@ export default function LoginPage() {
 
           {socialConfig.googleClientId && (
             <button
-              onClick={() => window.google?.accounts?.id?.prompt()}
+              onClick={handleGoogleLogin}
               disabled={!!socialLoading}
               className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all mb-5 disabled:opacity-50 shadow-sm">
               {socialLoading === 'google' ? <Loader2 size={18} className="animate-spin" /> : (

@@ -218,19 +218,26 @@ export default function RegisterPage() {
   }, [])
 
   function initAndPrompt() {
-    if (!window.google?.accounts) { toast.error('Google SDK not loaded'); return }
+    if (!window.google?.accounts) { setSocialLoading(false); toast.error('Google SDK not loaded'); return }
     window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleRegister })
-    window.google.accounts.id.prompt()
+    window.google.accounts.id.prompt((notification: any) => {
+      if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+        setSocialLoading(false)
+        toast.error('Google sign-in was blocked by your browser. Try a regular (non-incognito) window, or make sure popups are allowed.', { duration: 6000 })
+      }
+    })
   }
 
   function handleGoogleSignUp() {
     if (!socialConfig.googleClientId) { toast.error('Google login not configured'); return }
+    setSocialLoading(true)
     const existing = document.getElementById('google-gsi-script')
     if (!existing) {
       const script = document.createElement('script')
       script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true
       document.head.appendChild(script)
       script.onload = () => initAndPrompt()
+      script.onerror = () => { setSocialLoading(false); toast.error('Failed to load Google SDK') }
     } else { initAndPrompt() }
   }
 
