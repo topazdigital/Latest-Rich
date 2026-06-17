@@ -691,11 +691,49 @@ router.get("/config/public", async (req, res) => {
   } catch { res.json({}) }
 })
 
-// Check SMTP connectivity — two-phase: TCP reachability first, then SMTP auth verify.
-// Returns { phase: "tcp"|"auth"|"ok", message, error? } so the UI can show each step.
+// Raw EHLO probe — connects to SMTP server and captures server greeting + capabilities
+// without doing any auth, so we can see what AUTH methods are actually offered.
+async function rawSmtpProbe(host: string, port: number, secure: boolean): Promise<string[]> {
+  const net = await import("net")
+  const tls = await import("tls")
+  const lines: string[] = []
+  return new Promise(resolve => {
+    const done = () => resolve(lines)
+    const timeout = setTimeout(done, 7000)
+    const onData = (data: Buffer) => {
+      lines.push(...data.toString().split("\n").map(s => s.trimEnd()).filter(Boolean))
+      if (lines.some(l => l.startsWith("250 ") || l.includes("250 "))) {
+        clearTimeout(timeout)
+        sock.destroy()
+        done()
+      }
+    }
+    const onReady = () => {
+      sock.write(`EHLO diagnostics\r\n`)
+    }
+    let sock: any
+    if (secure) {
+      sock = tls.connect({ host, port, rejectUnauthorized: false }, onReady)
+    } else {
+      sock = net.createConnection({ host, port }, () => {})
+      sock.once("data", (greeting: Buffer) => {
+        lines.push(...greeting.toString().split("\n").map((s: string) => s.trimEnd()).filter(Boolean))
+        onReady()
+      })
+    }
+    sock.on("data", (d: Buffer) => { if (secure || lines.length > 0) onData(d) })
+    sock.on("error", done)
+    sock.on("close", done)
+    sock.setTimeout(7000, done)
+  })
+}
+
+// Check SMTP connectivity — three-phase: TCP → raw EHLO probe → nodemailer auth.
+// Returns { phase, message?, error?, log?, probe? } for the UI to display.
 router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
+  const smtpLog: string[] = []
   try {
-    const { host, port: portRaw, user, pass, secure: secureRaw, auth_method: authMethod } = req.body
+    const { host, port: portRaw, user, pass, secure: secureRaw } = req.body
     const port = parseInt(portRaw) || 587
     const secure = secureRaw === "1" || secureRaw === true
 
@@ -717,15 +755,19 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     if (!tcpOk) {
       res.json({
         phase: "tcp",
-        error: `Cannot reach ${host}:${port}. The port is closed or blocked by a firewall. ` +
-          `Try port 587 (TLS=No) or port 465 (TLS=Yes). ` +
-          `If using cPanel/DirectAdmin mail, the SMTP port may need to be opened in the server firewall.`,
+        error: `Cannot reach ${host}:${port}. The port is closed or blocked by a firewall.`,
       }); return
     }
 
-    // ── Phase 2: SMTP auth verify with full debug logging ───────────────────
+    // ── Phase 1b: Raw EHLO probe (no auth) — see what the server advertises ─
+    const probe = await rawSmtpProbe(host, port, secure)
+    smtpLog.push("=== RAW SMTP PROBE (EHLO, no auth) ===")
+    smtpLog.push(...probe)
+    smtpLog.push("")
+    console.error("[check-smtp probe]", probe.join(" | "))
+
+    // ── Phase 2: nodemailer auth verify with full debug capture ─────────────
     const nodemailer = await import("nodemailer")
-    const smtpLog: string[] = []
     const customLogger = {
       level() { return true },
       trace(...args: any[]) { smtpLog.push("T " + args.join(" ")) },
@@ -747,21 +789,28 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     if (user && pass) {
       transportOpts.auth = { user, pass }
     }
-    // Only force STARTTLS on port 587; port 465 uses implicit SSL (secure=true)
     if (!secure) transportOpts.requireTLS = true
-    transportOpts.authMethod = 'LOGIN'
-    const transporter = nodemailer.createTransport(transportOpts)
 
+    // Determine best auth method from probe output
+    const probeText = probe.join(" ")
+    if (probeText.includes("AUTH")) {
+      if (probeText.includes("PLAIN")) transportOpts.authMethod = "PLAIN"
+      else if (probeText.includes("LOGIN")) transportOpts.authMethod = "LOGIN"
+    } else {
+      transportOpts.authMethod = "LOGIN"
+    }
+    smtpLog.push(`=== NODEMAILER AUTH (method: ${transportOpts.authMethod}) ===`)
+
+    const transporter = nodemailer.createTransport(transportOpts)
     const verifyPromise = transporter.verify()
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error(
-        `Auth verification timed out after 10s on ${host}:${port}. ` +
-        `Port is reachable but SMTP handshake is stalling — ` +
-        `check that TLS setting matches the port (465=TLS Yes, 587=TLS No).`
+        `Auth verification timed out after 10s on ${host}:${port}.`
       )), 10000)
     )
 
     await Promise.race([verifyPromise, timeoutPromise])
+    console.error("[check-smtp ok]", host, port)
     res.json({
       phase: "ok",
       message: `✓ Connected and authenticated successfully to ${host}:${port}`,
@@ -769,10 +818,14 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
     })
   } catch (err: any) {
     const raw = err?.message || "SMTP check failed"
-    console.error("[check-smtp]", raw)
+    console.error("[check-smtp error]", raw)
+    smtpLog.push("ERROR: " + raw)
+    console.error("[check-smtp log]", smtpLog.join(" | "))
     let msg = raw
     if (raw.includes("535") || raw.toLowerCase().includes("incorrect authentication") || raw.toLowerCase().includes("invalid login")) {
-      msg = `${raw}\n\n💡 Fix: Your credentials were rejected. Double-check your username (full email address) and password in DirectAdmin → Email Accounts. Also make sure TLS/SSL is set correctly: use "No (STARTTLS on port 587)" for port 587, or "Yes (SSL on port 465)" for port 465.`
+      const probeLines = smtpLog.filter(l => l.includes("AUTH"))
+      const authMethods = probeLines.length ? `\nServer advertised: ${probeLines.join("; ")}` : ""
+      msg = `${raw}${authMethods}\n\n💡 The server rejected your credentials. Check the SMTP debug log below for the exact server response. Common fixes:\n• Verify username is the full email address (contact@richdatingnetwork.com)\n• Reset the email account password in DirectAdmin → Email Accounts\n• Try port 465 with TLS=Yes instead of 587`
     }
     res.json({ phase: "auth", error: msg, log: smtpLog })
   }
