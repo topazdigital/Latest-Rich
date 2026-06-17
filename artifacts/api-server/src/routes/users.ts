@@ -5,6 +5,7 @@ import { eq, and, ne, desc, sql, gt, lt, or, isNull, inArray } from "drizzle-orm
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { decodeHtml } from "../lib/html-decode"
+import { containsContactInfo, CONTACT_INFO_BIO_ERROR, CONTACT_INFO_NAME_ERROR } from "../lib/contact-filter"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -14,17 +15,6 @@ function safeUser(u: any) {
   // Decode HTML entities from legacy PHP data (htmlspecialchars'd before storage)
   if (rest.bio) rest.bio = decodeHtml(rest.bio)
   return rest
-}
-
-function containsContactInfo(text: string): boolean {
-  if (!text) return false
-  if (/[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}/.test(text)) return true
-  if (/(\+?[\d][\d\s\.\-\(\)]{5,}[\d])/.test(text)) return true
-  if (/(instagram|insta|ig|whatsapp|whats\s*app|wa|telegram|tg|t\.me|snapchat|snap|sc|facebook|fb|twitter|x\.com|tiktok|tt|wechat|line|kik|skype|discord|viber|signal|linktree|onlyfans)[\s:\/=@\-]*[\w.@\-]{2,}/i.test(text)) return true
-  if (/@[\w.]{3,}/.test(text)) return true
-  if (/https?:\/\/[^\s]{4,}/.test(text)) return true
-  if (/\bwww\.[a-zA-Z0-9\-]{2,}\.[a-zA-Z]{2,}/.test(text)) return true
-  return false
 }
 
 router.get("/me", requireAuth, async (req, res) => {
@@ -75,14 +65,11 @@ router.put("/me", requireAuth, async (req, res) => {
     const { name, bio, city, country, countryCode, birthday, looking, occupation, education, height, bodyType, ethnicity, religion, smoking, drinking, children, relationship } = req.body
 
     if (bio && containsContactInfo(bio)) {
-      res.status(400).json({
-        error: "Your bio cannot contain email addresses, phone numbers, social media handles, or links.",
-        code: "contact_info_in_bio",
-      })
+      res.status(400).json(CONTACT_INFO_BIO_ERROR)
       return
     }
     if (name && containsContactInfo(name)) {
-      res.status(400).json({ error: "Display name cannot contain contact information.", code: "contact_info_in_name" })
+      res.status(400).json(CONTACT_INFO_NAME_ERROR)
       return
     }
 

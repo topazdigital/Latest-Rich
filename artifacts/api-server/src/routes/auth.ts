@@ -8,6 +8,7 @@ import { eq, or } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { requireAuth } from "../lib/auth-middleware"
+import { containsContactInfo } from "../lib/contact-filter"
 import crypto from "crypto"
 
 const router = Router()
@@ -73,7 +74,7 @@ router.get("/check-availability", async (req, res) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, username, phone, gender, lookingFor, birthday, city, country, countryCode } = req.body
+    const { name, email, password, username, phone, gender, lookingFor, birthday, city, country, countryCode, bio } = req.body
     if (!name || !email || !password) {
       res.status(400).json({ error: "Name, email and password are required" })
       return
@@ -88,6 +89,14 @@ router.post("/register", async (req, res) => {
     }
     if (!phone || phone.replace(/[\s+\-()]/g, "").length < 7) {
       res.status(400).json({ error: "Phone number is required" })
+      return
+    }
+    if (containsContactInfo(String(name).trim())) {
+      res.status(400).json({ error: "Your display name cannot contain phone numbers, emails, or social handles." })
+      return
+    }
+    if (bio && containsContactInfo(String(bio).trim())) {
+      res.status(400).json({ error: "Your bio cannot contain phone numbers, email addresses, social media handles, or links." })
       return
     }
 

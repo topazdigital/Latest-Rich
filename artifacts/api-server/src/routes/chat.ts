@@ -4,6 +4,7 @@ import { messagesTable, usersTable, siteConfigTable, activityTable } from "@work
 import { eq, and, or, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
+import { containsContactInfo, CONTACT_INFO_CHAT_ERROR } from "../lib/contact-filter"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -13,23 +14,6 @@ async function getCreditCost(): Promise<number> {
     const [row] = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, "credits_per_message")).limit(1)
     return parseInt(row?.value || "10")
   } catch { return 10 }
-}
-
-// Detect phone numbers, emails, social handles, URLs
-export function containsContactInfo(text: string): boolean {
-  // Email addresses
-  if (/[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}/.test(text)) return true
-  // Phone numbers (7+ digits, various formats)
-  if (/(\+?[\d][\d\s\.\-\(\)]{5,}[\d])/.test(text)) return true
-  // Social media handles with context keywords
-  if (/(instagram|insta|ig|whatsapp|whats\s*app|wa|telegram|tg|t\.me|snapchat|snap|sc|facebook|fb|twitter|x\.com|tiktok|tt|wechat|we\s*chat|line|kik|skype|discord|viber|signal|linktree|onlyfans)[\s:\/=@\-]*[\w.@\-]{2,}/i.test(text)) return true
-  // @username patterns (3+ chars after @)
-  if (/@[\w.]{3,}/.test(text)) return true
-  // HTTP/HTTPS URLs
-  if (/https?:\/\/[^\s]{4,}/.test(text)) return true
-  // www. links
-  if (/\bwww\.[a-zA-Z0-9\-]{2,}\.[a-zA-Z]{2,}/.test(text)) return true
-  return false
 }
 
 router.get("/conversations", requireAuth, async (req, res) => {
@@ -94,11 +78,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     // Block contact info for non-premium real users
     if (sender.fake !== 1 && sender.premium !== 1 && containsContactInfo(message.trim())) {
-      res.status(403).json({
-        error: "premium_required",
-        message: "Upgrade to Premium to share contact details, social handles, or links in chat.",
-        code: "contact_info_blocked",
-      })
+      res.status(403).json(CONTACT_INFO_CHAT_ERROR)
       return
     }
 
