@@ -188,7 +188,7 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
       callback_url: `${appUrl}/api/payments/payhero/callback`,
       description,
     }
-    const response = await fetch("https://api.payhero.co.ke/v2/payments", {
+    const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Basic ${credentials}` },
       body: JSON.stringify(payload),
@@ -276,7 +276,7 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
   const apiPassword = await getConfig("payhero_api_password")
   const credentials = Buffer.from(`${apiUsername}:${apiPassword}`).toString("base64")
   try {
-    const response = await fetch(`https://api.payhero.co.ke/v2/transaction-status/${req.params.ref}`, {
+    const response = await fetch(`https://backend.payhero.co.ke/api/v2/transaction-status/${req.params.ref}`, {
       headers: { Authorization: `Basic ${credentials}` },
     })
     const data = await response.json() as Record<string, unknown>
