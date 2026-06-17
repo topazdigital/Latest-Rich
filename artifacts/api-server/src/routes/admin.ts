@@ -787,7 +787,7 @@ router.post("/check-smtp", requireAuth, requireAdmin, async (req, res) => {
       debug: true,
     }
     if (user && pass) {
-      transportOpts.auth = { user, pass }
+      transportOpts.auth = { user: user.trim(), pass: pass.trim() }
     }
     if (!secure) transportOpts.requireTLS = true
 
@@ -872,7 +872,7 @@ router.post("/test-email", requireAuth, requireAdmin, async (req, res) => {
       socketTimeout: 8000,
     }
     if (smtpUser && smtpPass) {
-      transportOptsTE.auth = { user: smtpUser, pass: smtpPass }
+      transportOptsTE.auth = { user: smtpUser.trim(), pass: smtpPass.trim() }
     }
     if (!smtpSecure) transportOptsTE.requireTLS = true
     transportOptsTE.authMethod = 'LOGIN'
