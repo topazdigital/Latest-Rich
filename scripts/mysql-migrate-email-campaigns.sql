@@ -53,6 +53,17 @@ ALTER TABLE `email_campaigns`
 ALTER TABLE `email_campaigns`
   MODIFY COLUMN `subject` VARCHAR(500) NOT NULL DEFAULT '';
 
+-- Step 4: Fix legacy PHP columns that are NOT NULL with no default.
+--         The new app does not write to these columns, so give them safe defaults
+--         so MySQL stops complaining on every INSERT.
+ALTER TABLE `email_campaigns`
+  MODIFY COLUMN IF EXISTS `message`     TEXT         NOT NULL DEFAULT '',
+  MODIFY COLUMN IF EXISTS `body`        TEXT         NOT NULL DEFAULT '',
+  MODIFY COLUMN IF EXISTS `title`       VARCHAR(500) NOT NULL DEFAULT '',
+  MODIFY COLUMN IF EXISTS `recipients`  TEXT         NOT NULL DEFAULT '',
+  MODIFY COLUMN IF EXISTS `type`        VARCHAR(100) NOT NULL DEFAULT '',
+  MODIFY COLUMN IF EXISTS `content`     LONGTEXT     NOT NULL DEFAULT '';
+
 -- Verify
 SELECT CONCAT(
   'email_campaigns is ready with ', COUNT(*), ' columns.'
