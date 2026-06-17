@@ -179,22 +179,26 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
   const ref = `RDN-${req.userId}-${Date.now()}`
 
   try {
+    const payload = {
+      amount,
+      phone_number: phone,
+      channel_id: parseInt(channelId) || 1,
+      provider: "m-pesa",
+      external_reference: ref,
+      callback_url: `${appUrl}/api/payments/payhero/callback`,
+      description,
+    }
     const response = await fetch("https://api.payhero.co.ke/v2/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Basic ${credentials}` },
-      body: JSON.stringify({
-        amount,
-        phone_number: phone,
-        channel_id: parseInt(channelId) || 1,
-        provider: "m-pesa",
-        external_reference: ref,
-        callback_url: `${appUrl}/api/payments/payhero/callback`,
-        description,
-      }),
+      body: JSON.stringify(payload),
     })
     const data = await response.json() as any
+    console.log("[PayHero] status:", response.status, "body:", JSON.stringify(data))
     if (!response.ok) {
-      res.status(400).json({ error: data.message || "M-Pesa request failed" })
+      const errMsg = data?.message || data?.error || data?.detail || data?.errors
+        || (response.status === 401 ? "Invalid API credentials — check your API username and password in Admin → Payment Providers" : "M-Pesa request failed")
+      res.status(400).json({ error: errMsg, payhero_status: response.status, payhero_body: data })
       return
     }
     await db.insert(ordersTable).values({
@@ -205,6 +209,44 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
   } catch (err: any) {
     console.error("PayHero error:", err)
     res.status(500).json({ error: "Failed to initiate M-Pesa payment" })
+  }
+})
+
+router.post("/payhero/test-credentials", requireAuth, async (req, res) => {
+  const apiUsername = await getConfig("payhero_api_username")
+  const apiPassword = await getConfig("payhero_api_password")
+  if (!apiUsername || !apiPassword) {
+    res.status(400).json({ ok: false, error: "No PayHero credentials saved yet. Enter API Username and Password above, then save." })
+    return
+  }
+  const credentials = Buffer.from(`${apiUsername}:${apiPassword}`).toString("base64")
+  try {
+    const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Basic ${credentials}` },
+      body: JSON.stringify({ amount: 1, phone_number: "0700000000", channel_id: 1, provider: "m-pesa", external_reference: "TEST-CRED-CHECK", callback_url: "https://example.com", description: "credential test" }),
+    })
+    const data = await response.json() as any
+    console.log("[PayHero test-credentials] status:", response.status, "body:", JSON.stringify(data))
+    if (response.status === 401) {
+      res.status(400).json({ ok: false, error: "401 Unauthorized — wrong API username or password", detail: data?.message || data?.error || JSON.stringify(data) })
+      return
+    }
+    if (response.status === 403) {
+      res.status(400).json({ ok: false, error: "403 Forbidden — credentials are valid but account may be restricted", detail: data?.message || JSON.stringify(data) })
+      return
+    }
+    if (response.status === 422 || response.status === 400) {
+      res.json({ ok: true, detail: `Credentials accepted (HTTP ${response.status} = validation error on test data, not auth)` })
+      return
+    }
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from PayHero`, detail: data?.message || data?.error || JSON.stringify(data) })
+      return
+    }
+    res.json({ ok: true, detail: `Credentials accepted (HTTP ${response.status})` })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching PayHero — check server internet access", detail: err?.message })
   }
 })
 

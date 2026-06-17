@@ -239,6 +239,56 @@ function PWAInstallBanner() {
   )
 }
 
+function iOSDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
+}
+
+function IOSInstallBanner() {
+  const [show, setShow] = useState(false)
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('ios_pwa_dismissed') === '1')
+
+  useEffect(() => {
+    if (!dismissed && iOSDevice()) setShow(true)
+  }, [dismissed])
+
+  if (!show || dismissed) return null
+
+  return (
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
+      <div className="bg-gray-900 text-white rounded-2xl p-4 shadow-2xl relative">
+        <button
+          onClick={() => { setDismissed(true); localStorage.setItem('ios_pwa_dismissed', '1') }}
+          className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg leading-none">✕</button>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center text-lg flex-shrink-0">❤️</div>
+          <div>
+            <p className="text-sm font-semibold">Install Rich Dating Network</p>
+            <p className="text-xs text-gray-400">Add to your home screen</p>
+          </div>
+        </div>
+        <div className="bg-gray-800 rounded-xl p-3 space-y-2">
+          <div className="flex items-center gap-3 text-xs text-gray-300">
+            <span className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold flex-shrink-0 text-[10px]">1</span>
+            <span>Tap the <span className="text-white font-semibold">Share</span> button
+              <svg className="inline ml-1 mb-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              at the bottom of Safari
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-300">
+            <span className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold flex-shrink-0 text-[10px]">2</span>
+            <span>Scroll down and tap <span className="text-white font-semibold">"Add to Home Screen"</span></span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-300">
+            <span className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold flex-shrink-0 text-[10px]">3</span>
+            <span>Tap <span className="text-white font-semibold">"Add"</span> — done!</span>
+          </div>
+        </div>
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gray-900 rotate-45" />
+      </div>
+    </div>
+  )
+}
+
 function DynamicFavicon() {
   useEffect(() => {
     fetch('/api/branding/public').then(r => r.json()).then((d: Record<string, string>) => {
@@ -312,6 +362,7 @@ function Router() {
       <ProfileQuestionsController />
       <VideoCallController />
       <PWAInstallBanner />
+      <IOSInstallBanner />
       <AppLayout>
         <Switch>
           <Route path="/" component={LandingPage} />

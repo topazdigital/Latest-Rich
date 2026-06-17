@@ -61,6 +61,8 @@ export default function AdminPayments() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeProvider, setActiveProvider] = useState('stripe')
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null)
 
   useEffect(() => {
     authFetch('/api/payments/config').then(r => r.json()).then(data => { setConfig(data); setLoading(false) }).catch(() => setLoading(false))
@@ -68,6 +70,23 @@ export default function AdminPayments() {
 
   function handleChange(key: string, value: string) {
     setEdits(prev => ({ ...prev, [key]: value }))
+  }
+
+  async function handleTestPayhero() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await authFetch('/api/payments/payhero/test-credentials', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setTestResult({ ok: true, message: '✓ Credentials valid — PayHero accepted your API key', detail: data.detail })
+      } else {
+        setTestResult({ ok: false, message: data.error || 'Connection failed', detail: data.detail })
+      }
+    } catch {
+      setTestResult({ ok: false, message: 'Network error — could not reach PayHero' })
+    }
+    setTesting(false)
   }
 
   async function handleSave() {
@@ -183,7 +202,7 @@ export default function AdminPayments() {
                 ))}
               </div>
 
-              <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button onClick={handleSave} disabled={saving || Object.keys(edits).length === 0} style={{
                   padding: '0.6rem 1.25rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
                   background: Object.keys(edits).length === 0 ? '#374151' : provider.color,
@@ -193,7 +212,38 @@ export default function AdminPayments() {
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
                 {saved && <span style={{ color: '#22c55e', fontSize: '0.83rem', fontWeight: 600 }}>✓ Saved!</span>}
+                {activeProvider === 'payhero' && (
+                  <button onClick={() => { setTestResult(null); handleTestPayhero() }} disabled={testing} style={{
+                    padding: '0.6rem 1.25rem', borderRadius: '0.625rem', border: '1px solid #00a651',
+                    background: 'transparent', color: '#00a651', fontWeight: 700, fontSize: '0.85rem',
+                    fontFamily: 'inherit', cursor: 'pointer', opacity: testing ? 0.7 : 1,
+                  }}>
+                    {testing ? 'Testing...' : '🔍 Test Connection'}
+                  </button>
+                )}
               </div>
+              {activeProvider === 'payhero' && testResult && (
+                <div style={{
+                  marginTop: '0.875rem', padding: '0.75rem 1rem', borderRadius: '0.625rem',
+                  background: testResult.ok ? '#052e16' : '#1c0a0a',
+                  border: `1px solid ${testResult.ok ? '#166534' : '#7f1d1d'}`,
+                }}>
+                  <p style={{ color: testResult.ok ? '#4ade80' : '#f87171', fontSize: '0.83rem', fontWeight: 600, margin: 0 }}>
+                    {testResult.message}
+                  </p>
+                  {testResult.detail && (
+                    <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.3rem', marginBottom: 0 }}>
+                      PayHero says: {testResult.detail}
+                    </p>
+                  )}
+                  {!testResult.ok && (
+                    <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.4rem', marginBottom: 0, lineHeight: 1.5 }}>
+                      💡 The API password is <strong style={{ color: '#9ca3af' }}>not</strong> your PayHero login password.
+                      Go to PayHero → API Keys → delete the "Rich Dating Network" key → create a new one → set a new password → paste that password here.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
