@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, pool, isMysql } from "@workspace/db"
 import { emailCampaignsTable, usersTable, activityTable } from "@workspace/db/schema"
 import { eq, and, ne, desc, gte, lte } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -137,7 +137,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const { name, subject, htmlBody, batchSize, coolingSeconds, filterGender, filterCountry, filterMinAge, filterMaxAge, onlyReal } = req.body
     if (!name || !subject || !htmlBody) { res.status(400).json({ error: "name, subject and htmlBody are required" }); return }
 
-    await db.insert(emailCampaignsTable).values({
+    const vals = {
       name: String(name).trim(),
       subject: String(subject).trim(),
       htmlBody: String(htmlBody),
@@ -157,8 +157,48 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       startedAt: 0,
       completedAt: 0,
       lastSentAt: 0,
-    })
+    }
 
+    if (isMysql) {
+      // Drizzle MySQL has a bug where text().notNull() columns are generated as DEFAULT
+      // even when values are provided. Bypass Drizzle entirely with a raw parameterized query.
+      const conn = await pool.getConnection()
+      try {
+        const [result]: any = await conn.execute(
+          `INSERT INTO email_campaigns
+            (name, subject, html_body, status, total_recipients, sent_count, failed_count,
+             batch_size, cooling_seconds, filter_gender, filter_country, filter_min_age,
+             filter_max_age, only_real, created_by, created_at, started_at, completed_at, last_sent_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            vals.name, vals.subject, vals.htmlBody, vals.status,
+            vals.totalRecipients, vals.sentCount, vals.failedCount,
+            vals.batchSize, vals.coolingSeconds, vals.filterGender, vals.filterCountry,
+            vals.filterMinAge, vals.filterMaxAge, vals.onlyReal,
+            vals.createdBy, vals.createdAt, vals.startedAt, vals.completedAt, vals.lastSentAt,
+          ]
+        )
+        const insertId = result.insertId
+        const [rows]: any = await conn.execute("SELECT * FROM email_campaigns WHERE id = ?", [insertId])
+        const row = rows[0]
+        // Convert snake_case MySQL row to camelCase for the frontend
+        res.json({
+          id: row.id, name: row.name, subject: row.subject, htmlBody: row.html_body,
+          status: row.status, totalRecipients: row.total_recipients, sentCount: row.sent_count,
+          failedCount: row.failed_count, batchSize: row.batch_size, coolingSeconds: row.cooling_seconds,
+          filterGender: row.filter_gender, filterCountry: row.filter_country,
+          filterMinAge: row.filter_min_age, filterMaxAge: row.filter_max_age,
+          onlyReal: row.only_real, createdBy: row.created_by, createdAt: row.created_at,
+          startedAt: row.started_at, completedAt: row.completed_at, lastSentAt: row.last_sent_at,
+        })
+      } finally {
+        conn.release()
+      }
+      return
+    }
+
+    // PostgreSQL — Drizzle works correctly here
+    await db.insert(emailCampaignsTable).values(vals)
     const campaigns = await db.select().from(emailCampaignsTable).orderBy(desc(emailCampaignsTable.id)).limit(1)
     res.json(campaigns[0])
   } catch (err: any) {
