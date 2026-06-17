@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { authFetch } from '../lib/auth'
-import { Loader2, Upload } from 'lucide-react'
+import { Loader2, Upload, CheckCircle, XCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PKG_COLORS = ['#6b7280', '#FF192C', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6']
@@ -31,7 +31,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
 }
 
 export default function CreditsPageWrapper() {
-  const { user, token } = useAuth()
+  const { user, token, refreshUser } = useAuth()
   const [packages, setPackages] = useState(FALLBACK_PACKAGES)
   const [orders, setOrders] = useState<any[]>([])
   const [paymentMethod, setPaymentMethod] = useState<any>(null)
@@ -40,7 +40,11 @@ export default function CreditsPageWrapper() {
   const [loading, setLoading] = useState(false)
   const [polling, setPolling] = useState(false)
   const [mpesaRef, setMpesaRef] = useState('')
+  const [countdown, setCountdown] = useState(90)
+  const [pollOutcome, setPollOutcome] = useState<'waiting' | 'success' | 'cancelled' | 'failed' | 'timeout'>('waiting')
   const [step, setStep] = useState<'packages' | 'confirm' | 'polling' | 'custom'>('packages')
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [paymentType] = useState<'credits'>('credits')
   const [customGateways, setCustomGateways] = useState<any[]>([])
   const [selectedGateway, setSelectedGateway] = useState<any>(null)
@@ -126,27 +130,56 @@ export default function CreditsPageWrapper() {
     setLoading(false)
   }
 
-  async function pollMpesaStatus(ref: string) {
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
+    if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null }
+    setPolling(false)
+  }, [])
+
+  const pollMpesaStatus = useCallback((ref: string) => {
     setPolling(true)
-    let attempts = 0
-    const interval = setInterval(async () => {
-      attempts++
+    setPollOutcome('waiting')
+    setCountdown(90)
+
+    // Countdown timer — ticks every second
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          stopPolling()
+          setPollOutcome('timeout')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    // Status poller — checks PayHero every 4 seconds
+    pollIntervalRef.current = setInterval(async () => {
       try {
         const res = await authFetch(`/api/payments/payhero/status/${ref}`)
         const data = await res.json()
-        if (data.orderStatus === 'completed' || data.ResultCode === 0) {
-          clearInterval(interval); setPolling(false)
-          toast.success('Payment successful! Credits added. 🎉')
-          setStep('packages')
+
+        if (data.finalStatus === 'completed' || data.orderStatus === 'completed') {
+          stopPolling()
+          setPollOutcome('success')
+          toast.success('Payment received! Credits added. 🎉')
+          await refreshUser()
           authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
-        } else if (data.ResultCode && data.ResultCode !== 0) {
-          clearInterval(interval); setPolling(false)
-          toast.error('M-Pesa payment failed or cancelled'); setStep('packages')
+          return
         }
-      } catch {}
-      if (attempts >= 20) { clearInterval(interval); setPolling(false) }
-    }, 5000)
-  }
+        if (data.finalStatus === 'cancelled') {
+          stopPolling()
+          setPollOutcome('cancelled')
+          return
+        }
+        if (data.finalStatus === 'failed') {
+          stopPolling()
+          setPollOutcome('failed')
+          return
+        }
+      } catch { /* network hiccup — keep polling */ }
+    }, 4000)
+  }, [stopPolling, refreshUser])
 
   async function handleCustomSubmit() {
     if (!selectedGateway || !selectedPkg || !proof.trim()) {
@@ -379,20 +412,106 @@ export default function CreditsPageWrapper() {
       {/* Step: M-Pesa polling */}
       {step === 'polling' && (
         <div style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '1.25rem', padding: '2rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📲</div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.5rem' }}>Check your phone!</h2>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-            An M-Pesa STK push has been sent to your phone.<br />Enter your <strong>M-Pesa PIN</strong> to complete the payment.
-          </p>
-          {polling ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <Loader2 size={32} color="#00a651" style={{ animation: 'spin 1s linear infinite' }} />
-              <p style={{ color: '#9ca3af', fontSize: '0.82rem' }}>Waiting for confirmation...</p>
-            </div>
-          ) : (
-            <button onClick={() => setStep('packages')} style={{ padding: '0.65rem 1.5rem', borderRadius: '0.875rem', border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              Back to packages
-            </button>
+
+          {/* WAITING — user needs to enter PIN */}
+          {pollOutcome === 'waiting' && (
+            <>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📲</div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.5rem' }}>Check your phone!</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                An M-Pesa STK push has been sent to your phone.<br />
+                Enter your <strong>M-Pesa PIN</strong> to complete the payment.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.875rem' }}>
+                <div style={{ position: 'relative', width: '5rem', height: '5rem' }}>
+                  <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+                    <circle
+                      cx="40" cy="40" r="34" fill="none"
+                      stroke={countdown > 20 ? '#00a651' : countdown > 10 ? '#f59e0b' : '#ef4444'}
+                      strokeWidth="6"
+                      strokeDasharray={`${2 * Math.PI * 34}`}
+                      strokeDashoffset={`${2 * Math.PI * 34 * (1 - countdown / 90)}`}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.5s' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: countdown > 20 ? '#00a651' : countdown > 10 ? '#f59e0b' : '#ef4444' }}>
+                      {countdown}s
+                    </span>
+                  </div>
+                </div>
+                <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Waiting for PIN confirmation…</p>
+              </div>
+            </>
+          )}
+
+          {/* SUCCESS */}
+          {pollOutcome === 'success' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <CheckCircle size={56} color="#00a651" />
+              </div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.2rem', color: '#111827', marginBottom: '0.5rem' }}>Payment received!</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Your credits have been added to your account.</p>
+              <button onClick={() => { setStep('packages'); setPollOutcome('waiting') }} style={{ padding: '0.7rem 2rem', borderRadius: '0.875rem', border: 'none', background: '#00a651', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Back to credits
+              </button>
+            </>
+          )}
+
+          {/* CANCELLED — user ignored / dismissed the STK push */}
+          {pollOutcome === 'cancelled' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <XCircle size={56} color="#f59e0b" />
+              </div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.5rem' }}>PIN not entered</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                You dismissed or didn't respond to the M-Pesa prompt.<br />No charge was made. Try again and enter your PIN when prompted.
+              </p>
+              <button onClick={() => { setStep('confirm'); setPollOutcome('waiting') }} style={{ padding: '0.7rem 2rem', borderRadius: '0.875rem', border: 'none', background: '#00a651', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Try again
+              </button>
+            </>
+          )}
+
+          {/* FAILED — payment declined or other error */}
+          {pollOutcome === 'failed' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <XCircle size={56} color="#ef4444" />
+              </div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.5rem' }}>Payment failed</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                The M-Pesa payment was declined.<br />Check your M-Pesa balance and try again.
+              </p>
+              <button onClick={() => { setStep('confirm'); setPollOutcome('waiting') }} style={{ padding: '0.7rem 2rem', borderRadius: '0.875rem', border: 'none', background: '#FF192C', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Try again
+              </button>
+            </>
+          )}
+
+          {/* TIMEOUT — took too long */}
+          {pollOutcome === 'timeout' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <Clock size={56} color="#9ca3af" />
+              </div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.5rem' }}>Request timed out</h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                The STK push expired before your PIN was entered.<br />If you were charged, your credits will be added automatically. Otherwise, try again.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <button onClick={() => { setStep('packages'); setPollOutcome('waiting') }} style={{ padding: '0.7rem 1.5rem', borderRadius: '0.875rem', border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Back
+                </button>
+                <button onClick={() => { setStep('confirm'); setPollOutcome('waiting') }} style={{ padding: '0.7rem 1.5rem', borderRadius: '0.875rem', border: 'none', background: '#00a651', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Try again
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

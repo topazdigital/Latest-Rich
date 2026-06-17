@@ -276,12 +276,47 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
   const apiPassword = await getConfig("payhero_api_password")
   const credentials = Buffer.from(`${apiUsername}:${apiPassword}`).toString("base64")
   try {
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, req.params.ref as string)).limit(1)
+
+    // If our DB already shows completed (callback already fired), return immediately
+    if (order?.status === "completed") {
+      res.json({ orderStatus: "completed", finalStatus: "completed" })
+      return
+    }
+
     const response = await fetch(`https://backend.payhero.co.ke/api/v2/transaction-status/${req.params.ref}`, {
       headers: { Authorization: `Basic ${credentials}` },
     })
     const data = await response.json() as Record<string, unknown>
-    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, req.params.ref as string)).limit(1)
-    res.json({ ...data, orderStatus: order?.status || "pending" })
+
+    const phStatus = String(data.status || "").toUpperCase()
+    const resultCode = data.ResultCode ?? data.resultCode ?? null
+
+    // Belt-and-suspenders: PayHero says SUCCESS but callback hasn't fired yet — fulfill now
+    if ((phStatus === "SUCCESS" || resultCode === 0) && order && order.status === "pending") {
+      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+      if (order.type === "credits") {
+        const creditsToAdd = order.credits || 0
+        if (creditsToAdd > 0) {
+          const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+          if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+        }
+      } else if (order.type === "premium") {
+        const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
+        if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+      }
+      res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
+      return
+    }
+
+    // Determine final outcome for non-success states
+    let finalStatus = "pending"
+    if (phStatus === "FAILED" || phStatus === "CANCELLED" || phStatus === "TIMEOUT") {
+      // ResultCode 1032 = user cancelled/ignored the STK push
+      finalStatus = (resultCode === 1032 || resultCode === "1032") ? "cancelled" : "failed"
+    }
+
+    res.json({ ...data, orderStatus: order?.status || "pending", finalStatus })
   } catch (err: any) {
     res.status(500).json({ error: "Failed to check status" })
   }
