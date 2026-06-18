@@ -76,6 +76,12 @@ router.post("/", requireAuth, async (req, res) => {
     const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
     if (!sender) { res.status(404).json({ error: "User not found" }); return }
 
+    // Block fake→fake messaging
+    const [toUser] = await db.select({ fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
+    if (sender.fake === 1 && toUser?.fake === 1) {
+      res.status(403).json({ error: "Cannot message between fake accounts" }); return
+    }
+
     // Block contact info for non-premium real users
     if (sender.fake !== 1 && sender.premium !== 1 && containsContactInfo(message.trim())) {
       res.status(403).json(CONTACT_INFO_CHAT_ERROR)

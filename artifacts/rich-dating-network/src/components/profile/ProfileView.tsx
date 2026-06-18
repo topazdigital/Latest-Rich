@@ -193,7 +193,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         <div className="relative bg-gray-900 overflow-hidden" style={{ aspectRatio: '4/5', maxHeight: '560px', minHeight: '340px' }}>
           {/* Main photo */}
           <img
-            src={getPhotoUrl(user.photoThumb || user.photo)}
+            src={getPhotoUrl(user.photo || user.photoThumb)}
             alt={user.name || 'Profile'}
             className="absolute inset-0 w-full h-full object-cover object-center"
             style={{ height: '100%', width: '100%' }}
@@ -330,9 +330,9 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               </div>
             )}
 
-            {/* Bio snippet */}
+            {/* Bio — show full text */}
             {user.bio && (
-              <p className="text-gray-500 text-sm leading-relaxed line-clamp-2 pt-0.5">{htmlDecode(user.bio)}</p>
+              <p className="text-gray-500 text-sm leading-relaxed pt-0.5">{htmlDecode(user.bio)}</p>
             )}
 
             {/* Block/Report */}
@@ -359,7 +359,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               </div>
             )}
             {user.bio && (
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">{htmlDecode(user.bio)}</p>
+              <p className="text-gray-600 text-sm leading-relaxed">{htmlDecode(user.bio)}</p>
             )}
           </div>
         )}

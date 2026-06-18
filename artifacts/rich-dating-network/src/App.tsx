@@ -38,7 +38,7 @@ import VideoCallModal from "./components/common/VideoCallModal"
 import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
 
-const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
+const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
 const ADMIN_PREFIXES = ["/admin"]
 const MODERATOR_PREFIXES = ["/moderator"]
 
