@@ -263,8 +263,8 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               return (
                 /* Card IS the aspect-ratio box — nothing can cause grey space below */
                 <div key={u.id}
-                  className={`group relative rounded-2xl overflow-hidden cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
-                  style={{ aspectRatio: '3/4', background: getCardGradient(u.name) }}
+                  className={`group relative rounded-2xl overflow-hidden bg-gray-200 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  style={{ aspectRatio: '3/4' }}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(profileUrl(u)) }}>
                   {/* Photo — use large first, fall back to thumb; object-center centers the crop */}
                   <img src={getPhotoUrl(u.photo || u.photoThumb)} alt={u.name}
@@ -362,18 +362,4 @@ function isOwnCard(cardUserId: number, myUserId: number) {
   return cardUserId === myUserId
 }
 
-const CARD_GRADIENTS = [
-  'linear-gradient(135deg,#667eea,#764ba2)',
-  'linear-gradient(135deg,#f093fb,#f5576c)',
-  'linear-gradient(135deg,#4facfe,#00f2fe)',
-  'linear-gradient(135deg,#43e97b,#38f9d7)',
-  'linear-gradient(135deg,#fa709a,#fee140)',
-  'linear-gradient(135deg,#a18cd1,#fbc2eb)',
-  'linear-gradient(135deg,#fccb90,#d57eeb)',
-  'linear-gradient(135deg,#84fab0,#8fd3f4)',
-]
 
-function getCardGradient(name: string): string {
-  const idx = (name?.charCodeAt(0) || 0) % CARD_GRADIENTS.length
-  return CARD_GRADIENTS[idx]
-}
