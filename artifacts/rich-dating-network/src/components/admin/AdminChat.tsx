@@ -137,18 +137,54 @@ export default function AdminChat() {
       <div style={{ display: "grid", gridTemplateColumns: selected ? "320px 1fr" : "1fr", gap: "0.75rem", minHeight: 500 }}>
         {/* Conversation list */}
         <div style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600, overflowY: "auto" }}>
-          {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
-              <div style={{ width: "1.5rem", height: "1.5rem", border: "2px solid #FF192C", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            </div>
-          ) : conversations.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#475569" }}>
-              <MessageSquare size={32} style={{ margin: "0 auto 0.75rem" }} />
-              <p style={{ fontWeight: 600 }}>No conversations yet</p>
-              <p style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>Real users need to message fake profiles first</p>
-            </div>
-          ) : (
-            conversations.map(conv => {
+          {/* Filter tabs */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1e293b", flexShrink: 0 }}>
+            {([
+              { key: "all",          label: "All",        color: "#64748b" },
+              { key: "needs_reply",  label: "🔴 Reply",   color: "#FF192C" },
+              { key: "follow_up",    label: "✅ Follow Up",color: "#22c55e" },
+            ] as { key: ChatFilter; label: string; color: string }[]).map(tab => {
+              const count =
+                tab.key === "needs_reply" ? conversations.filter(c => !c.lastSenderFake).length :
+                tab.key === "follow_up"   ? conversations.filter(c => c.lastSenderFake && c.lastMsgRead).length :
+                conversations.length
+              return (
+                <button key={tab.key} onClick={() => setChatFilter(tab.key)} style={{
+                  flex: 1, padding: "0.5rem 0.25rem", background: "transparent", border: "none",
+                  borderBottom: chatFilter === tab.key ? `2px solid ${tab.color}` : "2px solid transparent",
+                  color: chatFilter === tab.key ? "#fff" : "#475569",
+                  fontSize: "0.68rem", fontWeight: 700, cursor: "pointer", transition: "color 0.15s",
+                  fontFamily: "inherit",
+                }}>
+                  {tab.label} {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {(() => {
+            const visible = conversations.filter(c =>
+              chatFilter === "needs_reply" ? !c.lastSenderFake :
+              chatFilter === "follow_up"   ? c.lastSenderFake && c.lastMsgRead :
+              true
+            )
+            if (loading) return (
+              <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
+                <div style={{ width: "1.5rem", height: "1.5rem", border: "2px solid #FF192C", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              </div>
+            )
+            if (visible.length === 0) return (
+              <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#475569" }}>
+                <MessageSquare size={32} style={{ margin: "0 auto 0.75rem" }} />
+                <p style={{ fontWeight: 600 }}>
+                  {chatFilter === "needs_reply" ? "No conversations waiting for a reply" :
+                   chatFilter === "follow_up"   ? "No conversations where user has read your last message" :
+                   "No conversations yet"}
+                </p>
+                {chatFilter !== "all" && <p style={{ fontSize: "0.72rem", marginTop: "0.25rem", color: "#334155" }}>Switch to "All" to see everything</p>}
+              </div>
+            )
+            return visible.map(conv => {
               const isActive = selected?.key === conv.key
               const lockedByOther = conv.lock && conv.lock.moderatorId !== myUserId
               return (
@@ -199,7 +235,7 @@ export default function AdminChat() {
                 </button>
               )
             })
-          )}
+          })()}
           {total > 50 && (
             <div style={{ display: "flex", gap: "0.5rem", padding: "0.5rem", borderTop: "1px solid #1e293b" }}>
               <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={S.btn("#1e293b")}>←</button>

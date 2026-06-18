@@ -266,21 +266,11 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                   className={`group relative rounded-2xl overflow-hidden cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
                   style={{ aspectRatio: '3/4', background: getCardGradient(u.name) }}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(profileUrl(u)) }}>
-                  {/* Initials fallback — shows when no photo */}
-                  {!u.photo && !u.photoThumb && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-white font-bold text-4xl opacity-60 select-none">
-                        {u.name?.charAt(0)?.toUpperCase() || '?'}
-                      </span>
-                    </div>
-                  )}
-                  {/* Photo — use large first, fall back to thumb */}
-                  {(u.photo || u.photoThumb) && (
-                    <img src={getPhotoUrl(u.photo || u.photoThumb)} alt={u.name}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  )}
+                  {/* Photo — use large first, fall back to thumb; object-center centers the crop */}
+                  <img src={getPhotoUrl(u.photo || u.photoThumb)} alt={u.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
                   {/* Dark gradient at bottom */}
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)' }} />
                   {/* Top-left badge */}
