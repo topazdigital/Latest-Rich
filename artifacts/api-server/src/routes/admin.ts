@@ -149,21 +149,32 @@ router.put("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const [before] = await db.select({ name: usersTable.name, admin: usersTable.admin, premium: usersTable.premium }).from(usersTable).where(eq(usersTable.id, id)).limit(1)
     const { name, email, city, country, bio, credits, premium, premiumExpiry, fake, admin, banned, verified, gender, looking, age } = req.body
     const adminLevel = parseInt(admin)
+    const newAdminLevel = isNaN(adminLevel) ? 0 : Math.max(0, Math.min(2, adminLevel))
     await db.update(usersTable).set({
       name, email, city, country, bio,
       credits: parseInt(credits) || 0,
       premium: parseInt(premium) || 0,
       premiumExpiry: parseInt(premiumExpiry) || 0,
       fake: parseInt(fake) || 0,
-      admin: isNaN(adminLevel) ? 0 : Math.max(0, Math.min(2, adminLevel)),
+      admin: newAdminLevel,
       banned: parseInt(banned) || 0,
       verified: parseInt(verified) || 0,
       gender: parseInt(gender) || 1,
       looking: parseInt(looking) || 2,
       age: parseInt(age) || 0,
     }).where(eq(usersTable.id, id))
+    if (before) {
+      const roleNames = ["User", "Moderator", "Admin"]
+      if (before.admin !== newAdminLevel) {
+        await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: "Role changed", message: `${before.name} (id:${id}) ${roleNames[before.admin ?? 0] ?? "?"} → ${roleNames[newAdminLevel] ?? "?"}`, time: now() }).catch(() => {})
+      }
+      if (before.premium !== parseInt(premium)) {
+        await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: parseInt(premium) ? "Premium granted" : "Premium revoked", message: `${before.name} (id:${id})`, time: now() }).catch(() => {})
+      }
+    }
     res.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
@@ -176,7 +187,11 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const [user] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, id)).limit(1)
     await db.delete(usersTable).where(eq(usersTable.id, id))
+    if (user) {
+      await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: "User deleted", message: `${user.name} (${user.email}, id: ${id})`, time: now() }).catch(() => {})
+    }
     res.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
@@ -217,6 +232,7 @@ router.post("/users/:id/credits", requireAuth, requireAdmin, async (req, res) =>
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     const newCredits = Math.max(0, (user.credits || 0) + amount)
     await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, id))
+    await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: `Credits ${amount >= 0 ? "added" : "removed"}`, message: `${user.name} (id:${id}) ${amount >= 0 ? "+" : ""}${amount} credits → ${newCredits} total`, time: now() }).catch(() => {})
     res.json({ credits: newCredits })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"

@@ -144,11 +144,24 @@ function stopSender(campaignId: number) {
 // Resume any campaigns that were "sending" when the server last restarted
 export async function resumeInProgressCampaigns() {
   try {
-    const rows = await db.select().from(emailCampaignsTable)
-      .where(eq(emailCampaignsTable.status as any, "sending"))
+    // Use raw SQL for MySQL compatibility — Drizzle enum comparisons can be flaky on MySQL
+    let rows: any[]
+    if (isMysql) {
+      const conn = await pool.getConnection()
+      try {
+        const [r]: any = await conn.execute("SELECT * FROM email_campaigns WHERE status = 'sending'")
+        rows = r
+      } finally { conn.release() }
+    } else {
+      rows = await db.select().from(emailCampaignsTable)
+        .where(eq(emailCampaignsTable.status as any, "sending"))
+    }
     for (const campaign of rows) {
-      console.log(`[email-campaigns] Resuming campaign #${campaign.id} "${campaign.name}" from offset ${campaign.sentCount}`)
-      startCampaignSender(campaign.id).catch(console.error)
+      const cid = campaign.id ?? campaign.id
+      const cname = campaign.name ?? "(unnamed)"
+      const csentCount = campaign.sent_count ?? campaign.sentCount ?? 0
+      console.log(`[email-campaigns] Resuming campaign #${cid} "${cname}" from offset ${csentCount}`)
+      startCampaignSender(Number(cid)).catch(console.error)
     }
   } catch (e) {
     console.error("[email-campaigns] Failed to resume in-progress campaigns:", e)
@@ -317,15 +330,17 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 })
 
-// POST /api/admin/email-campaigns/:id/start — start sending
+// POST /api/admin/email-campaigns/:id/start — start or resume sending
 router.post("/:id/start", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1)
     if (!campaign) { res.status(404).json({ error: "Not found" }); return }
-    if (campaign.status === "sending") { res.json({ ok: true, message: "Already sending" }); return }
-    await db.update(emailCampaignsTable).set({ status: "sending", startedAt: campaign.startedAt || now() }).where(eq(emailCampaignsTable.id, id))
-    await db.insert(activityTable as any).values({ type: "email_campaign", userId: req.userId, title: "Campaign started", message: `"${campaign.name}" started`, time: now() })
+    if (campaign.status !== "sending") {
+      await db.update(emailCampaignsTable).set({ status: "sending", startedAt: campaign.startedAt || now() }).where(eq(emailCampaignsTable.id, id))
+      await db.insert(activityTable as any).values({ type: "email_campaign", userId: req.userId, title: "Campaign started", message: `"${campaign.name}" started/resumed`, time: now() })
+    }
+    // Always ensure the sender loop is running (handles server-restart resume)
     startCampaignSender(id).catch(console.error)
     res.json({ ok: true })
   } catch (err: any) {

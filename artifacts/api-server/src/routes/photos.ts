@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { photosTable, usersTable, siteConfigTable } from "@workspace/db/schema"
+import { photosTable, usersTable, siteConfigTable, activityTable } from "@workspace/db/schema"
 import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import multer from "multer"
@@ -190,17 +190,22 @@ router.get("/mine", requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: "Failed" }) }
 })
 
-router.put("/admin/approve/:id", requireAuth, async (req, res) => {
+router.put("/admin/approve/:id", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
+    const [photo] = await db.select().from(photosTable).where(eq(photosTable.id, id)).limit(1)
     await db.update(photosTable).set({ approved: 1 }).where(eq(photosTable.id, id))
+    if (photo) {
+      await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: "Photo approved", message: `Photo id:${id} for user id:${photo.userId}`, time: now() }).catch(() => {})
+      await db.update(usersTable).set({ photo: photo.photo, photoThumb: photo.thumb || photo.photo }).where(and(eq(usersTable.id, photo.userId), eq(usersTable.photo as any, ""))).catch(() => {})
+    }
     res.json({ success: true })
   } catch { res.status(500).json({ error: "Failed" }) }
 })
 
-router.delete("/admin/reject/:id", requireAuth, async (req, res) => {
+router.delete("/admin/reject/:id", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
@@ -209,6 +214,7 @@ router.delete("/admin/reject/:id", requireAuth, async (req, res) => {
     if (photo) {
       await db.delete(photosTable).where(eq(photosTable.id, id))
       try { fs.unlinkSync(path.join(uploadDir, photo.photo || "")) } catch {}
+      await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: "Photo rejected", message: `Photo id:${id} for user id:${photo.userId}`, time: now() }).catch(() => {})
     }
     res.json({ success: true })
   } catch { res.status(500).json({ error: "Failed" }) }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
+import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { Check, X, AlertTriangle, Image, User } from "lucide-react"
+import { Check, X, AlertTriangle, User } from "lucide-react"
 
 interface PendingPhoto {
   photo: { id: number; photo: string; thumb: string; approved: number; flagged: number; flagReason: string; created: number }
@@ -89,16 +90,21 @@ export default function AdminPhotos() {
               {/* Photo */}
               <div style={{ position: 'relative', paddingBottom: '100%', background: '#1e293b' }}>
                 <img
-                  src={`/api/uploads/${photo.photo}`}
+                  src={getPhotoUrl(photo.photo)}
                   alt="Pending"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={e => {
                     const el = e.target as HTMLImageElement
-                    el.style.display = 'none'
-                    const parent = el.parentElement!
-                    parent.style.display = 'flex'
-                    parent.style.alignItems = 'center'
-                    parent.style.justifyContent = 'center'
+                    if (!el.dataset.fallback) {
+                      el.dataset.fallback = "1"
+                      el.src = `/api/uploads/${photo.photo}`
+                    } else {
+                      el.style.display = 'none'
+                      const parent = el.parentElement!
+                      parent.style.display = 'flex'
+                      parent.style.alignItems = 'center'
+                      parent.style.justifyContent = 'center'
+                    }
                   }}
                 />
                 {photo.flagged === 1 && (

@@ -103,7 +103,7 @@ export default function AdminUsers() {
                   <tr key={u.id} className="border-b border-gray-200/50 hover:bg-gray-50/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <img src={getPhotoUrl(u.photo)} alt="" className="w-9 h-9 rounded-full object-cover bg-gray-100" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                        <img src={getPhotoUrl(u.photo)} alt="" className="w-9 h-9 rounded-full object-cover bg-gray-100 flex-shrink-0" style={{ minWidth: '2.25rem', minHeight: '2.25rem' }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
                         <div>
                           <div className="text-white font-medium">{u.name}</div>
                           <div className="text-gray-500 text-xs">{u.email} · #{u.id}</div>
