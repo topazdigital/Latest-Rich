@@ -159,11 +159,42 @@ export default function AdminPage() {
       </div>
 
       <style>{`
+        /* ── Desktop: sidebar always visible ── */
         @media (min-width: 768px) {
-          .admin-sidebar { transform: translateX(0) !important; position: relative !important; }
+          .admin-sidebar { transform: translateX(0) !important; position: relative !important; flex-shrink: 0; }
           .admin-main { margin-left: 0; }
           .sidebar-toggle { display: none !important; }
         }
+
+        /* ── Mobile: full-width content, scrollable ── */
+        @media (max-width: 767px) {
+          .admin-content { padding: 0.75rem !important; }
+          /* All inline-style grids: collapse to single column on mobile */
+          .admin-content [style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .admin-content [style*="grid-template-columns: repeat(3"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .admin-content [style*="grid-template-columns: repeat(2"] {
+            grid-template-columns: 1fr !important;
+          }
+          .admin-content [style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          /* Tables: make horizontally scrollable */
+          .admin-content table { display: block; overflow-x: auto; white-space: nowrap; }
+          /* Flex rows that would overflow: wrap */
+          .admin-content [style*="display: flex"][style*="gap"] { flex-wrap: wrap; }
+        }
+
+        /* ── Very small screens (<480px) ── */
+        @media (max-width: 479px) {
+          .admin-content [style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+
         /* Light-theme overrides for admin content panels */
         .admin-content input:not([type="checkbox"]):not([type="radio"]),
         .admin-content select,
@@ -177,6 +208,17 @@ export default function AdminPage() {
           background: #ffffff !important;
         }
         .admin-content .placeholder-gray-600::placeholder { color: #9ca3af; }
+
+        /* ── Responsive overrides for known admin components ── */
+
+        /* AdminUsers table wrapper */
+        .admin-users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* Campaign stats grid: 2-col on mobile */
+        @media (max-width: 640px) {
+          .campaign-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .campaign-meta-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
     </div>
   )

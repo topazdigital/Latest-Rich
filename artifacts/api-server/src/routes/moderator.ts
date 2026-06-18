@@ -40,8 +40,19 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
     const limit = 50
     const offset = (page - 1) * limit
 
-    const rows = (await db.execute(sql`
-      WITH pairs AS (
+    // Helper: Drizzle mysql2 driver wraps SELECT results as [rows, fields] — extract rows only
+    function extractRows(result: any): any[] {
+      if (isMysql && Array.isArray(result) && Array.isArray(result[0])) return result[0]
+      return Array.isArray(result) ? result : []
+    }
+
+    const rows = extractRows(await db.execute(sql`
+      SELECT
+        m.uid1, m.uid2, m.last_time, m.msg_count,
+        u1t.id AS u1_id, COALESCE(u1t.name,'') AS u1_name, COALESCE(u1t.photo,'') AS u1_photo, u1t.fake AS u1_fake,
+        u2t.id AS u2_id, COALESCE(u2t.name,'') AS u2_name, COALESCE(u2t.photo,'') AS u2_photo, u2t.fake AS u2_fake,
+        COALESCE(lm.message,'') AS last_message
+      FROM (
         SELECT
           LEAST(u1, u2) AS uid1,
           GREATEST(u1, u2) AS uid2,
@@ -50,35 +61,28 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
           COUNT(*) AS msg_count
         FROM messages
         GROUP BY LEAST(u1, u2), GREATEST(u1, u2)
-      )
-      SELECT
-        pairs.uid1, pairs.uid2, pairs.last_time, pairs.msg_count,
-        u1t.id AS u1_id, u1t.name AS u1_name, u1t.photo AS u1_photo, u1t.fake AS u1_fake,
-        u2t.id AS u2_id, u2t.name AS u2_name, u2t.photo AS u2_photo, u2t.fake AS u2_fake,
-        lm.message AS last_message
-      FROM pairs
-      JOIN users u1t ON u1t.id = pairs.uid1
-      JOIN users u2t ON u2t.id = pairs.uid2
-      JOIN messages lm ON lm.id = pairs.last_msg_id
+      ) m
+      JOIN users u1t ON u1t.id = m.uid1
+      JOIN users u2t ON u2t.id = m.uid2
+      LEFT JOIN messages lm ON lm.id = m.last_msg_id
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-      ORDER BY pairs.last_time DESC
+      ORDER BY m.last_time DESC
       LIMIT ${limit} OFFSET ${offset}
-    `) as unknown) as any[]
+    `))
 
-    const countResult = ((await db.execute(sql`
-      WITH pairs AS (
+    const countRaw = extractRows(await db.execute(sql`
+      SELECT COUNT(*) AS cnt
+      FROM (
         SELECT LEAST(u1, u2) AS uid1, GREATEST(u1, u2) AS uid2
         FROM messages
         GROUP BY LEAST(u1, u2), GREATEST(u1, u2)
-      )
-      SELECT COUNT(*) AS count
-      FROM pairs
-      JOIN users u1t ON u1t.id = pairs.uid1
-      JOIN users u2t ON u2t.id = pairs.uid2
+      ) m
+      JOIN users u1t ON u1t.id = m.uid1
+      JOIN users u2t ON u2t.id = m.uid2
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-    `)) as unknown) as any[]
+    `))
 
-    const total = Number((countResult[0] as any)?.count || 0)
+    const total = Number((countRaw[0] as any)?.cnt || (countRaw[0] as any)?.count || 0)
 
     const locks = await db.select().from(chatLocksTable)
     const lockMap = new Map(locks.map(l => [l.conversationKey, l]))

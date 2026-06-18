@@ -211,18 +211,21 @@ export default function AdminEmailCampaigns() {
     try {
       const r = await authFetch("/api/admin/email-campaigns")
       const d = await r.json()
-      setCampaigns(Array.isArray(d) ? d : [])
+      const list: Campaign[] = Array.isArray(d) ? d : []
+      setCampaigns(list)
+      // Sync detail view when campaigns reload so Pause/Start buttons stay correct
+      setSelected(prev => prev ? (list.find(c => c.id === prev.id) ?? prev) : null)
     } catch { toast.error("Failed to load campaigns") }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  // Auto-refresh running campaigns
+  // Auto-refresh running campaigns every 4 seconds
   useEffect(() => {
     const running = campaigns.some(c => c.status === "sending")
     if (!running) return
-    const t = setInterval(load, 5000)
+    const t = setInterval(load, 4000)
     return () => clearInterval(t)
   }, [campaigns, load])
 
@@ -478,15 +481,28 @@ export default function AdminEmailCampaigns() {
   // ── DETAIL VIEW ────────────────────────────────────────────────────
   if (view === "detail" && selected) {
     const pct = progress(selected)
+    // Orphaned = status is "sending" but was never properly started (startedAt=0, sentCount=0)
+    const isOrphaned = selected.status === "sending" && !selected.startedAt && !selected.sentCount
     return (
       <div style={{ maxWidth: "760px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
           <button onClick={() => { setView("list"); setSelected(null) }} style={BTN_GHOST}>← Back</button>
           <h2 style={{ color: "#fff", fontWeight: 800, fontSize: "1.1rem", margin: 0, flex: 1 }}>{selected.name}</h2>
           <span style={{ background: statusColor(selected.status) + "22", color: statusColor(selected.status), padding: "0.25rem 0.75rem", borderRadius: "50px", fontSize: "0.75rem", fontWeight: 700 }}>
             {statusLabel(selected.status)}
           </span>
         </div>
+
+        {/* Orphaned campaign warning */}
+        {isOrphaned && (
+          <div style={{ background: "#78350f22", border: "1px solid #f59e0b", borderRadius: "0.75rem", padding: "0.875rem 1.1rem", marginBottom: "1.25rem", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+            <span style={{ fontSize: "1.1rem" }}>⚠️</span>
+            <div>
+              <div style={{ color: "#f59e0b", fontWeight: 700, fontSize: "0.85rem", marginBottom: "0.2rem" }}>Campaign was never properly started</div>
+              <div style={{ color: "#94a3b8", fontSize: "0.78rem", lineHeight: 1.5 }}>This campaign shows <strong style={{ color: "#f59e0b" }}>Running</strong> status but has 0 emails sent and no start time. It was likely set to this state by a server restart or a previous bug. Pause it, then restart — or reset it to Draft to reconfigure and send fresh.</div>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "0.75rem", marginBottom: "1.25rem" }}>
@@ -620,11 +636,14 @@ export default function AdminEmailCampaigns() {
             >
               <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem", flexWrap: "wrap" }}>
                     <span style={{ color: "#e2e8f0", fontWeight: 700, fontSize: "0.9rem" }}>{c.name}</span>
                     <span style={{ background: statusColor(c.status) + "22", color: statusColor(c.status), padding: "0.15rem 0.5rem", borderRadius: "50px", fontSize: "0.68rem", fontWeight: 700, flexShrink: 0 }}>
                       {statusLabel(c.status)}
                     </span>
+                    {c.status === "sending" && !c.startedAt && !c.sentCount && (
+                      <span style={{ background: "#78350f44", color: "#f59e0b", padding: "0.15rem 0.5rem", borderRadius: "50px", fontSize: "0.66rem", fontWeight: 700, flexShrink: 0 }}>⚠️ Orphaned</span>
+                    )}
                   </div>
                   <div style={{ color: "#64748b", fontSize: "0.78rem" }}>{c.subject}</div>
                   {c.totalRecipients > 0 && (
