@@ -51,7 +51,10 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
         m.uid1, m.uid2, m.last_time, m.msg_count,
         u1t.id AS u1_id, COALESCE(u1t.name,'') AS u1_name, COALESCE(u1t.photo,'') AS u1_photo, u1t.fake AS u1_fake,
         u2t.id AS u2_id, COALESCE(u2t.name,'') AS u2_name, COALESCE(u2t.photo,'') AS u2_photo, u2t.fake AS u2_fake,
-        COALESCE(lm.message,'') AS last_message
+        COALESCE(lm.message,'') AS last_message,
+        lm.u1 AS last_msg_sender,
+        COALESCE(lm.read, 0) AS last_msg_read,
+        CASE WHEN sender.fake = 1 THEN 1 ELSE 0 END AS last_sender_fake
       FROM (
         SELECT
           LEAST(u1, u2) AS uid1,
@@ -65,6 +68,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       JOIN users u1t ON u1t.id = m.uid1
       JOIN users u2t ON u2t.id = m.uid2
       LEFT JOIN messages lm ON lm.id = m.last_msg_id
+      LEFT JOIN users sender ON sender.id = lm.u1
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
       ORDER BY m.last_time DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -106,6 +110,10 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
         : { id: Number(r.u1_id), name: r.u1_name, photo: r.u1_photo }
       const key = convKey(Number(r.uid1), Number(r.uid2))
       const lock = lockMap.get(key)
+      // last_sender_fake = 1 means the fake user sent the last message
+      // last_msg_read = 1 means the real user has read it
+      const lastSenderFake = Number(r.last_sender_fake) === 1
+      const lastMsgRead = Number(r.last_msg_read) === 1
       return {
         key,
         fakeUser,
@@ -113,6 +121,8 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
         lastMessage: r.last_message || '',
         lastTime: Number(r.last_time) || 0,
         msgCount: Number(r.msg_count) || 0,
+        lastSenderFake,
+        lastMsgRead,
         lock: lock ? {
           moderatorId: (lock as any).moderatorId,
           moderatorName: lockedByMods.get((lock as any).moderatorId)?.name || 'Unknown',

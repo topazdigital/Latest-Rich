@@ -97,31 +97,32 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
     const limit = 50
     const offset = (page - 1) * limit
     const filter = String(req.query.filter || "all")
-    const search = String(req.query.search || "")
+    const search = String(req.query.search || "").trim()
 
     const filterCondition: SQL | undefined =
       filter === "fake"    ? eq(usersTable.fake, 1)    :
       filter === "real"    ? eq(usersTable.fake, 0)    :
       filter === "premium" ? eq(usersTable.premium, 1) :
       filter === "banned"  ? eq(usersTable.banned, 1)  :
-      filter === "admin"   ? gte(usersTable.admin, 1)   :
+      filter === "admin"   ? gte(usersTable.admin, 1)  :
       undefined
 
-    let users = await db.select().from(usersTable)
-      .where(filterCondition)
+    // Build search condition at the DB level so it works across all pages
+    const searchCondition: SQL | undefined = search
+      ? sql`(${usersTable.name} LIKE ${'%' + search + '%'} OR ${usersTable.email} LIKE ${'%' + search + '%'} OR ${usersTable.city} LIKE ${'%' + search + '%'} OR ${usersTable.username} LIKE ${'%' + search + '%'})`
+      : undefined
+
+    const whereCondition: SQL | undefined =
+      filterCondition && searchCondition ? and(filterCondition, searchCondition) :
+      filterCondition ?? searchCondition
+
+    const users = await db.select().from(usersTable)
+      .where(whereCondition)
       .orderBy(sql`CAST(COALESCE(${usersTable.lastAccess}, '0') AS ${sql.raw(isMysql ? 'SIGNED' : 'BIGINT')}) DESC`)
       .limit(limit)
       .offset(offset)
 
-    if (search) {
-      users = users.filter(u => 
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        u.city?.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    const [{ count: total }] = await db.select({ count: count() }).from(usersTable).where(filterCondition)
+    const [{ count: total }] = await db.select({ count: count() }).from(usersTable).where(whereCondition)
     res.json({ users: users.map(safeUser), total, page, pages: Math.ceil(total / limit) })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"

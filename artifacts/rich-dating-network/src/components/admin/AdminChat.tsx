@@ -10,6 +10,7 @@ interface ConvLock { moderatorId: number; moderatorName: string; lockedAt: numbe
 interface Conversation {
   key: string; fakeUser: FakeUser; realUser: RealUser
   lastMessage: string; lastTime: number; msgCount: number; lock: ConvLock | null
+  lastSenderFake: boolean; lastMsgRead: boolean
 }
 interface Message { id: number; u1: number; u2: number; message: string; time: number; read: number }
 
@@ -160,12 +161,31 @@ export default function AdminChat() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.25rem" }}>
                       <span style={{ color: "#e2e8f0", fontSize: "0.78rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {conv.fakeUser.name} → {conv.realUser.name}
+                        {conv.realUser.name} → {conv.fakeUser.name}
                       </span>
                       <span style={{ color: "#475569", fontSize: "0.65rem", flexShrink: 0 }}>{timeLabel(conv.lastTime)}</span>
                     </div>
-                    <div style={{ color: "#64748b", fontSize: "0.7rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "0.1rem" }}>
-                      {conv.lastMessage || "No messages"}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.1rem" }}>
+                      <span style={{ color: "#64748b", fontSize: "0.7rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                        {conv.lastMessage || "No messages"}
+                      </span>
+                      {/* Read receipt: show when fake user sent last msg and real user has read it */}
+                      {conv.lastSenderFake && (
+                        <span style={{
+                          fontSize: "0.65rem", flexShrink: 0, fontWeight: 700,
+                          color: conv.lastMsgRead ? "#22c55e" : "#475569",
+                        }} title={conv.lastMsgRead ? "Seen by user — good time to follow up!" : "Delivered, not yet read"}>
+                          {conv.lastMsgRead ? "✓✓" : "✓"}
+                        </span>
+                      )}
+                      {/* Waiting indicator: real user sent last msg, needs reply */}
+                      {!conv.lastSenderFake && (
+                        <span style={{
+                          background: "#FF192C", color: "#fff",
+                          fontSize: "0.55rem", fontWeight: 800,
+                          borderRadius: "999px", padding: "1px 4px", flexShrink: 0,
+                        }} title="Real user is waiting for a reply">REPLY</span>
+                      )}
                     </div>
                     {lockedByOther && (
                       <div style={{ color: "#f59e0b", fontSize: "0.65rem", marginTop: "0.2rem" }}>
@@ -235,8 +255,13 @@ export default function AdminChat() {
                       background: fromFake ? "#7c3aed" : "#1e293b", color: "#fff", fontSize: "0.82rem", lineHeight: 1.5,
                     }}>
                       <div>{msg.message}</div>
-                      <div style={{ color: fromFake ? "rgba(255,255,255,0.55)" : "#475569", fontSize: "0.62rem", marginTop: "0.2rem", textAlign: "right" }}>
-                        {timeLabel(msg.time)}
+                      <div style={{ color: fromFake ? "rgba(255,255,255,0.55)" : "#475569", fontSize: "0.62rem", marginTop: "0.2rem", textAlign: "right", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.25rem" }}>
+                        <span>{timeLabel(msg.time)}</span>
+                        {fromFake && (
+                          <span style={{ fontWeight: 700, color: msg.read ? "#86efac" : "rgba(255,255,255,0.4)" }} title={msg.read ? "Seen by user" : "Delivered"}>
+                            {msg.read ? "✓✓" : "✓"}
+                          </span>
+                        )}
                       </div>
                     </div>
                     {fromFake && (
