@@ -263,14 +263,24 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               return (
                 /* Card IS the aspect-ratio box — nothing can cause grey space below */
                 <div key={u.id}
-                  className={`group relative rounded-2xl overflow-hidden bg-gray-200 cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
-                  style={{ aspectRatio: '3/4' }}
+                  className={`group relative rounded-2xl overflow-hidden cursor-pointer ${isBoosted ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                  style={{ aspectRatio: '3/4', background: getCardGradient(u.name) }}
                   onClick={e => { if (!(e.target as Element).closest('button,a')) setLocation(profileUrl(u)) }}>
-                  {/* Photo — always rendered; getPhotoUrl returns default-avatar.svg when no photo */}
-                  <img src={getPhotoUrl(u.photoThumb || u.photo)} alt={u.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-avatar.svg' }} />
+                  {/* Initials fallback — shows when no photo */}
+                  {!u.photo && !u.photoThumb && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-white font-bold text-4xl opacity-60 select-none">
+                        {u.name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                    </div>
+                  )}
+                  {/* Photo — use large first, fall back to thumb */}
+                  {(u.photo || u.photoThumb) && (
+                    <img src={getPhotoUrl(u.photo || u.photoThumb)} alt={u.name}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  )}
                   {/* Dark gradient at bottom */}
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)' }} />
                   {/* Top-left badge */}
@@ -360,4 +370,20 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
 
 function isOwnCard(cardUserId: number, myUserId: number) {
   return cardUserId === myUserId
+}
+
+const CARD_GRADIENTS = [
+  'linear-gradient(135deg,#667eea,#764ba2)',
+  'linear-gradient(135deg,#f093fb,#f5576c)',
+  'linear-gradient(135deg,#4facfe,#00f2fe)',
+  'linear-gradient(135deg,#43e97b,#38f9d7)',
+  'linear-gradient(135deg,#fa709a,#fee140)',
+  'linear-gradient(135deg,#a18cd1,#fbc2eb)',
+  'linear-gradient(135deg,#fccb90,#d57eeb)',
+  'linear-gradient(135deg,#84fab0,#8fd3f4)',
+]
+
+function getCardGradient(name: string): string {
+  const idx = (name?.charCodeAt(0) || 0) % CARD_GRADIENTS.length
+  return CARD_GRADIENTS[idx]
 }

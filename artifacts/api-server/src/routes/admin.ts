@@ -964,42 +964,83 @@ router.get("/fetch-real-profiles", requireAuth, requireAdmin, async (req, res) =
     if (!resp.ok) throw new Error("randomuser.me request failed")
     const data = await resp.json() as { results: any[] }
 
-    const bios: Record<string, string[]> = {
-      male: [
-        "Successful entrepreneur who loves travel and fine dining. Looking for a genuine connection.",
-        "Outdoor adventurer and fitness enthusiast. Career-driven but family-oriented at heart.",
-        "Tech exec by day, amateur chef by night. Life is too short for anything less than extraordinary.",
-        "Avid traveler who has visited 40+ countries. Looking for a partner to explore the world with.",
-        "Finance professional with a love for jazz, art, and good conversation. Let's connect.",
-        "CEO of my own company. Passionate about life and looking for someone who matches my energy.",
-        "Retired early through smart investing. Now I enjoy sailing, golf, and the finer things in life.",
-        "Doctor with a big heart. I work hard so I can play hard — beach house, ski trips, you name it.",
-      ],
-      female: [
-        "Fashion designer with a passion for art and culture. Looking for a confident, ambitious man.",
-        "Entrepreneur and wellness advocate. Life is beautiful — I want to share it with the right person.",
-        "Corporate lawyer who loves adventure on weekends. Seeking someone who matches my ambition.",
-        "International model and philanthropist. I believe in authentic connections over superficial ones.",
-        "Art curator with a love for travel, wine, and meaningful conversations. Seeking my equal.",
-        "Real estate investor who built her empire from scratch. Looking for a real partner in crime.",
-        "Architect and mother of two. Elegant, independent, and ready for something real.",
-        "Finance director who loves salsa dancing and cooking. Life is short — let's make it amazing.",
-      ],
+    // Age-segmented bios so the text matches the photo's apparent age
+    const bios: Record<string, Record<string, string[]>> = {
+      male: {
+        young: [ // 22–34
+          "Young entrepreneur with big dreams. I work hard and play harder — let's explore the world together.",
+          "Startup founder, gym rat, avid traveler. Life is an adventure — looking for someone to share it with.",
+          "Software engineer by day, weekend hiker by passion. Down to earth, ambitious, and ready for something real.",
+          "Finance grad who loves good food, craft beer, and spontaneous road trips. Let's connect.",
+          "Just moved to the city for my career. Looking for someone genuine to spend time with.",
+        ],
+        mid: [ // 35–49
+          "Successful entrepreneur who loves travel and fine dining. Looking for a genuine connection.",
+          "Tech exec by day, amateur chef by night. Life is too short for anything less than extraordinary.",
+          "Finance professional with a love for jazz, art, and good conversation. Let's connect.",
+          "CEO of my own company. Passionate about life and looking for someone who matches my energy.",
+          "Doctor with a big heart. I work hard so I can play hard — beach house, ski trips, you name it.",
+          "Avid traveler who has visited 40+ countries. Looking for a partner to explore the world with.",
+        ],
+        senior: [ // 50+
+          "Retired early through smart investing. Now I enjoy sailing, golf, and the finer things in life.",
+          "Seasoned professional, recently divorced, ready for the next chapter. Let's make it a good one.",
+          "Grandfather of two, young at heart. Love hiking, cooking, and long dinners with good company.",
+          "Successful businessman winding down. Looking for meaningful connection, not games.",
+          "Semi-retired architect. Life gets better with age — looking for someone who agrees.",
+        ],
+      },
+      female: {
+        young: [ // 22–34
+          "Creative soul with a passion for travel, photography, and good coffee. Looking for my partner in adventure.",
+          "Marketing professional who loves art, music festivals, and spontaneous weekend trips. Let's talk.",
+          "Graduate student by day, foodie by night. Seeking someone ambitious and kind.",
+          "Fitness instructor and wellness advocate. I believe in balance — work hard, live well.",
+          "Graphic designer with a love for culture and creativity. Looking for someone who keeps me laughing.",
+        ],
+        mid: [ // 35–49
+          "Corporate lawyer who loves adventure on weekends. Seeking someone who matches my ambition.",
+          "Entrepreneur and wellness advocate. Life is beautiful — I want to share it with the right person.",
+          "Art curator with a love for travel, wine, and meaningful conversations. Seeking my equal.",
+          "Real estate investor who built her empire from scratch. Looking for a real partner in crime.",
+          "Finance director who loves salsa dancing and cooking. Life is short — let's make it amazing.",
+          "Fashion designer with a passion for art and culture. Looking for a confident, ambitious man.",
+        ],
+        senior: [ // 50+
+          "Empty-nester rediscovering herself. Love hiking, book clubs, and Sunday farmers markets.",
+          "Elegant, independent woman who knows what she wants. Looking for real companionship.",
+          "Retired teacher with a big heart. Love travel, grandchildren, and anyone who can make me laugh.",
+          "Business owner who has finally made time for herself. Seeking a genuine, mature connection.",
+          "Life is too short for small talk. Let's skip to the good stuff.",
+        ],
+      },
+    }
+
+    function pickBio(g: "male" | "female", age: number): string {
+      const tier = age < 35 ? "young" : age < 50 ? "mid" : "senior"
+      const list = bios[g][tier]
+      return list[Math.floor(Math.random() * list.length)]
     }
 
     const profiles = (data.results || []).map((r: any) => {
       const g: "male" | "female" = r.gender === "male" ? "male" : "female"
-      const bioList = bios[g]
-      const bio = bioList[Math.floor(Math.random() * bioList.length)]
+      const age = Math.min(65, Math.max(22, r.dob.age))
+      // Derive DOB from the age so the stored birth year stays consistent
+      const thisYear = new Date().getFullYear()
+      const birthYear = thisYear - age
+      const dob = r.dob.date
+        ? r.dob.date.split('T')[0]  // use real DOB date from API if available
+        : `${birthYear}-06-15`       // fallback: mid-year
       return {
         name: `${r.name.first} ${r.name.last}`,
         gender: g === "male" ? 1 : 2,
         looking: g === "male" ? 2 : 1,
-        age: Math.min(65, Math.max(22, r.dob.age)),
+        age,
+        dob,
         city: r.location.city,
         country: r.location.country,
         countryCode: r.nat || "",
-        bio,
+        bio: pickBio(g, age),
         photo: r.picture.large,
         photoThumb: r.picture.medium,
         origId: Math.floor(Math.random() * 9000000) + 1000000,

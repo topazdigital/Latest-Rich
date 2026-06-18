@@ -30,8 +30,11 @@ const S = {
   input: { width: "100%", background: "#1e293b", border: "1px solid #334155", borderRadius: "0.5rem", color: "#fff", padding: "0.5rem 0.75rem", fontSize: "0.85rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const },
 }
 
+type ChatFilter = "all" | "needs_reply" | "follow_up"
+
 export default function AdminChat() {
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [chatFilter, setChatFilter] = useState<ChatFilter>("all")
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
