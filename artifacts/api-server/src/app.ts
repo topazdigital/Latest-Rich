@@ -33,6 +33,68 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// ── SEO: robots.txt ──────────────────────────────────────────────────────────
+app.get("/robots.txt", (_req, res) => {
+  res.type("text/plain").send(
+`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /moderator
+Disallow: /api/
+
+Sitemap: https://richdatingnetwork.com/sitemap.xml
+`)
+})
+
+// ── SEO: sitemap.xml ─────────────────────────────────────────────────────────
+app.get("/sitemap.xml", (_req, res) => {
+  const base = "https://richdatingnetwork.com"
+  const today = new Date().toISOString().split("T")[0]
+
+  // Static pages
+  const staticPages = [
+    { path: "/",        priority: "1.0", freq: "daily" },
+    { path: "/register",priority: "0.9", freq: "weekly" },
+    { path: "/login",   priority: "0.8", freq: "monthly" },
+    { path: "/discover",priority: "0.8", freq: "daily" },
+    { path: "/privacy", priority: "0.3", freq: "monthly" },
+    { path: "/terms",   priority: "0.3", freq: "monthly" },
+  ]
+
+  // Country-specific landing URLs with rich keyword targeting
+  const countries = [
+    "KE","NG","GH","ZA","UG","TZ","ZM","ZW","RW","ET","EG",
+    "US","GB","CA","AU","AE","DE","FR","SG","JP","IN",
+    "MX","BR","PH","ID","MY","TH","PK","BD","LK",
+  ]
+
+  const urlEntries = [
+    ...staticPages.map(({ path, priority, freq }) => `
+  <url>
+    <loc>${base}${path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${freq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`),
+    ...countries.map(cc => `
+  <url>
+    <loc>${base}/register?country=${cc.toLowerCase()}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`),
+  ].join("")
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${urlEntries}
+</urlset>`
+
+  res.type("application/xml").send(xml)
+})
+
 // Serve old PHP uploads directory at the legacy URL path as well.
 // The old site used absolute URLs like /assets/sources/uploads/2023/photo.jpg in the DB.
 // Apache proxies everything to Node.js, so without this middleware Express would serve index.html.
@@ -66,6 +128,11 @@ if (frontendDir) {
 } else {
   logger.warn("React frontend dist not found — only API routes active");
 }
+
+// Resume any email campaigns that were mid-send when the server last restarted
+import("./routes/email-campaigns").then(({ resumeInProgressCampaigns }) => {
+  resumeInProgressCampaigns();
+}).catch((err) => logger.error({ err }, "Failed to resume email campaigns"))
 
 // Start background auto-message scheduler
 import("./lib/fake-message-scheduler").then(({ startAutoMessageScheduler }) => {

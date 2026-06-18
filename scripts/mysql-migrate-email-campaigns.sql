@@ -64,6 +64,19 @@ ALTER TABLE `email_campaigns`
   MODIFY COLUMN IF EXISTS `type`        VARCHAR(100) NOT NULL DEFAULT '',
   MODIFY COLUMN IF EXISTS `content`     LONGTEXT     NOT NULL DEFAULT '';
 
+-- Step 5: Create email_campaign_logs table (per-email delivery tracking)
+CREATE TABLE IF NOT EXISTS `email_campaign_logs` (
+  `id`           BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `campaign_id`  INT(11)             NOT NULL,
+  `email`        VARCHAR(500)        NOT NULL DEFAULT '',
+  `status`       VARCHAR(20)                  DEFAULT 'ok',
+  `error`        TEXT                         DEFAULT '',
+  `sent_at`      INT(11)                      DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_campaign_id` (`campaign_id`),
+  KEY `idx_status`      (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- Verify
 SELECT CONCAT(
   'email_campaigns is ready with ', COUNT(*), ' columns.'
@@ -71,3 +84,10 @@ SELECT CONCAT(
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_NAME   = 'email_campaigns';
+
+SELECT CONCAT(
+  'email_campaign_logs table exists: ', COUNT(*), ' columns.'
+) AS result
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME   = 'email_campaign_logs';

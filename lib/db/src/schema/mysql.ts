@@ -1,4 +1,4 @@
-import { mysqlTable, int, text, float, boolean, varchar, serial } from "drizzle-orm/mysql-core"
+import { mysqlTable, int, text, float, boolean, varchar, serial, bigint } from "drizzle-orm/mysql-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -330,6 +330,15 @@ export const emailCampaignsTable = mysqlTable("email_campaigns", {
   startedAt: int("started_at").default(0),
   completedAt: int("completed_at").default(0),
   lastSentAt: int("last_sent_at").default(0),
+})
+
+export const emailCampaignLogsTable = mysqlTable("email_campaign_logs", {
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  campaignId: int("campaign_id").notNull(),
+  email: varchar("email", { length: 500 }).notNull().default(""),
+  status: varchar("status", { length: 20 }).default("ok"),
+  error: text("error").default(""),
+  sentAt: int("sent_at").default(0),
 })
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })

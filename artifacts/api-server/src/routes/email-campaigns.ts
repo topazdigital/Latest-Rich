@@ -16,11 +16,11 @@ function requireAdmin(req: any, res: any, next: any) {
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
 
-// In-memory send state per campaign (avoids DB polling on every send)
+// In-memory send state per campaign
 const activeSenders = new Map<number, { timer: ReturnType<typeof setInterval>; stopped: boolean }>()
 
-async function buildRecipientQuery(campaign: any): Promise<string[]> {
-  let query = db.select({ email: usersTable.email, name: usersTable.name })
+async function buildRecipientQuery(campaign: any): Promise<Array<{ email: string; name: string }>> {
+  const rows = await (db.select({ email: usersTable.email, name: usersTable.name })
     .from(usersTable)
     .where(and(
       eq(usersTable.banned, 0),
@@ -30,18 +30,36 @@ async function buildRecipientQuery(campaign: any): Promise<string[]> {
       ...(campaign.filterCountry ? [eq(usersTable.countryCode as any, campaign.filterCountry)] : []),
       ...(campaign.filterMinAge ? [gte(usersTable.age as any, campaign.filterMinAge)] : []),
       ...(campaign.filterMaxAge ? [lte(usersTable.age as any, campaign.filterMaxAge)] : []),
-    ))
-
-  const rows = await (query as any)
+    )) as any)
   const seen = new Set<string>()
-  const emails: string[] = []
+  const recipients: Array<{ email: string; name: string }> = []
   for (const r of rows) {
     if (r.email && !seen.has(r.email.toLowerCase())) {
       seen.add(r.email.toLowerCase())
-      emails.push(r.email)
+      recipients.push({ email: r.email, name: r.name || "" })
     }
   }
-  return emails
+  return recipients
+}
+
+async function logEmailResult(campaignId: number, email: string, status: "ok" | "fail", error = "") {
+  const ts = now()
+  try {
+    if (isMysql) {
+      const conn = await pool.getConnection()
+      try {
+        await conn.execute(
+          "INSERT INTO email_campaign_logs (campaign_id, email, status, error, sent_at) VALUES (?, ?, ?, ?, ?)",
+          [campaignId, email, status, error.slice(0, 1000), ts]
+        )
+      } finally { conn.release() }
+    } else {
+      await db.execute(
+        `INSERT INTO email_campaign_logs (campaign_id, email, status, error, sent_at) VALUES ($1,$2,$3,$4,$5)` as any,
+        [campaignId, email, status, error.slice(0, 1000), ts] as any
+      )
+    }
+  } catch { /* log failures are non-fatal */ }
 }
 
 async function startCampaignSender(campaignId: number) {
@@ -52,7 +70,14 @@ async function startCampaignSender(campaignId: number) {
 
   const recipients = await buildRecipientQuery(campaign)
   const total = recipients.length
-  await db.update(emailCampaignsTable).set({ totalRecipients: total, startedAt: now() }).where(eq(emailCampaignsTable.id, campaignId))
+
+  // Only overwrite totalRecipients if this is the first start (sentCount === 0),
+  // so a server-restart resume doesn't reset the counter shown in the UI.
+  if ((campaign.sentCount ?? 0) === 0) {
+    await db.update(emailCampaignsTable)
+      .set({ totalRecipients: total, startedAt: now() })
+      .where(eq(emailCampaignsTable.id, campaignId))
+  }
 
   let offset = campaign.sentCount ?? 0
   const batchSize = campaign.batchSize || 50
@@ -74,12 +99,20 @@ async function startCampaignSender(campaignId: number) {
 
     let sentInBatch = 0
     let failedInBatch = 0
-    for (const email of batch) {
+    for (const recipient of batch) {
       try {
-        const ok = await sendEmail({ to: email, subject: fresh.subject, html: fresh.htmlBody })
-        if (ok) sentInBatch++
-        else failedInBatch++
-      } catch { failedInBatch++ }
+        const ok = await sendEmail({ to: recipient.email, subject: fresh.subject, html: fresh.htmlBody })
+        if (ok) {
+          sentInBatch++
+          await logEmailResult(campaignId, recipient.email, "ok")
+        } else {
+          failedInBatch++
+          await logEmailResult(campaignId, recipient.email, "fail", "sendEmail returned false")
+        }
+      } catch (e: any) {
+        failedInBatch++
+        await logEmailResult(campaignId, recipient.email, "fail", e?.message || "unknown error")
+      }
     }
 
     offset += batch.length
@@ -95,7 +128,6 @@ async function startCampaignSender(campaignId: number) {
     }
   }
 
-  // Send first batch immediately, then at cooling interval
   sendBatch().catch(console.error)
   const timer = setInterval(() => sendBatch().catch(console.error), coolingMs)
   activeSenders.set(campaignId, { timer, stopped: false })
@@ -106,6 +138,20 @@ function stopSender(campaignId: number) {
   if (s) {
     clearInterval(s.timer)
     activeSenders.delete(campaignId)
+  }
+}
+
+// Resume any campaigns that were "sending" when the server last restarted
+export async function resumeInProgressCampaigns() {
+  try {
+    const rows = await db.select().from(emailCampaignsTable)
+      .where(eq(emailCampaignsTable.status as any, "sending"))
+    for (const campaign of rows) {
+      console.log(`[email-campaigns] Resuming campaign #${campaign.id} "${campaign.name}" from offset ${campaign.sentCount}`)
+      startCampaignSender(campaign.id).catch(console.error)
+    }
+  } catch (e) {
+    console.error("[email-campaigns] Failed to resume in-progress campaigns:", e)
   }
 }
 
@@ -126,6 +172,46 @@ router.get("/:id", requireAuth, requireAdmin, async (req, res) => {
     const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1)
     if (!campaign) { res.status(404).json({ error: "Not found" }); return }
     res.json(campaign)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/admin/email-campaigns/:id/logs — per-email delivery log
+router.get("/:id/logs", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const page = Math.max(0, parseInt((req.query.page as string) || "0"))
+    const limit = 100
+    const offset = page * limit
+    const status = req.query.status as string | undefined
+
+    let rows: any[]
+    if (isMysql) {
+      const conn = await pool.getConnection()
+      try {
+        const statusClause = status ? " AND status = ?" : ""
+        const params: any[] = [id]
+        if (status) params.push(status)
+        params.push(limit, offset)
+        const [r]: any = await conn.execute(
+          `SELECT id, email, status, error, sent_at FROM email_campaign_logs WHERE campaign_id = ?${statusClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+          params
+        )
+        const [cnt]: any = await conn.execute(
+          `SELECT COUNT(*) as total FROM email_campaign_logs WHERE campaign_id = ?${statusClause}`,
+          status ? [id, status] : [id]
+        )
+        rows = r
+        res.json({ logs: rows, total: cnt[0]?.total || 0, page, limit })
+      } finally { conn.release() }
+    } else {
+      const statusWhere = status ? ` AND status = '${status === "ok" ? "ok" : "fail"}'` : ""
+      rows = await db.execute(
+        `SELECT id, email, status, error, sent_at FROM email_campaign_logs WHERE campaign_id = ${id}${statusWhere} ORDER BY id DESC LIMIT ${limit} OFFSET ${offset}` as any
+      ) as any
+      res.json({ logs: rows, total: rows.length, page, limit })
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
@@ -160,8 +246,6 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     }
 
     if (isMysql) {
-      // Drizzle MySQL has a bug where text().notNull() columns are generated as DEFAULT
-      // even when values are provided. Bypass Drizzle entirely with a raw parameterized query.
       const conn = await pool.getConnection()
       try {
         const [result]: any = await conn.execute(
@@ -181,7 +265,6 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
         const insertId = result.insertId
         const [rows]: any = await conn.execute("SELECT * FROM email_campaigns WHERE id = ?", [insertId])
         const row = rows[0]
-        // Convert snake_case MySQL row to camelCase for the frontend
         res.json({
           id: row.id, name: row.name, subject: row.subject, htmlBody: row.html_body,
           status: row.status, totalRecipients: row.total_recipients, sentCount: row.sent_count,
@@ -197,7 +280,6 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       return
     }
 
-    // PostgreSQL — Drizzle works correctly here
     await db.insert(emailCampaignsTable).values(vals)
     const campaigns = await db.select().from(emailCampaignsTable).orderBy(desc(emailCampaignsTable.id)).limit(1)
     res.json(campaigns[0])
@@ -241,14 +323,11 @@ router.post("/:id/start", requireAuth, requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string)
     const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, id)).limit(1)
     if (!campaign) { res.status(404).json({ error: "Not found" }); return }
-    if (campaign.status === "sending") { res.json({ success: true, message: "Already sending" }); return }
-    if (campaign.status === "completed") { res.status(400).json({ error: "Campaign already completed" }); return }
-
+    if (campaign.status === "sending") { res.json({ ok: true, message: "Already sending" }); return }
     await db.update(emailCampaignsTable).set({ status: "sending", startedAt: campaign.startedAt || now() }).where(eq(emailCampaignsTable.id, id))
     await db.insert(activityTable as any).values({ type: "email_campaign", userId: req.userId, title: "Campaign started", message: `"${campaign.name}" started`, time: now() })
-
     startCampaignSender(id).catch(console.error)
-    res.json({ success: true })
+    res.json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
@@ -260,7 +339,7 @@ router.post("/:id/pause", requireAuth, requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string)
     await db.update(emailCampaignsTable).set({ status: "paused" }).where(eq(emailCampaignsTable.id, id))
     stopSender(id)
-    res.json({ success: true })
+    res.json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
@@ -272,7 +351,12 @@ router.post("/:id/reset", requireAuth, requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id as string)
     stopSender(id)
     await db.update(emailCampaignsTable).set({ status: "draft", sentCount: 0, failedCount: 0, totalRecipients: 0, startedAt: 0, completedAt: 0 }).where(eq(emailCampaignsTable.id, id))
-    res.json({ success: true })
+    // Clear logs for this campaign too
+    if (isMysql) {
+      const conn = await pool.getConnection()
+      try { await conn.execute("DELETE FROM email_campaign_logs WHERE campaign_id = ?", [id]) } finally { conn.release() }
+    }
+    res.json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
@@ -283,20 +367,16 @@ router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     stopSender(id)
-    await db.delete(emailCampaignsTable).where(eq(emailCampaignsTable.id, id))
-    res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
-  }
-})
-
-// POST /api/admin/email-campaigns/:id/preview-count — count matching recipients
-router.post("/:id/preview-count", requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { filterGender, filterCountry, filterMinAge, filterMaxAge, onlyReal } = req.body
-    const fake = { filterGender: parseInt(filterGender) || 0, filterCountry: filterCountry || "", filterMinAge: parseInt(filterMinAge) || 0, filterMaxAge: parseInt(filterMaxAge) || 0, onlyReal: onlyReal !== false }
-    const emails = await buildRecipientQuery(fake)
-    res.json({ count: emails.length })
+    if (isMysql) {
+      const conn = await pool.getConnection()
+      try {
+        await conn.execute("DELETE FROM email_campaign_logs WHERE campaign_id = ?", [id])
+        await conn.execute("DELETE FROM email_campaigns WHERE id = ?", [id])
+      } finally { conn.release() }
+    } else {
+      await db.delete(emailCampaignsTable).where(eq(emailCampaignsTable.id, id))
+    }
+    res.json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
