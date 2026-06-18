@@ -42,15 +42,23 @@ const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", 
 const ADMIN_PREFIXES = ["/admin"]
 const MODERATOR_PREFIXES = ["/moderator"]
 
+function matchesPrefix(location: string, prefixes: string[]) {
+  return prefixes.some(p =>
+    p === "/@"
+      ? location.startsWith("/@")
+      : location === p || location.startsWith(p + "/")
+  )
+}
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
   const { user, loading } = useAuth()
 
   useEffect(() => {
     if (loading) return
-    const isProtected = PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
-    const isAdmin = ADMIN_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
-    const isModerator = MODERATOR_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+    const isProtected = matchesPrefix(location, PROTECTED_PREFIXES)
+    const isAdmin = matchesPrefix(location, ADMIN_PREFIXES)
+    const isModerator = matchesPrefix(location, MODERATOR_PREFIXES)
     const isUsernameProfile = location.startsWith("/@")
     if (!user && (isProtected || isAdmin || isModerator)) setLocation("/login")
     else if (user && (location === "/" || location === "/login" || location === "/register")) setLocation("/discover")
@@ -78,7 +86,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
   const isAdmin = location.startsWith("/admin") || location.startsWith("/moderator")
-  const showNav = !isAdmin && PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+  const showNav = !isAdmin && matchesPrefix(location, PROTECTED_PREFIXES)
   return (
     <div className={showNav ? "pt-14 pb-16 md:pb-0 min-h-screen bg-gray-50" : ""}>
       {showNav && <MainNav />}
@@ -404,7 +412,7 @@ function Router() {
           <Route path="/meet" component={MeetPageWrapper} />
           <Route path="/chat" component={ChatListPage} />
           <Route path="/chat/:id">
-            {(params: { id: string }) => <ChatPage params={params} />}
+            {(params: { id: string }) => <ChatPage key={params.id} params={params} />}
           </Route>
           <Route path="/profile" component={MyProfile} />
           <Route path="/profile/:id">

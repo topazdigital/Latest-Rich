@@ -15,6 +15,10 @@ export default function ChatPage({ params }: Props) {
 
   useEffect(() => {
     if (!token || !otherId) return
+    setLoading(true)
+    setOther(null)
+    setMessages([])
+    setError(false)
     Promise.all([
       fetch(`/api/users/${otherId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch(`/api/chat/${otherId}/messages`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
