@@ -62,6 +62,15 @@ const SECTIONS = [
     ]
   },
   {
+    title: "Analytics & Tracking",
+    icon: Globe,
+    color: "text-sky-400",
+    fields: [
+      { key: "clarity_project_id", label: "Microsoft Clarity Project ID", type: "text", placeholder: "e.g. abc123xyz", help: "Paste your Clarity Project ID from clarity.microsoft.com to enable session recording and heatmaps on this site." },
+      { key: "google_analytics_id", label: "Google Analytics Measurement ID", type: "text", placeholder: "G-XXXXXXXXXX", help: "Google Analytics 4 Measurement ID. Find it in GA → Admin → Data Streams." },
+    ]
+  },
+  {
     title: "Social Login",
     icon: Globe,
     color: "text-cyan-400",

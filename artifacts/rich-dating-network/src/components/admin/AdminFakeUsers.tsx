@@ -3,11 +3,32 @@ import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
 
+interface GeneratedProfile {
+  name: string
+  gender: number
+  looking: number
+  age: number
+  city: string
+  country: string
+  countryCode: string
+  bio: string
+  photo: string
+  photoThumb: string
+  origId: number
+}
+
 export default function AdminFakeUsers() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [generatedProfiles, setGeneratedProfiles] = useState<GeneratedProfile[]>([])
+  const [showGenerated, setShowGenerated] = useState(false)
+  const [genGender, setGenGender] = useState("any")
+  const [genCount, setGenCount] = useState("20")
+  const [selectedProfiles, setSelectedProfiles] = useState<Set<number>>(new Set())
+  const [importingGenerated, setImportingGenerated] = useState(false)
   const [form, setForm] = useState({
     name: "", gender: "2", looking: "1", city: "", country: "",
     age: "28", bio: "", photo: "", photoThumb: ""
@@ -41,7 +62,6 @@ export default function AdminFakeUsers() {
   const importFromSite = async () => {
     setImporting(true)
     try {
-      // Import the pre-parsed fake users from the SQL dump (available from our extraction)
       const r = await authFetch("/api/admin/import-fake-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,66 +73,252 @@ export default function AdminFakeUsers() {
     } catch { toast.error("Import failed") } finally { setImporting(false) }
   }
 
+  const generateRealProfiles = async () => {
+    setGenerating(true)
+    try {
+      const params = new URLSearchParams({ count: genCount })
+      if (genGender !== "any") params.set("gender", genGender)
+      const r = await authFetch(`/api/admin/fetch-real-profiles?${params}`)
+      if (!r.ok) throw new Error("Failed to fetch profiles")
+      const d = await r.json()
+      setGeneratedProfiles(d.profiles || [])
+      setSelectedProfiles(new Set((d.profiles || []).map((_: any, i: number) => i)))
+      setShowGenerated(true)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate profiles")
+    } finally { setGenerating(false) }
+  }
+
+  const importSelectedGenerated = async () => {
+    const toImport = generatedProfiles.filter((_, i) => selectedProfiles.has(i))
+    if (toImport.length === 0) { toast.error("Select at least one profile"); return }
+    setImportingGenerated(true)
+    try {
+      const r = await authFetch("/api/admin/import-fake-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ users: toImport })
+      })
+      const d = await r.json()
+      toast.success(`Imported ${d.imported} real-looking profiles!`)
+      setShowGenerated(false)
+      setGeneratedProfiles([])
+      load()
+    } catch { toast.error("Import failed") } finally { setImportingGenerated(false) }
+  }
+
+  const toggleProfile = (i: number) => {
+    setSelectedProfiles(prev => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">{users.length} Fake Users</h2>
-        <div className="flex gap-2">
-          <button onClick={importFromSite} disabled={importing}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm disabled:opacity-50">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>{users.length} Fake Users</h2>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button onClick={importFromSite} disabled={importing} style={{
+            padding: '0.5rem 1rem', background: importing ? '#9ca3af' : '#7c3aed',
+            color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+            cursor: importing ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+          }}>
             {importing ? "Importing..." : "📥 Import from Site"}
           </button>
-          <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm">
+          <button onClick={() => setShowGenerated(!showGenerated)} style={{
+            padding: '0.5rem 1rem', background: '#0ea5e9',
+            color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+            cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+            ✨ Generate Real Profiles
+          </button>
+          <button onClick={() => setShowCreate(!showCreate)} style={{
+            padding: '0.5rem 1rem', background: '#FF192C',
+            color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+            cursor: 'pointer', fontFamily: 'inherit'
+          }}>
             + Create Fake User
           </button>
         </div>
       </div>
 
-      {showCreate && (
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-4">
-          <h3 className="text-gray-900 font-semibold">Create Fake User</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="text-gray-400 text-xs mb-1 block">Name</label>
-              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><label className="text-gray-400 text-xs mb-1 block">Age</label>
-              <input type="number" className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
-            <div><label className="text-gray-400 text-xs mb-1 block">Gender</label>
-              <select className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
-                <option value="1">Man</option><option value="2">Woman</option>
-              </select></div>
-            <div><label className="text-gray-400 text-xs mb-1 block">Looking For</label>
-              <select className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.looking} onChange={e => setForm(f => ({ ...f, looking: e.target.value }))}>
-                <option value="1">Men</option><option value="2">Women</option><option value="3">Both</option>
-              </select></div>
-            <div><label className="text-gray-400 text-xs mb-1 block">City</label>
-              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
-            <div><label className="text-gray-400 text-xs mb-1 block">Country</label>
-              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} /></div>
-            <div className="col-span-2"><label className="text-gray-400 text-xs mb-1 block">Photo URL (from richdatingnetwork.com)</label>
-              <input className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://richdatingnetwork.com/assets/..." /></div>
-            <div className="col-span-2"><label className="text-gray-400 text-xs mb-1 block">Bio</label>
-              <textarea className="w-full bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200" rows={3} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></div>
+      {/* Generate Real Profiles Panel */}
+      {showGenerated && (
+        <div style={{ background: '#fff', borderRadius: '1rem', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <h3 style={{ color: '#111827', fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>✨ Generate Real-Looking Profiles</h3>
+            <p style={{ color: '#64748b', fontSize: '0.8rem' }}>Fetches real photos and names from randomuser.me — they look like genuine users, not AI.</p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={createFake} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm">Create</button>
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-600 text-white rounded-lg text-sm">Cancel</button>
+
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Count</label>
+              <select value={genCount} onChange={e => setGenCount(e.target.value)} style={{
+                padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.5rem',
+                fontSize: '0.875rem', background: '#f9fafb', color: '#111827', fontFamily: 'inherit'
+              }}>
+                <option value="10">10 profiles</option>
+                <option value="20">20 profiles</option>
+                <option value="30">30 profiles</option>
+                <option value="50">50 profiles</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Gender</label>
+              <select value={genGender} onChange={e => setGenGender(e.target.value)} style={{
+                padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.5rem',
+                fontSize: '0.875rem', background: '#f9fafb', color: '#111827', fontFamily: 'inherit'
+              }}>
+                <option value="any">Any gender</option>
+                <option value="female">Women only</option>
+                <option value="male">Men only</option>
+              </select>
+            </div>
+            <button onClick={generateRealProfiles} disabled={generating} style={{
+              padding: '0.45rem 1.25rem', background: generating ? '#9ca3af' : '#0ea5e9',
+              color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+              cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 600
+            }}>
+              {generating ? "Fetching..." : "🔄 Fetch Profiles"}
+            </button>
+          </div>
+
+          {generatedProfiles.length > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  {selectedProfiles.size} of {generatedProfiles.length} selected
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={() => setSelectedProfiles(new Set(generatedProfiles.map((_, i) => i)))} style={{
+                    fontSize: '0.75rem', color: '#0ea5e9', background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                  }}>Select all</button>
+                  <span style={{ color: '#d1d5db' }}>·</span>
+                  <button onClick={() => setSelectedProfiles(new Set())} style={{
+                    fontSize: '0.75rem', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: 0
+                  }}>Deselect all</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem', maxHeight: '480px', overflowY: 'auto', marginBottom: '1rem' }}>
+                {generatedProfiles.map((p, i) => (
+                  <div key={i} onClick={() => toggleProfile(i)} style={{
+                    background: selectedProfiles.has(i) ? '#eff6ff' : '#f8fafc',
+                    borderRadius: '0.75rem', overflow: 'hidden',
+                    border: `2px solid ${selectedProfiles.has(i) ? '#3b82f6' : '#e2e8f0'}`,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}>
+                    <div style={{ position: 'relative', aspectRatio: '1', background: '#e2e8f0' }}>
+                      <img
+                        src={p.photo}
+                        alt={p.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => (e.currentTarget.src = "/images/default-avatar.svg")}
+                      />
+                      {selectedProfiles.has(i) && (
+                        <div style={{
+                          position: 'absolute', top: '0.4rem', right: '0.4rem',
+                          width: '1.25rem', height: '1.25rem', borderRadius: '50%',
+                          background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.65rem', color: '#fff', fontWeight: 800
+                        }}>✓</div>
+                      )}
+                    </div>
+                    <div style={{ padding: '0.5rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.65rem', color: '#64748b' }}>{p.age} · {p.gender === 1 ? "Man" : "Woman"}</div>
+                      <div style={{ fontSize: '0.65rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.city}, {p.country}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={importSelectedGenerated} disabled={importingGenerated || selectedProfiles.size === 0} style={{
+                  padding: '0.5rem 1.25rem', background: importingGenerated ? '#9ca3af' : '#22c55e',
+                  color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+                  cursor: importingGenerated || selectedProfiles.size === 0 ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontWeight: 600
+                }}>
+                  {importingGenerated ? "Importing..." : `Import ${selectedProfiles.size} Profiles`}
+                </button>
+                <button onClick={() => { setShowGenerated(false); setGeneratedProfiles([]) }} style={{
+                  padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569',
+                  border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+                  cursor: 'pointer', fontFamily: 'inherit'
+                }}>Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {showCreate && (
+        <div style={{ background: '#fff', borderRadius: '1rem', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
+          <h3 style={{ color: '#111827', fontWeight: 600, marginBottom: '1rem' }}>Create Fake User</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Name</label>
+              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Age</label>
+              <input type="number" style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Gender</label>
+              <select style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                <option value="1">Man</option><option value="2">Woman</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Looking For</label>
+              <select style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.looking} onChange={e => setForm(f => ({ ...f, looking: e.target.value }))}>
+                <option value="1">Men</option><option value="2">Women</option><option value="3">Both</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>City</label>
+              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Country</label>
+              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Photo URL</label>
+              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://..." />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Bio</label>
+              <textarea style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} rows={3} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <button onClick={createFake} style={{ padding: '0.45rem 1.25rem', background: '#FF192C', color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'inherit' }}>Create</button>
+            <button onClick={() => setShowCreate(false)} style={{ padding: '0.45rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
+          <div style={{ width: '2rem', height: '2rem', border: '2px solid #FF192C', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
           {users.map(u => (
-            <div key={u.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200">
-              <div className="aspect-square bg-gray-50">
-                <img src={getPhotoUrl(u.photo)} alt={u.name} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+            <div key={u.id} style={{ background: '#fff', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+              <div style={{ aspectRatio: '1', background: '#f1f5f9' }}>
+                <img src={getPhotoUrl(u.photo)} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
               </div>
-              <div className="p-3">
-                <div className="text-white font-medium text-sm">{u.name}</div>
-                <div className="text-gray-400 text-xs">{u.age} · {u.gender === 1 ? "Man" : "Woman"} · {u.city}</div>
-                <div className="text-purple-400 text-xs mt-1">🤖 Fake · {u.credits} credits</div>
+              <div style={{ padding: '0.75rem' }}>
+                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.875rem' }}>{u.name}</div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{u.age} · {u.gender === 1 ? "Man" : "Woman"} · {u.city}</div>
+                <div style={{ color: '#7c3aed', fontSize: '0.7rem', marginTop: '0.25rem' }}>🤖 Fake · {u.credits} credits</div>
               </div>
             </div>
           ))}
@@ -122,7 +328,6 @@ export default function AdminFakeUsers() {
   )
 }
 
-// Sample fake users extracted from SQL dump with live photos
 const SAMPLE_FAKE_USERS = [
   { origId: 5, name: "Cel-blue", gender: 2, looking: 1, city: "Los Angeles", country: "United States", age: 38, bio: "When my husband and I divorced, I braced myself for the loneliness. Nothing could prepare me for the pain I felt. I've reached my limit after a year and I'm ready for someone special in my life.", photo: "https://richdatingnetwork.com/assets/sources/uploads/66aa00f948ff3_capture.png", photoThumb: "https://richdatingnetwork.com/assets/sources/uploads/thumb_66aa00f948ff9_Capture.PNG" },
   { origId: 6, name: "Sybill", gender: 2, looking: 1, city: "New York", country: "United States", age: 38, bio: "Hi, im Sybill, 38 years old and im from New York United States", photo: "", photoThumb: "" },

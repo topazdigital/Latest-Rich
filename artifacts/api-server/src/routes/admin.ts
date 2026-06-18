@@ -946,4 +946,82 @@ router.get("/online-users", requireAuth, requireAdmin, async (req, res) => {
   }
 })
 
+// GET /api/admin/fetch-real-profiles — fetches real-looking profiles from randomuser.me
+router.get("/fetch-real-profiles", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const count = Math.min(50, Math.max(1, parseInt(String(req.query.count || "20"))))
+    const gender = String(req.query.gender || "")
+
+    const params = new URLSearchParams({
+      results: String(count),
+      nat: "us,gb,ca,au,de,fr,nl,se,dk,no",
+      inc: "name,gender,dob,location,picture,login",
+    })
+    if (gender === "male" || gender === "female") params.set("gender", gender)
+
+    const resp = await fetch(`https://randomuser.me/api/?${params}`)
+    if (!resp.ok) throw new Error("randomuser.me request failed")
+    const data = await resp.json() as { results: any[] }
+
+    const bios: Record<string, string[]> = {
+      male: [
+        "Successful entrepreneur who loves travel and fine dining. Looking for a genuine connection.",
+        "Outdoor adventurer and fitness enthusiast. Career-driven but family-oriented at heart.",
+        "Tech exec by day, amateur chef by night. Life is too short for anything less than extraordinary.",
+        "Avid traveler who has visited 40+ countries. Looking for a partner to explore the world with.",
+        "Finance professional with a love for jazz, art, and good conversation. Let's connect.",
+        "CEO of my own company. Passionate about life and looking for someone who matches my energy.",
+        "Retired early through smart investing. Now I enjoy sailing, golf, and the finer things in life.",
+        "Doctor with a big heart. I work hard so I can play hard — beach house, ski trips, you name it.",
+      ],
+      female: [
+        "Fashion designer with a passion for art and culture. Looking for a confident, ambitious man.",
+        "Entrepreneur and wellness advocate. Life is beautiful — I want to share it with the right person.",
+        "Corporate lawyer who loves adventure on weekends. Seeking someone who matches my ambition.",
+        "International model and philanthropist. I believe in authentic connections over superficial ones.",
+        "Art curator with a love for travel, wine, and meaningful conversations. Seeking my equal.",
+        "Real estate investor who built her empire from scratch. Looking for a real partner in crime.",
+        "Architect and mother of two. Elegant, independent, and ready for something real.",
+        "Finance director who loves salsa dancing and cooking. Life is short — let's make it amazing.",
+      ],
+    }
+
+    const profiles = (data.results || []).map((r: any) => {
+      const g: "male" | "female" = r.gender === "male" ? "male" : "female"
+      const bioList = bios[g]
+      const bio = bioList[Math.floor(Math.random() * bioList.length)]
+      return {
+        name: `${r.name.first} ${r.name.last}`,
+        gender: g === "male" ? 1 : 2,
+        looking: g === "male" ? 2 : 1,
+        age: Math.min(65, Math.max(22, r.dob.age)),
+        city: r.location.city,
+        country: r.location.country,
+        countryCode: r.nat || "",
+        bio,
+        photo: r.picture.large,
+        photoThumb: r.picture.medium,
+        origId: Math.floor(Math.random() * 9000000) + 1000000,
+      }
+    })
+
+    res.json({ profiles })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/admin/public-config — safe public settings for the frontend (clarity, etc.)
+router.get("/public-config", async (req, res) => {
+  try {
+    const rows = await db.select().from(siteConfigTable)
+      .where(inArray(siteConfigTable.key as any, ["clarity_project_id", "site_name"] as any))
+    const cfg: Record<string, string> = {}
+    for (const r of rows) cfg[(r as any).key] = (r as any).value || ""
+    res.json(cfg)
+  } catch {
+    res.json({})
+  }
+})
+
 export default router

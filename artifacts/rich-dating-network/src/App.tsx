@@ -305,6 +305,33 @@ function DynamicFavicon() {
   return null
 }
 
+function AnalyticsInjector() {
+  useEffect(() => {
+    fetch('/api/admin/public-config').then(r => r.json()).then((cfg: Record<string, string>) => {
+      const clarityId = cfg.clarity_project_id?.trim()
+      if (clarityId && !document.getElementById('ms-clarity')) {
+        const s = document.createElement('script')
+        s.id = 'ms-clarity'
+        s.type = 'text/javascript'
+        s.innerHTML = `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`
+        document.head.appendChild(s)
+      }
+      const gaId = cfg.google_analytics_id?.trim()
+      if (gaId && !document.getElementById('ga-gtag')) {
+        const s1 = document.createElement('script')
+        s1.id = 'ga-gtag'
+        s1.async = true
+        s1.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`
+        document.head.appendChild(s1)
+        const s2 = document.createElement('script')
+        s2.innerHTML = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`
+        document.head.appendChild(s2)
+      }
+    }).catch(() => {})
+  }, [])
+  return null
+}
+
 function MyProfile() {
   const { user } = useAuth()
   return user ? <ProfilePage params={{ id: String(user.id) }} /> : null
@@ -357,6 +384,7 @@ function Router() {
     <AuthGuard>
       <SEOHead />
       <DynamicFavicon />
+      <AnalyticsInjector />
       <WelcomeController />
       <NewSiteOnboardingController />
       <ProfileQuestionsController />

@@ -343,6 +343,31 @@ router.get("/fake-users", requireAuth, requireModerator, async (req, res) => {
   }
 })
 
+// GET /api/moderator/unread-count — conversations where real user sent the last message (awaiting reply)
+router.get("/unread-count", requireAuth, requireModerator, async (req, res) => {
+  try {
+    const raw = await db.execute(sql`
+      SELECT COUNT(*) AS cnt
+      FROM (
+        SELECT LEAST(u1, u2) AS uid1, GREATEST(u1, u2) AS uid2, MAX(id) AS last_msg_id
+        FROM messages
+        GROUP BY LEAST(u1, u2), GREATEST(u1, u2)
+      ) m
+      JOIN messages lm ON lm.id = m.last_msg_id
+      JOIN users u1t ON u1t.id = m.uid1
+      JOIN users u2t ON u2t.id = m.uid2
+      JOIN users sender ON sender.id = lm.u1
+      WHERE ((u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1))
+      AND sender.fake = 0
+    `)
+    const rows: any[] = isMysql && Array.isArray((raw as any)[0]) ? (raw as any)[0] : (raw as any)
+    const count = Number(rows[0]?.cnt ?? rows[0]?.count ?? 0)
+    res.json({ count })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/moderator/stats
 router.get("/stats", requireAuth, requireModerator, async (req, res) => {
   try {

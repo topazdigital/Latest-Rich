@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useLocation } from "wouter"
 import { useAuth } from "../hooks/useAuth"
+import { authFetch } from "../lib/auth"
 import AdminDashboard from "../components/admin/AdminDashboard"
 import AdminUsers from "../components/admin/AdminUsers"
 import AdminActivity from "../components/admin/AdminActivity"
@@ -40,12 +41,30 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, loading } = useAuth()
   const [, setLocation] = useLocation()
+  const [chatUnread, setChatUnread] = useState(0)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (loading) return
     if (user && (user.admin ?? 0) < 2) setLocation("/discover")
     if (!user) setLocation("/login")
   }, [user, loading])
+
+  useEffect(() => {
+    if (!user || (user.admin ?? 0) < 1) return
+    const fetchUnread = async () => {
+      try {
+        const r = await authFetch("/api/moderator/unread-count")
+        if (r.ok) {
+          const d = await r.json()
+          setChatUnread(d.count || 0)
+        }
+      } catch {}
+    }
+    fetchUnread()
+    pollRef.current = setInterval(fetchUnread, 30000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [user])
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -103,7 +122,19 @@ export default function AdminPage() {
                 onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#f1f5f9' }}
                 onMouseLeave={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                 <span style={{ fontSize: '0.875rem' }}>{m.icon}</span>
-                <span>{m.label}</span>
+                <span style={{ flex: 1 }}>{m.label}</span>
+                {m.key === 'fake-chat' && chatUnread > 0 && (
+                  <span style={{
+                    background: tab === m.key ? 'rgba(255,255,255,0.9)' : '#FF192C',
+                    color: tab === m.key ? '#FF192C' : '#fff',
+                    fontSize: '0.6rem', fontWeight: 800,
+                    borderRadius: '999px', padding: '1px 5px',
+                    minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4',
+                    flexShrink: 0,
+                  }}>
+                    {chatUnread > 99 ? '99+' : chatUnread}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
