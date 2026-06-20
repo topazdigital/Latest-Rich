@@ -152,7 +152,7 @@ export default function AdminFakeMessages() {
           <textarea
             value={newMsg} onChange={e => setNewMsg(e.target.value)}
             placeholder="Type a new fake message template..."
-            className="flex-1 bg-gray-50 text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 resize-none"
+            className="flex-1 bg-white text-gray-900 px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:border-brand-500 resize-none placeholder:text-gray-400"
             rows={2}
           />
           <button onClick={addMessage} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm self-end">Add</button>
@@ -165,10 +165,10 @@ export default function AdminFakeMessages() {
         <div className="space-y-2">
           {templates.map(t => (
             <div key={t.id} className={`rounded-xl p-4 border flex items-start justify-between gap-4 transition-opacity ${t.active === 1 ? 'bg-white border-gray-200' : 'bg-white/50 border-gray-200/50 opacity-60'}`}>
-              <p className="text-gray-200 text-sm flex-1">{t.message}</p>
+              <p className="text-gray-800 text-sm flex-1">{t.message}</p>
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => toggleActive(t.id, t.active)}
-                  className={`text-xs px-2 py-1 rounded-md font-medium ${t.active === 1 ? 'bg-green-900/50 text-green-400 hover:bg-red-900/50 hover:text-red-400' : 'bg-gray-50 text-gray-500 hover:bg-green-900/50 hover:text-green-400'}`}>
+                  className={`text-xs px-2 py-1 rounded-md font-medium ${t.active === 1 ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-600 border border-green-200' : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700 border border-gray-200'}`}>
                   {t.active === 1 ? 'Active' : 'Paused'}
                 </button>
                 <button onClick={() => deleteMessage(t.id)} className="text-red-400 hover:text-red-300 text-xs">Delete</button>

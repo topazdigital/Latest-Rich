@@ -27,7 +27,7 @@ const S = {
   card: { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "0.75rem", overflow: "hidden" } as React.CSSProperties,
   avatar: { width: 36, height: 36, borderRadius: "50%", objectFit: "cover" as const, background: "#1e293b", flexShrink: 0 },
   btn: (color = "#FF192C") => ({ padding: "0.4rem 0.875rem", background: color, color: "#fff", border: "none", borderRadius: "0.5rem", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.3rem" } as React.CSSProperties),
-  input: { width: "100%", background: "#1e293b", border: "1px solid #334155", borderRadius: "0.5rem", color: "#fff", padding: "0.5rem 0.75rem", fontSize: "0.85rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const },
+  input: { width: "100%", background: "#0f172a", border: "2px solid #475569", borderRadius: "0.5rem", color: "#f1f5f9", padding: "0.5rem 0.75rem", fontSize: "0.85rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const },
 }
 
 type ChatFilter = "all" | "needs_reply" | "follow_up"

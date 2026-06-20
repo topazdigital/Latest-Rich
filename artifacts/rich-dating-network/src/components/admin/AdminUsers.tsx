@@ -65,7 +65,7 @@ export default function AdminUsers() {
         <div className="flex gap-2">
           {FILTERS.map(f => (
             <button key={f} onClick={() => { setFilter(f); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? "bg-brand-600 text-white" : "bg-gray-50 text-gray-400 hover:text-white"}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900"}`}>
               {f}
             </button>
           ))}
@@ -73,8 +73,8 @@ export default function AdminUsers() {
         <div className="flex gap-2">
           <input value={search} onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === "Enter" && load()}
-            placeholder="Search users..." className="bg-gray-50 text-white px-3 py-1.5 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-brand-500 w-48" />
-          <button onClick={load} className="px-3 py-1.5 bg-gray-100 text-white rounded-lg text-sm">Search</button>
+            placeholder="Search users..." className="bg-white text-gray-900 px-3 py-1.5 rounded-lg text-sm border border-gray-300 focus:outline-none focus:border-brand-500 w-48 placeholder:text-gray-400" />
+          <button onClick={load} className="px-3 py-1.5 bg-brand-600 text-white rounded-lg text-sm">Search</button>
         </div>
       </div>
 
@@ -157,9 +157,9 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-white">{u.credits}</span>
+                        <span className="text-gray-900 font-semibold">{u.credits}</span>
                         <div className="flex items-center gap-1">
-                          <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)} className="w-14 bg-gray-50 text-white text-xs px-1.5 py-1 rounded border border-gray-200" />
+                          <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)} className="w-14 bg-white text-gray-900 text-xs px-1.5 py-1 rounded border border-gray-300" />
                           <button onClick={() => addCredits(u)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">+</button>
                         </div>
                       </div>

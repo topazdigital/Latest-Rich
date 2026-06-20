@@ -78,9 +78,16 @@ export default function CreditsPageWrapper() {
     authFetch('/api/custom-payments/my-orders').then(r => r.json()).then(d => setCustomOrders(Array.isArray(d) ? d : [])).catch(() => {})
 
     const params = new URLSearchParams(window.location.search)
-    if (params.get('success')) toast.success('Payment successful! Credits added. 🎉')
+    if (params.get('success')) {
+      toast.success('Payment successful! Credits added. 🎉')
+      refreshUser()
+      authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
+    }
     if (params.get('error')) toast.error('Payment failed. Please try again.')
     if (params.get('cancelled')) toast.error('Payment cancelled.')
+
+    const interval = setInterval(() => { refreshUser() }, 30_000)
+    return () => clearInterval(interval)
   }, [token])
 
   const provider = paymentMethod?.provider || 'stripe'
