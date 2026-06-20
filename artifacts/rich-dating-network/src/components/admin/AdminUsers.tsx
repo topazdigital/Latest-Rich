@@ -78,7 +78,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="text-gray-400 text-sm">{total} users total</div>
+      <div className="text-gray-600 text-sm font-medium">{total} users total</div>
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -89,7 +89,7 @@ export default function AdminUsers() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-gray-200">
-                <tr className="text-gray-400 text-left">
+                <tr className="text-gray-600 text-left">
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
                   <th className="px-4 py-3">Last Active</th>
@@ -111,7 +111,7 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{u.city}{u.city && u.country ? ', ' : ''}{u.country}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                       {u.lastAccess && Number(u.lastAccess) > 0 ? (() => {
                         const diff = Math.floor(Date.now() / 1000) - Number(u.lastAccess)
                         if (diff < 60) return <span className="text-green-400 font-medium">Online now</span>
@@ -187,7 +187,7 @@ export default function AdminUsers() {
       {/* Pagination */}
       <div className="flex items-center gap-2 justify-center">
         <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Previous</button>
-        <span className="text-gray-400 text-sm">Page {page}</span>
+        <span className="text-gray-600 text-sm font-medium">Page {page}</span>
         <button disabled={users.length < 50} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-gray-50 text-white rounded-lg text-sm disabled:opacity-40">Next</button>
       </div>
 

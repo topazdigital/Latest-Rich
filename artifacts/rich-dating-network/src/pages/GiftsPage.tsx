@@ -101,7 +101,7 @@ export default function GiftsPage() {
                 <p className="font-semibold text-gray-900">Sending gift to</p>
                 <p className="text-brand-500 font-medium">{targetUser.name}</p>
               </div>
-              <Link href={profileUrl(targetUser)} className="text-sm text-gray-400 hover:text-gray-600">View profile</Link>
+              <Link href={profileUrl(targetUser)} className="text-sm font-semibold text-gray-600 hover:text-gray-900">View profile</Link>
             </div>
           ) : (
             <div>

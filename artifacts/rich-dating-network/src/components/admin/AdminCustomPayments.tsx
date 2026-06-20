@@ -197,7 +197,7 @@ export default function AdminCustomPayments() {
           ) : gateways.length === 0 ? (
             <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "1rem", padding: "3rem", textAlign: "center", color: "#6b7280" }}>
               <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>💳</div>
-              <p style={{ fontWeight: 700, color: "#9ca3af", marginBottom: "0.5rem" }}>No manual gateways yet</p>
+              <p style={{ fontWeight: 700, color: "#6b7280", marginBottom: "0.5rem" }}>No manual gateways yet</p>
               <p style={{ fontSize: "0.82rem" }}>Add your first custom payment method above</p>
             </div>
           ) : (
@@ -257,7 +257,7 @@ export default function AdminCustomPayments() {
             <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>Loading...</div>
           ) : orders.length === 0 ? (
             <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "1rem", padding: "3rem", textAlign: "center", color: "#6b7280" }}>
-              <p style={{ fontWeight: 700, color: "#9ca3af" }}>No {orderFilter} orders</p>
+              <p style={{ fontWeight: 700, color: "#6b7280" }}>No {orderFilter} orders</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>

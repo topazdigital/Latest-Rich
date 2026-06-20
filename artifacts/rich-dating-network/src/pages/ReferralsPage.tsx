@@ -135,7 +135,7 @@ export default function ReferralsPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{ref.name}</p>
-                    <p className="text-xs text-gray-400">{formatDate(ref.created)}</p>
+                    <p className="text-xs text-gray-600">{formatDate(ref.created)}</p>
                   </div>
                   <div className="flex-shrink-0">
                     {ref.status === "rewarded" ? (
@@ -147,7 +147,7 @@ export default function ReferralsPage() {
                         Joined
                       </span>
                     ) : (
-                      <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
                         Pending
                       </span>
                     )}

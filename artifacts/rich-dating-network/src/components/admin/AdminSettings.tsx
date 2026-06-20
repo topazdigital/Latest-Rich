@@ -345,7 +345,7 @@ export default function AdminSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Site Settings</h2>
-          <p className="text-gray-400 text-sm mt-1">Configure all platform settings</p>
+          <p className="text-gray-600 text-sm mt-1">Configure all platform settings</p>
         </div>
         <button onClick={save} disabled={saving}
           className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 shadow-lg">
@@ -482,7 +482,7 @@ export default function AdminSettings() {
                 ) : "Test Connection"}
               </button>
             </div>
-            <p className="text-gray-400 text-xs mb-2">Verify the server can reach your SMTP host and authenticate — before trying to send mail</p>
+            <p className="text-gray-600 text-xs mb-2">Verify the server can reach your SMTP host and authenticate — before trying to send mail</p>
             {smtpCheckResult && (
               <div>
                 <div className={`rounded-lg px-3 py-2.5 text-xs leading-relaxed border whitespace-pre-line ${smtpCheckResult.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
@@ -551,7 +551,7 @@ export default function AdminSettings() {
           ) : (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                <p className="text-gray-400 text-xs leading-relaxed">
+                <p className="text-gray-600 text-xs leading-relaxed">
                   <strong className="text-gray-600">Premium unlocks:</strong> Sharing contact info (phone, email, social handles, links) in chat, seeing profile visitors, VIP badge, priority placement, and more.
                 </p>
               </div>
@@ -565,13 +565,13 @@ export default function AdminSettings() {
                         <input type="checkbox" checked={pkg.active === 1}
                           onChange={e => updatePkg(i, 'active', e.target.checked ? 1 : 0)}
                           className="w-4 h-4 accent-yellow-500 rounded" />
-                        <span className="text-xs text-gray-400">{pkg.active ? 'Active' : 'Hidden'}</span>
+                        <span className="text-xs text-gray-600 font-medium">{pkg.active ? 'Active' : 'Hidden'}</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input type="checkbox" checked={pkg.popular === 1}
                           onChange={e => updatePkg(i, 'popular', e.target.checked ? 1 : 0)}
                           className="w-4 h-4 accent-brand-500 rounded" />
-                        <span className="text-xs text-gray-400">Popular badge</span>
+                        <span className="text-xs text-gray-600">Popular badge</span>
                       </label>
                     </div>
                     <button onClick={() => removePkg(i)} className="text-red-500 hover:text-red-400 p-1 transition-colors">
@@ -580,25 +580,25 @@ export default function AdminSettings() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Plan Name</label>
+                      <label className="text-gray-600 text-xs mb-1 block font-medium">Plan Name</label>
                       <input value={pkg.name} onChange={e => updatePkg(i, 'name', e.target.value)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="e.g. 1 Month" />
                     </div>
                     <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Duration (days)</label>
+                      <label className="text-gray-600 text-xs mb-1 block font-medium">Duration (days)</label>
                       <input type="number" value={pkg.days} onChange={e => updatePkg(i, 'days', parseInt(e.target.value) || 30)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="30" min="1" />
                     </div>
                     <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Price (USD)</label>
+                      <label className="text-gray-600 text-xs mb-1 block font-medium">Price (USD)</label>
                       <input type="number" value={pkg.price} step="0.01" onChange={e => updatePkg(i, 'price', parseFloat(e.target.value) || 0)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="9.99" min="0" />
                     </div>
                     <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Tag Line</label>
+                      <label className="text-gray-600 text-xs mb-1 block font-medium">Tag Line</label>
                       <input value={pkg.description} onChange={e => updatePkg(i, 'description', e.target.value)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="e.g. Save 17%" />
@@ -652,7 +652,7 @@ export default function AdminSettings() {
           ) : (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                <p className="text-gray-400 text-xs leading-relaxed">
+                <p className="text-gray-600 text-xs leading-relaxed">
                   <strong className="text-gray-600">Credits are used for:</strong> sending messages, sending gifts, boosting your profile, superlikes, and unlocking private photos.
                 </p>
               </div>
@@ -667,7 +667,7 @@ export default function AdminSettings() {
                           <input type="checkbox" checked={pkg.active === 1}
                             onChange={e => updateCreditPkg(i, 'active', e.target.checked ? 1 : 0)}
                             className="w-3.5 h-3.5 accent-green-500 rounded" />
-                          <span className="text-[10px] text-gray-400">{pkg.active ? 'On' : 'Off'}</span>
+                          <span className="text-[10px] text-gray-600 font-medium">{pkg.active ? 'On' : 'Off'}</span>
                         </label>
                         <button onClick={() => removeCreditPkg(i)} className="text-red-500 hover:text-red-400 transition-colors">
                           <Trash2 size={13} />
@@ -675,19 +675,19 @@ export default function AdminSettings() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Credits</label>
+                      <label className="text-gray-600 text-[10px] mb-1 block uppercase tracking-wide font-semibold">Credits</label>
                       <input type="number" value={pkg.credits} min="1"
                         onChange={e => updateCreditPkg(i, 'credits', parseInt(e.target.value) || 100)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500 font-bold" />
                     </div>
                     <div>
-                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Price (USD)</label>
+                      <label className="text-gray-600 text-[10px] mb-1 block uppercase tracking-wide font-semibold">Price (USD)</label>
                       <input type="number" value={pkg.price} step="0.01" min="0"
                         onChange={e => updateCreditPkg(i, 'price', parseFloat(e.target.value) || 0)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500" />
                     </div>
                     <div>
-                      <label className="text-gray-400 text-[10px] mb-1 block uppercase tracking-wide">Label</label>
+                      <label className="text-gray-600 text-[10px] mb-1 block uppercase tracking-wide font-semibold">Label</label>
                       <input value={pkg.description}
                         onChange={e => updateCreditPkg(i, 'description', e.target.value)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-green-500"
@@ -697,7 +697,7 @@ export default function AdminSettings() {
                       <input type="checkbox" checked={pkg.popular === 1}
                         onChange={e => updateCreditPkg(i, 'popular', e.target.checked ? 1 : 0)}
                         className="w-3.5 h-3.5 accent-green-500 rounded" />
-                      <span className="text-[10px] text-gray-400">Show "Popular" badge</span>
+                      <span className="text-[10px] text-gray-600">Show "Popular" badge</span>
                     </label>
                   </div>
                 ))}

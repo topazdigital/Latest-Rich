@@ -170,11 +170,11 @@ export default function BoostPage() {
                 <Zap size={16} color="#f97316" />
                 <span style={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Profile Boost</span>
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{config.duration} minutes of top placement</p>
+              <p style={{ fontSize: '0.8rem', color: '#4b5563', fontWeight: 500 }}>{config.duration} minutes of top placement</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{config.credits}</p>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af' }}>credits</p>
+              <p style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>credits</p>
             </div>
           </div>
 
@@ -184,7 +184,7 @@ export default function BoostPage() {
             background: '#f9fafb', borderRadius: '0.875rem', padding: '0.875rem 1rem',
             marginBottom: '1rem',
           }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6b7280' }}>💳 Your balance</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#374151' }}>💳 Your balance</span>
             <span style={{ fontSize: '1.1rem', fontWeight: 800, color: canAfford ? '#111827' : '#ef4444' }}>
               {credits} credits
             </span>
@@ -210,7 +210,7 @@ export default function BoostPage() {
               borderRadius: '1rem',
               border: 'none',
               background: canAfford ? 'linear-gradient(135deg, #f97316, #ef4444)' : '#e5e7eb',
-              color: canAfford ? '#fff' : '#9ca3af',
+              color: canAfford ? '#fff' : '#6b7280',
               fontWeight: 800,
               fontSize: '0.95rem',
               cursor: canAfford ? 'pointer' : 'not-allowed',
@@ -222,7 +222,7 @@ export default function BoostPage() {
             {boosting ? (
               <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Activating...</>
             ) : (
-              <><Zap size={18} fill={canAfford ? '#fff' : '#9ca3af'} /> Boost for {config.duration} min · {config.credits} credits</>
+              <><Zap size={18} fill={canAfford ? '#fff' : '#6b7280'} /> Boost for {config.duration} min · {config.credits} credits</>
             )}
           </button>
         </div>

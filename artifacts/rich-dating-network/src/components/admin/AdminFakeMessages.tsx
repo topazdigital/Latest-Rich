@@ -103,7 +103,7 @@ export default function AdminFakeMessages() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-bold text-gray-900">{templates.length} Message Templates</h2>
-          <p className="text-gray-400 text-xs mt-0.5">{activeCount} active — same message never sent twice to same user</p>
+          <p className="text-gray-600 text-xs mt-0.5">{activeCount} active — same message never sent twice to same user</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={triggerNow} disabled={triggering}

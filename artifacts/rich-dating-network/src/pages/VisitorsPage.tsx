@@ -100,7 +100,7 @@ export default function VisitorsPage() {
                 <div className="text-sm text-gray-500">
                   {[row.visitor?.age, row.visitor?.city, row.visitor?.country].filter(Boolean).join(' · ')}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">{timeAgo(row.visit?.time)}</div>
+                <div className="text-xs text-gray-600 mt-0.5 font-medium">{timeAgo(row.visit?.time)}</div>
               </div>
               <button onClick={() => setLocation(profileUrl(row.visitor))}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-sm hover:shadow-md flex-shrink-0"

@@ -177,7 +177,7 @@ export default function AdminPayments() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.875rem' }}>
                 {provider.fields.map(field => (
                   <div key={field.key}>
-                    <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                    <label style={{ display: 'block', color: '#e2e8f0', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem' }}>
                       {field.label}
                       {field.secret && <span style={{ color: '#ef4444', marginLeft: '0.3rem', fontSize: '0.68rem' }}>🔒 Encrypted</span>}
                     </label>
@@ -232,13 +232,13 @@ export default function AdminPayments() {
                     {testResult.message}
                   </p>
                   {testResult.detail && (
-                    <p style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '0.3rem', marginBottom: 0 }}>
+                    <p style={{ color: '#d1d5db', fontSize: '0.75rem', marginTop: '0.3rem', marginBottom: 0 }}>
                       PayHero says: {testResult.detail}
                     </p>
                   )}
                   {!testResult.ok && (
                     <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.4rem', marginBottom: 0, lineHeight: 1.5 }}>
-                      💡 The API password is <strong style={{ color: '#9ca3af' }}>not</strong> your PayHero login password.
+                      💡 The API password is <strong style={{ color: '#e2e8f0' }}>not</strong> your PayHero login password.
                       Go to PayHero → API Keys → delete the "Rich Dating Network" key → create a new one → set a new password → paste that password here.
                     </p>
                   )}

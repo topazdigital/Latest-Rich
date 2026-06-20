@@ -221,14 +221,14 @@ export default function CreditsPageWrapper() {
           <span style={{ fontSize: '1.75rem' }}>💳</span>
         </div>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111827', marginBottom: '0.4rem' }}>Get Credits</h1>
-        <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Boost your profile, send gifts, and unlock premium features</p>
+        <p style={{ color: '#374151', fontSize: '0.9rem' }}>Boost your profile, send gifts, and unlock premium features</p>
       </div>
 
       {/* Current balance */}
       <div style={{ background: 'linear-gradient(135deg,#fff0f1,#fff)', border: '1.5px solid #ffc5c9', borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <p style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 600 }}>Your current balance</p>
-          <p style={{ color: '#FF192C', fontSize: '1.75rem', fontWeight: 900, lineHeight: 1.1 }}>{user?.credits || 0} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>credits</span></p>
+          <p style={{ color: '#111827', fontSize: '0.85rem', fontWeight: 700 }}>Your current balance</p>
+          <p style={{ color: '#FF192C', fontSize: '1.75rem', fontWeight: 900, lineHeight: 1.1 }}>{user?.credits || 0} <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#d97706' }}>credits</span></p>
         </div>
         <div style={{ fontSize: '2rem' }}>💰</div>
       </div>
@@ -265,7 +265,7 @@ export default function CreditsPageWrapper() {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '0.4rem 0.875rem', fontSize: '0.82rem', fontWeight: 600 }}>
             <span>{providerInfo.icon}</span>
             <span style={{ color: providerInfo.color }}>Paying with {providerInfo.name}</span>
-            {paymentMethod?.country && <span style={{ color: '#9ca3af' }}>({paymentMethod.country})</span>}
+            {paymentMethod?.country && <span style={{ color: '#6b7280' }}>({paymentMethod.country})</span>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem', marginBottom: '1.5rem' }}>
             {packages.map(pkg => (
@@ -283,11 +283,11 @@ export default function CreditsPageWrapper() {
                 )}
                 <div style={{ marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '1.75rem', fontWeight: 900, color: '#111827' }}>{pkg.credits}</span>
-                  <span style={{ color: '#9ca3af', fontSize: '0.85rem', fontWeight: 600 }}> credits</span>
+                  <span style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 700 }}> credits</span>
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: '0.75rem', fontWeight: 700 }}>
                   {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}
-                  {provider !== 'stripe' && <span style={{ color: '#9ca3af' }}> ≈ ${pkg.usdPrice}</span>}
+                  {provider !== 'stripe' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
                 </div>
                 <button style={{
                   width: '100%', padding: '0.55rem', borderRadius: '0.75rem', border: 'none',
@@ -320,8 +320,8 @@ export default function CreditsPageWrapper() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>{g.name}</p>
-                  {g.description && <p style={{ color: '#6b7280', fontSize: '0.78rem', marginTop: '0.15rem' }}>{g.description}</p>}
-                  <p style={{ color: '#9ca3af', fontSize: '0.72rem', marginTop: '0.2rem' }}>⏱ Up to {g.reviewTime}h review</p>
+                  {g.description && <p style={{ color: '#4b5563', fontSize: '0.78rem', marginTop: '0.15rem' }}>{g.description}</p>}
+                  <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.2rem' }}>⏱ Up to {g.reviewTime}h review</p>
                 </div>
                 {selectedGateway?.id === g.id && <span style={{ color: '#FF192C', fontWeight: 800, fontSize: '1.1rem' }}>✓</span>}
               </div>
@@ -361,7 +361,7 @@ export default function CreditsPageWrapper() {
                 rows={3}
                 style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e5e7eb', borderRadius: '0.75rem', fontSize: '0.875rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
               />
-              <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.35rem' }}>After submitting, your payment will be reviewed and credits added within {selectedGateway.reviewTime} hour(s).</p>
+              <p style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: '0.35rem' }}>After submitting, your payment will be reviewed and credits added within {selectedGateway.reviewTime} hour(s).</p>
               <button
                 onClick={handleCustomSubmit}
                 disabled={!proof.trim() || submitting}
@@ -384,7 +384,7 @@ export default function CreditsPageWrapper() {
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📱</div>
             <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.35rem' }}>Pay with M-Pesa</h2>
-            <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>{pkg.credits} credits · {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}</p>
+            <p style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 600 }}>{pkg.credits} credits · {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}</p>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>Your M-Pesa Phone Number</label>
@@ -393,7 +393,7 @@ export default function CreditsPageWrapper() {
               placeholder="e.g. 0712345678 or +254712345678"
               style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e5e7eb', borderRadius: '0.875rem', fontSize: '0.9rem', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
-            <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.35rem' }}>We will send an STK push to this number.</p>
+            <p style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: '0.35rem' }}>We will send an STK push to this number.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button onClick={() => setStep('packages')} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.875rem', border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
@@ -442,7 +442,7 @@ export default function CreditsPageWrapper() {
                     </span>
                   </div>
                 </div>
-                <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Waiting for PIN confirmation…</p>
+                <p style={{ color: '#374151', fontSize: '0.8rem', fontWeight: 600 }}>Waiting for PIN confirmation…</p>
               </div>
             </>
           )}
@@ -531,7 +531,7 @@ export default function CreditsPageWrapper() {
                 <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
                 <div>
                   <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#111827' }}>{item.label}</p>
-                  <p style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{item.cost}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: 500 }}>{item.cost}</p>
                 </div>
               </div>
             ))}
@@ -548,7 +548,7 @@ export default function CreditsPageWrapper() {
               <div key={`auto-${o.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#fff', borderRadius: '0.875rem', border: '1px solid #f3f4f6' }}>
                 <div>
                   <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827' }}>{o.description}</p>
-                  <p style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{new Date(o.time * 1000).toLocaleDateString()}</p>
+                  <p style={{ fontSize: '0.72rem', color: '#6b7280' }}>{new Date(o.time * 1000).toLocaleDateString()}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>{o.currency} {o.amount}</p>
@@ -562,7 +562,7 @@ export default function CreditsPageWrapper() {
               <div key={`custom-${row.order?.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#fff', borderRadius: '0.875rem', border: '1px solid #f3f4f6' }}>
                 <div>
                   <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827' }}>Manual: {row.gateway?.name}</p>
-                  <p style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{new Date((row.order?.time || 0) * 1000).toLocaleDateString()}</p>
+                  <p style={{ fontSize: '0.72rem', color: '#6b7280' }}>{new Date((row.order?.time || 0) * 1000).toLocaleDateString()}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>{row.order?.currency} {row.order?.amount}</p>

@@ -175,7 +175,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 {user.premium === 1 && <Crown size={16} style={{ color: "#facc15" }} />}
                 {user.banned === 1 && <Ban size={16} style={{ color: "#f87171" }} />}
               </div>
-              <div style={{ color: "#9ca3af", fontSize: 13, marginTop: 2 }}>
+              <div style={{ color: "#6b7280", fontSize: 13, marginTop: 2 }}>
                 {user.email} · #{user.id} · @{user.username || "no username"}
               </div>
               <div style={{ color: "#6b7280", fontSize: 12, marginTop: 4 }}>
@@ -215,17 +215,17 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>DISPLAY NAME</label>
+                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>DISPLAY NAME</label>
                   <input value={editName} onChange={e => setEditName(e.target.value)}
                     style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>CITY</label>
+                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>CITY</label>
                   <input value={editCity} onChange={e => setEditCity(e.target.value)}
                     style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>BIO</label>
+                  <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>BIO</label>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
                     style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, resize: "vertical", boxSizing: "border-box" }} />
                 </div>
@@ -250,7 +250,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
           {/* MEDIA TAB */}
           {tab === "Media" && (
             <div>
-              <div style={{ color: "#9ca3af", fontSize: 13, marginBottom: 16 }}>{user.photos?.length || 0} photo(s) on record</div>
+              <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>{user.photos?.length || 0} photo(s) on record</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
                 {(user.photos || []).map(p => (
                   <div key={p.id} style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${p.main ? "#FF192C" : "#374151"}`, position: "relative" }}>
@@ -273,7 +273,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
           {/* CHATS TAB */}
           {tab === "Chats" && (
             <div>
-              <div style={{ color: "#9ca3af", fontSize: 13, marginBottom: 16 }}>Recent conversations</div>
+              <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>Recent conversations</div>
               {chats.length === 0 ? (
                 <div style={{ color: "#6b7280", fontSize: 13 }}>No conversations found</div>
               ) : (
@@ -284,7 +284,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                         onError={e => { (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.svg" }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ color: "white", fontWeight: 600, fontSize: 14 }}>{c.other?.name || "Unknown"} (#{c.other?.id})</div>
-                        <div style={{ color: "#9ca3af", fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMsg}</div>
+                        <div style={{ color: "#d1d5db", fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMsg}</div>
                       </div>
                       <div style={{ color: "#6b7280", fontSize: 11, flexShrink: 0 }}>{timeAgo(c.lastTime)}</div>
                     </div>
@@ -325,7 +325,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
 
               {orders.length > 0 && (
                 <div>
-                  <div style={{ color: "#9ca3af", fontSize: 12, fontWeight: 600, marginBottom: 12 }}>ORDER HISTORY</div>
+                  <div style={{ color: "#d1d5db", fontSize: 12, fontWeight: 700, marginBottom: 12, letterSpacing: "0.05em" }}>ORDER HISTORY</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {orders.map(o => (
                       <div key={o.id} style={{ background: "#1f2937", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
