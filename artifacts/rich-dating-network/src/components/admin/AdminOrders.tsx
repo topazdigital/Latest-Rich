@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { authFetch } from "../../lib/auth"
 import { timeAgo } from "../../lib/utils"
+import toast from "react-hot-toast"
 
 interface OrderRow {
   order: {
@@ -9,6 +10,7 @@ interface OrderRow {
     type: string
     description: string
     amount: number
+    credits?: number
     status: string
     time: number
     ref?: string
@@ -61,6 +63,8 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<Filter>("all")
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [fulfilling, setFulfilling] = useState<number | null>(null)
+  const [reconciling, setReconciling] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const load = useCallback(async (silent = false) => {
@@ -71,7 +75,7 @@ export default function AdminOrders() {
         const d = await r.json()
         setOrders(Array.isArray(d) ? d : [])
       }
-    } catch { /* silent */ }
+    } catch { }
     if (!silent) setLoading(false)
   }, [page])
 
@@ -84,6 +88,44 @@ export default function AdminOrders() {
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [autoRefresh, load])
+
+  const fulfillOrder = async (orderId: number) => {
+    setFulfilling(orderId)
+    try {
+      const r = await authFetch(`/api/admin/orders/${orderId}/fulfill`, { method: "POST" })
+      const d = await r.json()
+      if (r.ok) {
+        toast.success(d.message || "Order fulfilled — credits added!")
+        await load(true)
+      } else {
+        toast.error(d.error || "Failed to fulfill order")
+      }
+    } catch {
+      toast.error("Network error")
+    }
+    setFulfilling(null)
+  }
+
+  const reconcileAll = async () => {
+    setReconciling(true)
+    try {
+      const r = await authFetch("/api/admin/orders/reconcile-pending", { method: "POST" })
+      const d = await r.json()
+      if (r.ok) {
+        if (d.reconciled === 0) {
+          toast.success(`No stuck pending orders found (checked ${d.total} orders)`)
+        } else {
+          toast.success(`✅ Auto-credited ${d.reconciled} order${d.reconciled !== 1 ? "s" : ""}!`)
+        }
+        await load(true)
+      } else {
+        toast.error(d.error || "Reconciliation failed")
+      }
+    } catch {
+      toast.error("Network error")
+    }
+    setReconciling(false)
+  }
 
   const filtered = filter === "all" ? orders : orders.filter(r => r.order?.status === filter)
 
@@ -101,7 +143,23 @@ export default function AdminOrders() {
         <h2 style={{ color: "#f1f5f9", fontWeight: 800, fontSize: "1.1rem", margin: 0 }}>
           Orders &amp; Revenue
         </h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          {stats.pending > 0 && (
+            <button
+              onClick={reconcileAll}
+              disabled={reconciling}
+              style={{
+                background: reconciling ? "#334155" : "linear-gradient(135deg,#f59e0b,#d97706)",
+                color: "#fff", border: "none", borderRadius: "0.5rem",
+                padding: "0.4rem 0.875rem", fontSize: "0.78rem",
+                fontWeight: 700, cursor: reconciling ? "not-allowed" : "pointer",
+                fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.35rem",
+                opacity: reconciling ? 0.7 : 1,
+              }}
+            >
+              {reconciling ? "⏳ Reconciling…" : `⚡ Auto-Credit ${stats.pending} Pending`}
+            </button>
+          )}
           <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", color: "#94a3b8", fontSize: "0.78rem" }}>
             <input
               type="checkbox"
@@ -123,6 +181,27 @@ export default function AdminOrders() {
           </button>
         </div>
       </div>
+
+      {/* Reconciliation tip when pending orders exist */}
+      {stats.pending > 0 && (
+        <div style={{
+          background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
+          borderRadius: "0.75rem", padding: "0.75rem 1rem",
+          display: "flex", alignItems: "center", gap: "0.75rem",
+        }}>
+          <span style={{ fontSize: "1.1rem" }}>⚠️</span>
+          <div>
+            <div style={{ color: "#f59e0b", fontWeight: 700, fontSize: "0.82rem" }}>
+              {stats.pending} pending order{stats.pending !== 1 ? "s" : ""} found
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: "0.75rem", marginTop: "0.15rem" }}>
+              These payments may have been completed but credits weren't delivered.
+              Click <strong style={{ color: "#f59e0b" }}>Auto-Credit Pending</strong> to fix them all at once,
+              or use the <strong style={{ color: "#f59e0b" }}>Fulfill</strong> button on individual rows.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: "0.75rem" }}>
@@ -152,17 +231,11 @@ export default function AdminOrders() {
               key={f}
               onClick={() => { setFilter(f); setPage(1) }}
               style={{
-                flex: 1,
-                padding: "0.45rem 0.5rem",
-                borderRadius: "0.4rem",
-                border: "none",
-                cursor: "pointer",
+                flex: 1, padding: "0.45rem 0.5rem", borderRadius: "0.4rem",
+                border: "none", cursor: "pointer",
                 background: filter === f ? (st ? st.bg : "linear-gradient(135deg,#FF192C,#ff5f6b)") : "transparent",
                 color: filter === f ? (st ? st.color : "#fff") : "#94a3b8",
-                fontWeight: 600,
-                fontSize: "0.75rem",
-                fontFamily: "inherit",
-                textTransform: "capitalize",
+                fontWeight: 600, fontSize: "0.75rem", fontFamily: "inherit", textTransform: "capitalize",
               }}
             >
               {f}
@@ -187,7 +260,7 @@ export default function AdminOrders() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #1e293b" }}>
-                  {["User", "Type", "Amount", "Status", "Ref / Phone", "Time"].map(h => (
+                  {["User", "Type", "Amount", "Credits", "Status", "Ref / Phone", "Time", "Action"].map(h => (
                     <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }}>
                       {h}
                     </th>
@@ -200,15 +273,18 @@ export default function AdminOrders() {
                   const u = row.user
                   const statusStyle = getStatusStyle(o?.status)
                   const typeStyle = getTypeStyle(o?.type)
+                  const isPending = o?.status === "pending"
+                  const canFulfill = isPending && o?.type === "credits" && (o?.credits || 0) > 0
                   return (
                     <tr
                       key={i}
                       style={{
                         borderBottom: "1px solid #1e293b",
                         transition: "background 0.1s",
+                        background: isPending ? "rgba(245,158,11,0.03)" : "transparent",
                       }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#111827"}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = isPending ? "rgba(245,158,11,0.03)" : "transparent"}
                     >
                       <td style={{ padding: "0.75rem 1rem" }}>
                         <div style={{ color: "#e2e8f0", fontWeight: 600 }}>{u?.name || "Unknown"}</div>
@@ -229,6 +305,13 @@ export default function AdminOrders() {
                       </td>
                       <td style={{ padding: "0.75rem 1rem" }}>
                         <div style={{ color: "#f1f5f9", fontWeight: 700 }}>${(o?.amount || 0).toFixed(2)}</div>
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        {o?.credits ? (
+                          <span style={{ color: "#a855f7", fontWeight: 700 }}>{o.credits} cr</span>
+                        ) : (
+                          <span style={{ color: "#334155" }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: "0.75rem 1rem" }}>
                         <span style={{
@@ -252,6 +335,27 @@ export default function AdminOrders() {
                       </td>
                       <td style={{ padding: "0.75rem 1rem", color: "#64748b", fontSize: "0.72rem", whiteSpace: "nowrap" }}>
                         {timeAgo(o?.time)}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        {canFulfill ? (
+                          <button
+                            onClick={() => fulfillOrder(o.id)}
+                            disabled={fulfilling === o.id}
+                            style={{
+                              background: fulfilling === o.id ? "#334155" : "rgba(34,197,94,0.15)",
+                              color: fulfilling === o.id ? "#64748b" : "#22c55e",
+                              border: "1px solid rgba(34,197,94,0.3)",
+                              borderRadius: "0.4rem", padding: "0.25rem 0.6rem",
+                              fontSize: "0.72rem", fontWeight: 700,
+                              cursor: fulfilling === o.id ? "not-allowed" : "pointer",
+                              fontFamily: "inherit", whiteSpace: "nowrap",
+                            }}
+                          >
+                            {fulfilling === o.id ? "…" : "✓ Fulfill"}
+                          </button>
+                        ) : (
+                          <span style={{ color: "#334155", fontSize: "0.72rem" }}>—</span>
+                        )}
                       </td>
                     </tr>
                   )

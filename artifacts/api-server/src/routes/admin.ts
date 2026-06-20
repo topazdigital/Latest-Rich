@@ -510,6 +510,77 @@ router.get("/featured-users", async (req, res) => {
   } catch { res.json([]) }
 })
 
+// Force-fulfill a pending order (admin only)
+router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid order ID" }); return }
+
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1)
+    if (!order) { res.status(404).json({ error: "Order not found" }); return }
+    if (order.status === "completed") { res.status(400).json({ error: "Order already completed" }); return }
+
+    if (order.type === "credits") {
+      const creditsToAdd = order.credits || 0
+      if (creditsToAdd <= 0) { res.status(400).json({ error: "No credits amount stored on this order" }); return }
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+      if (!user) { res.status(404).json({ error: "User not found" }); return }
+      await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+      await db.insert(notificationsTable).values({
+        userId: order.userId, type: "credits", message: `${creditsToAdd} credits have been added to your account.`, time: now(), read: 0,
+      } as any).catch(() => {})
+    } else if (order.type === "premium") {
+      const days = order.description?.includes("7") ? 7 : order.description?.includes("30") ? 30 : order.description?.includes("90") ? 90 : 30
+      await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400 }).where(eq(usersTable.id, order.userId))
+    } else {
+      res.status(400).json({ error: `Unknown order type: ${order.type}` }); return
+    }
+
+    await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, id))
+    res.json({ success: true, message: `Order #${id} fulfilled — ${order.credits || 0} credits added to user #${order.userId}` })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Reconcile all pending orders older than 5 minutes (admin only)
+router.post("/orders/reconcile-pending", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const cutoff = now() - 5 * 60
+    const pending = await db.select().from(ordersTable)
+      .where(and(eq(ordersTable.status, "pending"), gte(ordersTable.time, 0)))
+      .orderBy(desc(ordersTable.id))
+      .limit(200)
+
+    const stuckOrders = pending.filter(o => (o.time || 0) < cutoff)
+
+    const results: { id: number; email: string; credits: number; fulfilled: boolean; reason?: string }[] = []
+
+    for (const order of stuckOrders) {
+      if (order.type !== "credits" || !order.credits || order.credits <= 0) continue
+      try {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+        if (!user) { results.push({ id: order.id, email: "unknown", credits: 0, fulfilled: false, reason: "User not found" }); continue }
+
+        await db.update(usersTable).set({ credits: (user.credits || 0) + order.credits }).where(eq(usersTable.id, order.userId))
+        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, order.id))
+        await db.insert(notificationsTable).values({
+          userId: order.userId, type: "credits", message: `${order.credits} credits have been added to your account.`, time: now(), read: 0,
+        } as any).catch(() => {})
+        results.push({ id: order.id, email: user.email, credits: order.credits, fulfilled: true })
+      } catch (e) {
+        results.push({ id: order.id, email: "error", credits: order.credits || 0, fulfilled: false, reason: String(e) })
+      }
+    }
+
+    res.json({ reconciled: results.filter(r => r.fulfilled).length, total: stuckOrders.length, results })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 // Orders/revenue
 router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
   try {
