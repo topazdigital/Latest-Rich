@@ -57,7 +57,7 @@ export default function AdminActivity() {
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === f.key ? "bg-brand-600 text-white" : "bg-gray-50 text-gray-400 hover:text-white hover:bg-gray-100"}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === f.key ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500 hover:text-gray-800 hover:bg-gray-200"}`}>
             {f.label}
           </button>
         ))}
@@ -85,17 +85,24 @@ export default function AdminActivity() {
                 const parsed = JSON.parse(preview)
                 if (parsed.message) preview = parsed.message
               } catch {}
+
+              // If admin replied as a fake user, show the fake user's name from the title
+              const title = row.activity?.title || ''
+              const modMatch = title.match(/^Moderator reply as (.+)$/)
+              const actorName = modMatch ? modMatch[1] : (row.user?.name || 'System')
+              const showPhoto = !modMatch && !!row.user?.photo
+
               return (
                 <div key={i} className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 ${i < activity.length - 1 ? 'border-b border-gray-200' : ''}`}>
                   {/* Avatar / icon */}
                   <div className="relative flex-shrink-0">
-                    {row.user?.photo ? (
+                    {showPhoto ? (
                       <img src={getPhotoUrl(row.user.photo)} alt=""
                         className="w-8 h-8 rounded-full object-cover"
                         onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-base">
-                        {icon}
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base">
+                        {modMatch ? '🤖' : icon}
                       </div>
                     )}
                     <div className="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none" title={type}>
@@ -106,9 +113,9 @@ export default function AdminActivity() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-white text-sm font-semibold">{row.user?.name || 'System'}</span>
+                      <span className="text-gray-900 text-sm font-semibold">{actorName}</span>
                       <span className="text-xs font-medium px-1.5 py-0.5 rounded-full" style={{ background: color + '22', color }}>
-                        {row.activity?.title || type}
+                        {modMatch ? `as fake user` : (row.activity?.title || type)}
                       </span>
                     </div>
                     {preview && (

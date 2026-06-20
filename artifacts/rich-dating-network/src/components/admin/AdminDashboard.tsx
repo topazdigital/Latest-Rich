@@ -173,26 +173,35 @@ export default function AdminDashboard() {
                     if (parsed.message) preview = parsed.message
                     else if (parsed.u1 && parsed.u2) preview = `${parsed.u1.name} → ${parsed.u2.name}`
                   } catch {}
+
+                  // If admin replied as a fake user, show fake user's name (not "Admin")
+                  const actTitle = row.activity?.title || ''
+                  const modMatch = actTitle.match(/^Moderator reply as (.+)$/)
+                  const actorName = modMatch ? modMatch[1] : (row.user?.name || 'System')
+                  const showPhoto = !modMatch && !!row.user?.photo
+
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.75rem', borderBottom: '1px solid #111827', transition: 'background 0.1s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#1e293b'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                      <div style={{ width: '1.625rem', height: '1.625rem', flexShrink: 0, position: 'relative', borderRadius: '50%', overflow: 'hidden', background: '#1e293b' }}>
-                        {row.user?.photo ? (
+                      <div style={{ width: '1.625rem', height: '1.625rem', flexShrink: 0, borderRadius: '50%', overflow: 'hidden', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {showPhoto ? (
                           <img src={getPhotoUrl(row.user.photo)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>
-                            {ACT_ICONS[row.activity?.type] || ACT_ICONS.default}
-                          </div>
+                          <span style={{ fontSize: '0.65rem' }}>
+                            {modMatch ? '🤖' : (ACT_ICONS[row.activity?.type] || ACT_ICONS.default)}
+                          </span>
                         )}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                           <span style={{ color: '#e2e8f0', fontSize: '0.7rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {row.user?.name || 'System'}
+                            {actorName}
                           </span>
-                          <span style={{ color: '#475569', fontSize: '0.6rem', flexShrink: 0 }}>{ACT_ICONS[row.activity?.type] || ''}</span>
+                          {modMatch && (
+                            <span style={{ color: '#a78bfa', fontSize: '0.58rem', flexShrink: 0 }}>fake user</span>
+                          )}
                         </div>
                         {preview && (
                           <div style={{ color: '#64748b', fontSize: '0.63rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '0.05rem' }}>
