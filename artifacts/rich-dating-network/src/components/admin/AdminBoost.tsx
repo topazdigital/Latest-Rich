@@ -154,7 +154,7 @@ export default function AdminBoost() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-medium text-sm truncate">{record.user?.name || 'Unknown'}</span>
+                    <span className="text-gray-900 font-medium text-sm truncate">{record.user?.name || 'Unknown'}</span>
                     {isActive(record.boost) && (
                       <span className="flex items-center gap-1 bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> LIVE

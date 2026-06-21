@@ -107,7 +107,7 @@ export default function AdminUsers() {
                           <img src={getPhotoUrl(u.photo)} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
                         </div>
                         <div>
-                          <div className="text-white font-medium">{u.name}</div>
+                          <div className="text-gray-900 font-medium">{u.name}</div>
                           <div className="text-gray-500 text-xs">{u.email} · #{u.id}</div>
                         </div>
                       </div>
