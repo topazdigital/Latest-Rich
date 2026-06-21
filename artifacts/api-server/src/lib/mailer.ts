@@ -22,7 +22,8 @@ async function getTransporter() {
   const smtpPort = parseInt(process.env.SMTP_PORT || await getConfig("smtp_port") || "587")
   const smtpUser = process.env.SMTP_USER || await getConfig("smtp_user")
   const smtpPass = process.env.SMTP_PASS || await getConfig("smtp_pass")
-  const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
+  const smtpSecureRaw = process.env.SMTP_SECURE || await getConfig("smtp_secure")
+  const smtpSecure = smtpSecureRaw === "1" || smtpSecureRaw === "true" || smtpSecureRaw === "yes"
 
   if (!smtpHost) return null
   const isLocalhost = smtpHost === "localhost" || smtpHost === "127.0.0.1"

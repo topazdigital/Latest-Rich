@@ -146,9 +146,6 @@ export default function MeetPage({ userId, users, onRefresh }: Props) {
           </Link>
         </div>
 
-        <div className="text-center mt-3 text-sm text-gray-400">
-          {queue.length - current} members remaining
-        </div>
       </div>
     </div>
   )

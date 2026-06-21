@@ -91,8 +91,9 @@ router.post("/google", async (req, res) => {
           lastAccess: String(now()),
         })
       } catch (insertErr: any) {
-        console.error("Google auth: failed to insert new user:", insertErr?.message || insertErr)
-        res.status(500).json({ error: "Failed to create account", detail: insertErr?.message }); return
+        const dbMsg = insertErr?.message || String(insertErr)
+        console.error("Google auth: failed to insert new user:", dbMsg)
+        res.status(500).json({ error: `Failed to create account: ${dbMsg}` }); return
       }
       const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, googleEmail)).limit(1)
       if (!newUser) {
