@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter"
+import { Switch, Route, Router as WouterRouter, useLocation, useSearch } from "wouter"
 import { Toaster } from "react-hot-toast"
 import { useEffect, useState, useCallback } from "react"
 import { usePWAInstall } from "./hooks/usePWAInstall"
@@ -53,6 +53,7 @@ function matchesPrefix(location: string, prefixes: string[]) {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
+  const search = useSearch()
   const { user, loading } = useAuth()
 
   useEffect(() => {
@@ -60,12 +61,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const isProtected = matchesPrefix(location, PROTECTED_PREFIXES)
     const isAdmin = matchesPrefix(location, ADMIN_PREFIXES)
     const isModerator = matchesPrefix(location, MODERATOR_PREFIXES)
-    const isUsernameProfile = location.startsWith("/@")
+    // Allow logged-in users to stay on /register?social=1 for profile completion
+    const isSocialCompletion = location === "/register" && search.includes("social=1")
     if (!user && (isProtected || isAdmin || isModerator)) setLocation("/login")
-    else if (user && (location === "/" || location === "/login" || location === "/register")) setLocation("/discover")
+    else if (user && (location === "/" || location === "/login" || location === "/register") && !isSocialCompletion) setLocation("/discover")
     else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
     else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
-  }, [user, loading, location])
+    // If a logged-in user has no age set (birthday never filled — incomplete social profile),
+    // send them to the profile completion form instead of letting them browse
+    else if (user && isProtected && (user.age === 0 || !user.age) && !user.fake && (user.admin ?? 0) === 0) {
+      setLocation("/register?social=1")
+    }
+  }, [user, loading, location, search])
 
   if (loading) {
     return (
