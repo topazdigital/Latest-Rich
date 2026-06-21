@@ -79,8 +79,8 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
       premiumUsers: premiumUsers.count,
       onlineUsers: onlineUsers.count,
       bannedUsers: bannedUsers.count,
-      totalRevenue: totalRevenue[0]?.sum || 0,
-      todayRevenue: todayRevenue[0]?.sum || 0,
+      totalRevenue: parseFloat(String(totalRevenue[0]?.sum ?? 0)) || 0,
+      todayRevenue: parseFloat(String(todayRevenue[0]?.sum ?? 0)) || 0,
       totalMessages: totalMessages.count,
       totalLikes: totalLikes.count,
     })

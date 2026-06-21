@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { Lock, Send, RefreshCw, MessageSquare, User, ChevronLeft } from "lucide-react"
+import { Lock, Send, RefreshCw, MessageSquare, ChevronLeft } from "lucide-react"
 
 interface FakeUser { id: number; name: string; photo: string }
 interface RealUser { id: number; name: string; photo: string }
@@ -27,7 +27,19 @@ const S = {
   card: { background: "#0f172a", border: "1px solid #1e293b", borderRadius: "0.75rem", overflow: "hidden" } as React.CSSProperties,
   avatar: { width: 36, height: 36, borderRadius: "50%", objectFit: "cover" as const, background: "#1e293b", flexShrink: 0 },
   btn: (color = "#FF192C") => ({ padding: "0.4rem 0.875rem", background: color, color: "#fff", border: "none", borderRadius: "0.5rem", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.3rem" } as React.CSSProperties),
-  input: { width: "100%", background: "#0f172a", border: "2px solid #475569", borderRadius: "0.5rem", color: "#f1f5f9", padding: "0.5rem 0.75rem", fontSize: "0.85rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const },
+  input: {
+    width: "100%",
+    background: "#1e293b",
+    border: "2px solid #475569",
+    borderRadius: "0.5rem",
+    color: "#f1f5f9",
+    caretColor: "#a78bfa",
+    padding: "0.6rem 0.875rem",
+    fontSize: "0.85rem",
+    outline: "none",
+    fontFamily: "inherit",
+    boxSizing: "border-box" as const,
+  } as React.CSSProperties,
 }
 
 type ChatFilter = "all" | "needs_reply" | "follow_up"
@@ -46,7 +58,10 @@ export default function AdminChat() {
   const [myUserId, setMyUserId] = useState<number | null>(null)
   const [lockExpiry, setLockExpiry] = useState<number>(0)
   const keepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollMsgRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollConvRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const lastMsgIdRef = useRef<number>(0)
 
   useEffect(() => {
     authFetch("/api/moderator/me").then(r => r.json()).then(u => setMyUserId(u.id)).catch(() => {})
@@ -58,29 +73,67 @@ export default function AdminChat() {
   }, [messages])
 
   useEffect(() => {
-    return () => { if (keepaliveRef.current) clearInterval(keepaliveRef.current) }
+    return () => {
+      if (keepaliveRef.current) clearInterval(keepaliveRef.current)
+      if (pollMsgRef.current) clearInterval(pollMsgRef.current)
+      if (pollConvRef.current) clearInterval(pollConvRef.current)
+    }
   }, [])
 
-  const loadConversations = async () => {
-    setLoading(true)
+  // Poll conversation list every 30s for unread count updates
+  useEffect(() => {
+    if (pollConvRef.current) clearInterval(pollConvRef.current)
+    pollConvRef.current = setInterval(() => loadConversations(true), 30_000)
+    return () => { if (pollConvRef.current) clearInterval(pollConvRef.current) }
+  }, [page])
+
+  const loadConversations = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const r = await authFetch(`/api/moderator/conversations?page=${page}`)
       const d = await r.json()
       setConversations(d.conversations || [])
       setTotal(d.total || 0)
-    } catch { toast.error("Failed to load conversations") }
-    setLoading(false)
-  }
+    } catch { if (!silent) toast.error("Failed to load conversations") }
+    if (!silent) setLoading(false)
+  }, [page])
+
+  // Poll messages every 5s while a conversation is open
+  useEffect(() => {
+    if (pollMsgRef.current) clearInterval(pollMsgRef.current)
+    if (!selected) return
+
+    const pollMessages = async () => {
+      try {
+        const r = await authFetch(`/api/moderator/conversations/${selected.key}/messages`)
+        const d = await r.json()
+        const newMsgs: Message[] = d.messages || []
+        const latestId = newMsgs.length > 0 ? newMsgs[newMsgs.length - 1].id : 0
+        if (latestId > lastMsgIdRef.current) {
+          lastMsgIdRef.current = latestId
+          setMessages(newMsgs)
+          // Update conversation list silently so unread badge refreshes
+          loadConversations(true)
+        }
+      } catch {}
+    }
+
+    pollMsgRef.current = setInterval(pollMessages, 5_000)
+    return () => { if (pollMsgRef.current) clearInterval(pollMsgRef.current) }
+  }, [selected?.key])
 
   const openConversation = async (conv: Conversation) => {
     setSelected(conv)
     setMessages([])
     setMsgLoading(true)
     setReply("")
+    lastMsgIdRef.current = 0
     try {
       const r = await authFetch(`/api/moderator/conversations/${conv.key}/messages`)
       const d = await r.json()
-      setMessages(d.messages || [])
+      const msgs: Message[] = d.messages || []
+      setMessages(msgs)
+      lastMsgIdRef.current = msgs.length > 0 ? msgs[msgs.length - 1].id : 0
     } catch { toast.error("Failed to load messages") }
     setMsgLoading(false)
   }
@@ -112,7 +165,11 @@ export default function AdminChat() {
       })
       if (!r.ok) { const e = await r.json(); toast.error(e.error || "Failed to send"); setSending(false); return }
       const d = await r.json()
-      setMessages(m => [...m, d.message])
+      setMessages(m => {
+        const updated = [...m, d.message]
+        lastMsgIdRef.current = d.message.id
+        return updated
+      })
       setReply("")
     } catch { toast.error("Failed to send") }
     setSending(false)
@@ -129,7 +186,7 @@ export default function AdminChat() {
             Reply as fake users to real members · {total} conversations
           </p>
         </div>
-        <button onClick={loadConversations} style={S.btn("#1e293b")}>
+        <button onClick={() => loadConversations()} style={S.btn("#1e293b")}>
           <RefreshCw size={12} /> Refresh
         </button>
       </div>
@@ -140,9 +197,9 @@ export default function AdminChat() {
           {/* Filter tabs */}
           <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1e293b", flexShrink: 0 }}>
             {([
-              { key: "all",          label: "All",        color: "#64748b" },
-              { key: "needs_reply",  label: "🔴 Reply",   color: "#FF192C" },
-              { key: "follow_up",    label: "✅ Follow Up",color: "#22c55e" },
+              { key: "all",          label: "All",         color: "#64748b" },
+              { key: "needs_reply",  label: "🔴 Reply",    color: "#FF192C" },
+              { key: "follow_up",    label: "✅ Follow Up", color: "#22c55e" },
             ] as { key: ChatFilter; label: string; color: string }[]).map(tab => {
               const count =
                 tab.key === "needs_reply" ? conversations.filter(c => !c.lastSenderFake).length :
@@ -187,6 +244,9 @@ export default function AdminChat() {
             return visible.map(conv => {
               const isActive = selected?.key === conv.key
               const lockedByOther = conv.lock && conv.lock.moderatorId !== myUserId
+              // Show: "who sent last → recipient" so the arrow indicates message direction
+              const senderName    = conv.lastSenderFake ? conv.fakeUser.name  : conv.realUser.name
+              const recipientName = conv.lastSenderFake ? conv.realUser.name  : conv.fakeUser.name
               return (
                 <button key={conv.key} onClick={() => openConversation(conv)} style={{
                   display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.75rem",
@@ -200,7 +260,9 @@ export default function AdminChat() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.25rem" }}>
                       <span style={{ color: "#e2e8f0", fontSize: "0.78rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {conv.realUser.name} → {conv.fakeUser.name}
+                        {senderName}
+                        <span style={{ color: "#475569", fontWeight: 400 }}> → </span>
+                        {recipientName}
                       </span>
                       <span style={{ color: "#475569", fontSize: "0.65rem", flexShrink: 0 }}>{timeLabel(conv.lastTime)}</span>
                     </div>
@@ -208,7 +270,7 @@ export default function AdminChat() {
                       <span style={{ color: "#64748b", fontSize: "0.7rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                         {conv.lastMessage || "No messages"}
                       </span>
-                      {/* Read receipt: show when fake user sent last msg and real user has read it */}
+                      {/* Read receipt: show when fake user sent last msg */}
                       {conv.lastSenderFake && (
                         <span style={{
                           fontSize: "0.65rem", flexShrink: 0, fontWeight: 700,
@@ -250,7 +312,7 @@ export default function AdminChat() {
           <div style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600 }}>
             {/* Header */}
             <div style={{ padding: "0.75rem", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button onClick={() => setSelected(null)} style={S.btn("#1e293b")}>
+              <button onClick={() => { setSelected(null); if (pollMsgRef.current) clearInterval(pollMsgRef.current) }} style={S.btn("#1e293b")}>
                 <ChevronLeft size={12} /> Back
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, minWidth: 0 }}>
@@ -267,11 +329,14 @@ export default function AdminChat() {
                   )}
                 </div>
               </div>
-              {!isLockedByMe && !selected.lock && (
-                <button onClick={lockConversation} style={S.btn("#7c3aed")}>
-                  <Lock size={11} /> Lock to Reply
-                </button>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <span style={{ color: "#22c55e", fontSize: "0.6rem", fontWeight: 600 }}>● Live</span>
+                {!isLockedByMe && !selected.lock && (
+                  <button onClick={lockConversation} style={S.btn("#7c3aed")}>
+                    <Lock size={11} /> Lock to Reply
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Messages */}
@@ -287,7 +352,9 @@ export default function AdminChat() {
                 return (
                   <div key={msg.id} style={{ display: "flex", justifyContent: fromFake ? "flex-end" : "flex-start", gap: "0.4rem", alignItems: "flex-end" }}>
                     {!fromFake && (
-                      <img src={getPhotoUrl(selected.realUser.photo)} alt="" style={{ ...S.avatar, width: 24, height: 24 }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1e293b" }}>
+                        <img src={getPhotoUrl(selected.realUser.photo)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                      </div>
                     )}
                     <div style={{
                       maxWidth: "70%", padding: "0.5rem 0.75rem", borderRadius: fromFake ? "1rem 1rem 0.25rem 1rem" : "1rem 1rem 1rem 0.25rem",
@@ -304,7 +371,9 @@ export default function AdminChat() {
                       </div>
                     </div>
                     {fromFake && (
-                      <img src={getPhotoUrl(selected.fakeUser.photo)} alt="" style={{ ...S.avatar, width: 24, height: 24 }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#1e293b" }}>
+                        <img src={getPhotoUrl(selected.fakeUser.photo)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                      </div>
                     )}
                   </div>
                 )
@@ -327,6 +396,7 @@ export default function AdminChat() {
                     placeholder={`Reply as ${selected.fakeUser.name}…`}
                     style={S.input}
                     disabled={sending}
+                    autoFocus
                   />
                   <button onClick={sendReply} disabled={sending || !reply.trim()} style={{ ...S.btn(), opacity: !reply.trim() || sending ? 0.5 : 1 }}>
                     <Send size={13} />
