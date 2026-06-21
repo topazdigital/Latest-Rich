@@ -144,7 +144,7 @@ router.post("/register", async (req, res) => {
     }
 
     const age = calcAge(birthday || "")
-    const registrationCredits = parseInt(await getConfig("registration_credits") || "50")
+    const registrationCredits = parseInt(await getConfig("registration_credits") || "0")
 
     await db.insert(usersTable).values({
       name: name.trim(),

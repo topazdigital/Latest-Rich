@@ -124,6 +124,7 @@ export default function RegisterPage() {
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
   const [uploadedPhoto, setUploadedPhoto] = useState<{ url: string; filename: string } | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [usingSocialPhoto, setUsingSocialPhoto] = useState(false)
   const [showDialDropdown, setShowDialDropdown] = useState(false)
   const [dialSearch, setDialSearch] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -176,6 +177,11 @@ export default function RegisterPage() {
       email: auth.user.email || p.email,
       phoneDialCode: auth.user.countryCode ? getDialFromCountryCode(auth.user.countryCode) : p.phoneDialCode,
     }))
+    // If the social provider already gave us a profile photo, use it for step 4
+    if (auth.user.photo) {
+      setPreviewUrl(auth.user.photo)
+      setUsingSocialPhoto(true)
+    }
   }, [isSocial])
 
   useEffect(() => {
@@ -445,7 +451,7 @@ export default function RegisterPage() {
   }
 
   async function finishRegistration() {
-    if (!uploadedPhoto) { toast.error('Please upload a profile photo to continue'); return }
+    if (!uploadedPhoto && !usingSocialPhoto) { toast.error('Please upload a profile photo to continue'); return }
     const auth = getStoredAuth()
     if (!auth?.user) { window.location.href = '/login'; return }
     if (auth.user.emailVerified === 0) {
@@ -896,7 +902,11 @@ export default function RegisterPage() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-black text-gray-900 mb-1">Add Your Profile Photo</h2>
-                <p className="text-sm text-gray-500">Profiles with photos get 10x more matches. This is required to continue.</p>
+                <p className="text-sm text-gray-500">
+                  {usingSocialPhoto
+                    ? 'We imported your profile photo. You can keep it or upload a different one.'
+                    : 'Profiles with photos get 10x more matches. This is required to continue.'}
+                </p>
               </div>
 
               <div className="flex flex-col items-center gap-4">
@@ -917,9 +927,9 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                {previewUrl && uploadedPhoto && (
+                {previewUrl && (uploadedPhoto || usingSocialPhoto) && (
                   <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">
-                    <Check size={16} /> Photo uploaded!
+                    <Check size={16} /> {usingSocialPhoto && !uploadedPhoto ? 'Photo imported from your account' : 'Photo uploaded!'}
                   </div>
                 )}
 
@@ -941,9 +951,9 @@ export default function RegisterPage() {
                 </ul>
               </div>
 
-              <button onClick={finishRegistration} disabled={!uploadedPhoto || photoUploading}
+              <button onClick={finishRegistration} disabled={(!uploadedPhoto && !usingSocialPhoto) || photoUploading}
                 className="w-full py-3.5 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 disabled:opacity-40"
-                style={{ background: uploadedPhoto ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
+                style={{ background: (uploadedPhoto || usingSocialPhoto) ? 'linear-gradient(135deg, #FF192C, #ff5f6b)' : '#d1d5db' }}>
                 Find My Matches 💝
               </button>
 

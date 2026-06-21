@@ -82,7 +82,7 @@ router.post("/google", async (req, res) => {
           INSERT INTO users
             (name, email, username, phone, password, photo, photo_thumb, gender, looking, verified, credits, last_access, created, superlike, age)
           VALUES
-            (${name}, ${googleEmail}, ${username}, ${googlePhone}, ${'google_' + googleId}, ${picture}, ${picture}, ${1}, ${2}, ${1}, ${50}, ${String(t)}, ${t}, ${3}, ${0})
+            (${name}, ${googleEmail}, ${username}, ${googlePhone}, ${'google_' + googleId}, ${picture}, ${picture}, ${1}, ${2}, ${1}, ${0}, ${String(t)}, ${t}, ${3}, ${0})
         `)
         // Best-effort: set email_verified if column exists (added by migration)
         await db.execute(sql`UPDATE users SET email_verified = 1 WHERE email = ${googleEmail}`).catch(() => {})
@@ -108,7 +108,9 @@ router.post("/google", async (req, res) => {
 
     const token = signToken({ userId: user.id })
     const { password: _, ...safeUser } = user
-    res.json({ token, user: safeUser, needsCompletion: isNew })
+    // needsCompletion = true if user is new OR if profile is still incomplete (exited mid-flow)
+    const profileIncomplete = !user.birthday || !user.city
+    res.json({ token, user: safeUser, needsCompletion: isNew || profileIncomplete })
   } catch (err: any) {
     console.error("Google auth error:", err?.message || err)
     res.status(500).json({ error: "Google login failed", detail: err?.message })
@@ -154,7 +156,7 @@ router.post("/facebook", async (req, res) => {
         gender: 1,
         looking: 2,
         verified: 1,
-        credits: 50,
+        credits: 0,
         superlike: 3,
         created: now(),
         lastAccess: String(now()),
@@ -170,7 +172,9 @@ router.post("/facebook", async (req, res) => {
 
     const token = signToken({ userId: user.id })
     const { password: _, ...safeUser } = user
-    res.json({ token, user: safeUser, needsCompletion: isFbNew })
+    // needsCompletion = true if user is new OR if profile is still incomplete (exited mid-flow)
+    const fbProfileIncomplete = !user.birthday || !user.city
+    res.json({ token, user: safeUser, needsCompletion: isFbNew || fbProfileIncomplete })
   } catch (err: any) {
     console.error("Facebook auth error:", err)
     res.status(500).json({ error: "Facebook login failed" })
