@@ -224,6 +224,47 @@ function VideoCallController() {
   )
 }
 
+function NoPhotoBanner() {
+  const { user } = useAuth()
+  const [location, setLocation] = useLocation()
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    if (localStorage.getItem(`no_photo_banner_done_${user.id}`) === '1') setDismissed(true)
+  }, [user])
+
+  const isAppPage = matchesPrefix(location, PROTECTED_PREFIXES)
+  // Only show for real, non-admin users who have no profile photo
+  if (!user || dismissed || !isAppPage || user.photo || user.fake || (user.admin ?? 0) > 0) return null
+
+  return (
+    <div className="fixed top-14 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+      <div className="w-full max-w-xl pointer-events-auto">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg mt-2">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 text-lg">📸</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-900 leading-tight">Add a profile photo</p>
+            <p className="text-xs text-amber-700 leading-tight mt-0.5">Profiles with photos get 10× more matches</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => { setDismissed(true); localStorage.setItem(`no_photo_banner_done_${user.id}`, '1') }}
+              className="text-amber-500 hover:text-amber-700 text-xs px-2 py-1 transition-colors">
+              Later
+            </button>
+            <button
+              onClick={() => setLocation('/settings?tab=photos')}
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors">
+              Add Photo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PWAInstallBanner() {
   const { canInstall, install } = usePWAInstall()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('pwa_banner_dismissed') === '1')
@@ -405,6 +446,7 @@ function Router() {
       <NewSiteOnboardingController />
       <ProfileQuestionsController />
       <VideoCallController />
+      <NoPhotoBanner />
       <PWAInstallBanner />
       <IOSInstallBanner />
       <AppLayout>
