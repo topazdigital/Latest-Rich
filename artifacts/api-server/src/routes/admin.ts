@@ -511,6 +511,7 @@ router.get("/featured-users", async (req, res) => {
 })
 
 // Force-fulfill a pending order (admin only)
+// Body: { creditsOverride?: number } — override credits if order.credits is 0 or wrong
 router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
@@ -520,24 +521,84 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
     if (!order) { res.status(404).json({ error: "Order not found" }); return }
     if (order.status === "completed") { res.status(400).json({ error: "Order already completed" }); return }
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+
     if (order.type === "credits") {
-      const creditsToAdd = order.credits || 0
-      if (creditsToAdd <= 0) { res.status(400).json({ error: "No credits amount stored on this order" }); return }
-      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-      if (!user) { res.status(404).json({ error: "User not found" }); return }
+      const overrideCredits = req.body.creditsOverride ? parseInt(req.body.creditsOverride) : null
+      const creditsToAdd = (overrideCredits && overrideCredits > 0) ? overrideCredits : (order.credits || 0)
+      if (creditsToAdd <= 0) { res.status(400).json({ error: "Specify a credits amount to add (order has 0 credits stored)" }); return }
       await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+      // Update credits on order record too if it was 0
+      if (!order.credits || order.credits <= 0) {
+        await db.update(ordersTable).set({ credits: creditsToAdd }).where(eq(ordersTable.id, id))
+      }
       await db.insert(notificationsTable).values({
         userId: order.userId, type: "credits", message: `${creditsToAdd} credits have been added to your account.`, time: now(), read: 0,
       } as any).catch(() => {})
+      await db.insert(activityTable).values({ type: "payment", userId: req.userId, title: "Order fulfilled", message: `Order #${id} for ${user.email}: +${creditsToAdd} credits`, time: now() }).catch(() => {})
+      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, id))
+      res.json({ success: true, message: `Order #${id} fulfilled — ${creditsToAdd} credits added to ${user.email}` })
     } else if (order.type === "premium") {
-      const days = order.description?.includes("7") ? 7 : order.description?.includes("30") ? 30 : order.description?.includes("90") ? 90 : 30
+      const days = order.description?.match(/(\d+)\s*(year|month|week)/i)
+        ? (order.description.includes("year") ? 365 : order.description.includes("3 month") ? 90 : order.description.includes("6 month") ? 180 : 30)
+        : 30
       await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400 }).where(eq(usersTable.id, order.userId))
+      await db.insert(notificationsTable).values({
+        userId: order.userId, type: "premium", message: `Premium membership activated for ${days} days.`, time: now(), read: 0,
+      } as any).catch(() => {})
+      await db.insert(activityTable).values({ type: "payment", userId: req.userId, title: "Premium fulfilled", message: `Order #${id} for ${user.email}: ${days} days premium`, time: now() }).catch(() => {})
+      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, id))
+      res.json({ success: true, message: `Order #${id} fulfilled — ${days} days premium granted to ${user.email}` })
     } else {
       res.status(400).json({ error: `Unknown order type: ${order.type}` }); return
     }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
 
-    await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, id))
-    res.json({ success: true, message: `Order #${id} fulfilled — ${order.credits || 0} credits added to user #${order.userId}` })
+// Manually grant credits to a user by email (for off-system payments like direct Mpesa transfers)
+router.post("/orders/grant-credits", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { email, credits, note } = req.body
+    if (!email || !credits) { res.status(400).json({ error: "email and credits are required" }); return }
+    const creditsNum = parseInt(credits)
+    if (isNaN(creditsNum) || creditsNum <= 0) { res.status(400).json({ error: "credits must be a positive number" }); return }
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.trim().toLowerCase())).limit(1)
+    if (!user) { res.status(404).json({ error: `No user found with email: ${email}` }); return }
+
+    const newCredits = (user.credits || 0) + creditsNum
+    await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, user.id))
+
+    // Create an order record for bookkeeping
+    await db.insert(ordersTable).values({
+      userId: user.id,
+      amount: 0,
+      currency: "MANUAL",
+      type: "credits",
+      description: note || `Manual credit grant by admin`,
+      status: "completed",
+      stripeSessionId: `MANUAL-${req.userId}-${Date.now()}`,
+      credits: creditsNum,
+      time: now(),
+    })
+
+    // Notify user
+    await db.insert(notificationsTable).values({
+      userId: user.id, type: "credits", message: `${creditsNum} credits have been added to your account.`, time: now(), read: 0,
+    } as any).catch(() => {})
+
+    await db.insert(activityTable).values({
+      type: "payment", userId: req.userId,
+      title: "Manual credit grant",
+      message: `${user.name} (${user.email}): +${creditsNum} credits → ${newCredits} total. Note: ${note || "none"}`,
+      time: now()
+    }).catch(() => {})
+
+    res.json({ success: true, message: `✅ ${creditsNum} credits added to ${user.name} (${user.email}). New balance: ${newCredits}`, newBalance: newCredits })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
@@ -581,15 +642,31 @@ router.post("/orders/reconcile-pending", requireAuth, requireAdmin, async (req, 
   }
 })
 
-// Orders/revenue
+// Orders/revenue (supports ?search=email&status=pending&page=1)
 router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(String(req.query.page || "1")))
+    const search = String(req.query.search || "").trim()
+    const statusFilter = String(req.query.status || "")
+
+    let whereClause: any = undefined
+    if (search && statusFilter) {
+      whereClause = and(
+        eq(ordersTable.status, statusFilter),
+        sql`(${usersTable.email} LIKE ${'%' + search + '%'} OR ${usersTable.name} LIKE ${'%' + search + '%'})`
+      )
+    } else if (search) {
+      whereClause = sql`(${usersTable.email} LIKE ${'%' + search + '%'} OR ${usersTable.name} LIKE ${'%' + search + '%'})`
+    } else if (statusFilter) {
+      whereClause = eq(ordersTable.status, statusFilter)
+    }
+
     const orders = await db.select({
       order: ordersTable,
       user: { id: usersTable.id, name: usersTable.name, email: usersTable.email }
     }).from(ordersTable)
       .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
+      .where(whereClause)
       .orderBy(desc(ordersTable.id))
       .limit(50)
       .offset((page - 1) * 50)
