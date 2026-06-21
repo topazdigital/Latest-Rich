@@ -73,6 +73,7 @@ router.get("/", requireAuth, async (req, res) => {
         id: usersTable.id, name: usersTable.name, photo: usersTable.photoThumb,
         city: usersTable.city, country: usersTable.country, age: usersTable.age,
         verified: usersTable.verified, online: usersTable.online, premium: usersTable.premium,
+        username: usersTable.username,
       }
     }).from(userVisitsTable)
       .leftJoin(usersTable, eq(userVisitsTable.visitorId, usersTable.id))
