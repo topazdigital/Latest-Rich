@@ -80,9 +80,9 @@ router.post("/google", async (req, res) => {
         // in the legacy production MySQL table (e.g. profile_complete, welcome_shown).
         await db.execute(sql`
           INSERT INTO users
-            (name, email, username, phone, password, photo, photo_thumb, gender, looking, verified, credits, last_access, created, superlike)
+            (name, email, username, phone, password, photo, photo_thumb, gender, looking, verified, credits, last_access, created, superlike, age)
           VALUES
-            (${name}, ${googleEmail}, ${username}, ${googlePhone}, ${'google_' + googleId}, ${picture}, ${picture}, ${1}, ${2}, ${1}, ${50}, ${String(t)}, ${t}, ${3})
+            (${name}, ${googleEmail}, ${username}, ${googlePhone}, ${'google_' + googleId}, ${picture}, ${picture}, ${1}, ${2}, ${1}, ${50}, ${String(t)}, ${t}, ${3}, ${0})
         `)
         // Best-effort: set email_verified if column exists (added by migration)
         await db.execute(sql`UPDATE users SET email_verified = 1 WHERE email = ${googleEmail}`).catch(() => {})
