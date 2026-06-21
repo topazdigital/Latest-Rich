@@ -419,8 +419,14 @@ export default function AdminOrders() {
                   const statusStyle = getStatusStyle(o?.status)
                   const typeStyle = getTypeStyle(o?.type)
                   const isPending = o?.status === "pending"
-                  const needsCreditsInput = isPending && o?.type === "credits" && !(o?.credits && o.credits > 0)
-                  const creditsInputVal = overrideCredits[o?.id] || ""
+                  // Parse credits from description as fallback e.g. "10 Credits" → 10
+                  const parsedCreditsFromDesc = o?.description ? parseInt((o.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+                  const effectiveCredits = (o?.credits && o.credits > 0) ? o.credits : parsedCreditsFromDesc
+                  const needsCreditsInput = isPending && o?.type === "credits" && effectiveCredits <= 0
+                  // Auto-fill override input with parsed value when DB credits is 0
+                  const creditsInputVal = overrideCredits[o?.id] !== undefined
+                    ? overrideCredits[o?.id]
+                    : (isPending && o?.type === "credits" && !(o?.credits && o.credits > 0) && parsedCreditsFromDesc > 0 ? String(parsedCreditsFromDesc) : "")
                   return (
                     <tr
                       key={i}
@@ -452,8 +458,13 @@ export default function AdminOrders() {
                         )}
                       </td>
                       <td style={{ padding: "0.75rem 0.875rem" }}>
-                        {o?.credits ? (
-                          <span style={{ color: "#a855f7", fontWeight: 700 }}>{o.credits} cr</span>
+                        {effectiveCredits > 0 ? (
+                          <span style={{ color: "#a855f7", fontWeight: 700 }}>
+                            {effectiveCredits} cr
+                            {!(o?.credits && o.credits > 0) && parsedCreditsFromDesc > 0 && (
+                              <span title="Parsed from description" style={{ color: "#64748b", fontSize: "0.65rem", fontWeight: 400, marginLeft: "0.2rem" }}>(desc)</span>
+                            )}
+                          </span>
                         ) : (
                           <span style={{ color: "#334155" }}>—</span>
                         )}
@@ -487,7 +498,7 @@ export default function AdminOrders() {
                               />
                             )}
                             <button
-                              onClick={() => fulfillOrder(o.id, o.credits || 0)}
+                              onClick={() => fulfillOrder(o.id, effectiveCredits)}
                               disabled={fulfilling === o.id || (needsCreditsInput && !creditsInputVal)}
                               style={{
                                 background: (fulfilling === o.id || (needsCreditsInput && !creditsInputVal)) ? "#334155" : "rgba(34,197,94,0.15)",

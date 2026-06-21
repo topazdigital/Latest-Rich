@@ -643,7 +643,29 @@ FROM `config_credits`
 WHERE `credits` > 0;
 
 -- ---------------------------------------------------------------------------
--- 18. Populate created from join_date_time for old users
+-- 18. Add missing columns to existing tables (safe ALTER TABLE IF NOT EXISTS)
+--     Run this any time you add a column to the Drizzle schema so production
+--     MySQL gets the column even if the table already existed before that change.
+-- ---------------------------------------------------------------------------
+
+-- orders.credits (stores how many credits were purchased — added after v1 launch)
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'credits'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `orders` ADD COLUMN `credits` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- orders.package_id
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'package_id'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `orders` ADD COLUMN `package_id` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ---------------------------------------------------------------------------
+-- 19. Populate created from join_date_time for old users
 -- ---------------------------------------------------------------------------
 
 -- Populate created from join_date_time for old users

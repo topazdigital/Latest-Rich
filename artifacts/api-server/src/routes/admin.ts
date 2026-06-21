@@ -526,7 +526,9 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
 
     if (order.type === "credits") {
       const overrideCredits = req.body.creditsOverride ? parseInt(req.body.creditsOverride) : null
-      const creditsToAdd = (overrideCredits && overrideCredits > 0) ? overrideCredits : (order.credits || 0)
+      // Fallback: parse credits from description e.g. "10 Credits" → 10
+      const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+      const creditsToAdd = (overrideCredits && overrideCredits > 0) ? overrideCredits : (order.credits && order.credits > 0 ? order.credits : parsedFromDesc)
       if (creditsToAdd <= 0) { res.status(400).json({ error: "Specify a credits amount to add (order has 0 credits stored)" }); return }
       await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
       // Update credits on order record too if it was 0
@@ -619,17 +621,26 @@ router.post("/orders/reconcile-pending", requireAuth, requireAdmin, async (req, 
     const results: { id: number; email: string; credits: number; fulfilled: boolean; reason?: string }[] = []
 
     for (const order of stuckOrders) {
-      if (order.type !== "credits" || !order.credits || order.credits <= 0) continue
+      if (order.type !== "credits") continue
+      // Fallback: parse credits from description e.g. "10 Credits" → 10
+      const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+      const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
+      if (creditsToAdd <= 0) continue
       try {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
         if (!user) { results.push({ id: order.id, email: "unknown", credits: 0, fulfilled: false, reason: "User not found" }); continue }
 
-        await db.update(usersTable).set({ credits: (user.credits || 0) + order.credits }).where(eq(usersTable.id, order.userId))
-        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, order.id))
+        await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+        // Persist the parsed credits back onto the order row
+        if (!order.credits || order.credits <= 0) {
+          await db.update(ordersTable).set({ status: "completed", credits: creditsToAdd }).where(eq(ordersTable.id, order.id))
+        } else {
+          await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, order.id))
+        }
         await db.insert(notificationsTable).values({
-          userId: order.userId, type: "credits", message: `${order.credits} credits have been added to your account.`, time: now(), read: 0,
+          userId: order.userId, type: "credits", message: `${creditsToAdd} credits have been added to your account.`, time: now(), read: 0,
         } as any).catch(() => {})
-        results.push({ id: order.id, email: user.email, credits: order.credits, fulfilled: true })
+        results.push({ id: order.id, email: user.email, credits: creditsToAdd, fulfilled: true })
       } catch (e) {
         results.push({ id: order.id, email: "error", credits: order.credits || 0, fulfilled: false, reason: String(e) })
       }
