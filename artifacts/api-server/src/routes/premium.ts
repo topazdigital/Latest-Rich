@@ -51,7 +51,7 @@ router.get("/packages", requireAuth, async (req, res) => {
 router.put("/packages", requireAuth, async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    if (!user || user.admin !== 1) { res.status(403).json({ error: "Admin only" }); return }
+    if (!user || (user.admin ?? 0) < 1) { res.status(403).json({ error: "Admin only" }); return }
 
     const { packages } = req.body
     if (!Array.isArray(packages)) { res.status(400).json({ error: "packages array required" }); return }
