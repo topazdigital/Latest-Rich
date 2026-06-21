@@ -24,7 +24,9 @@ async function getTransporter() {
   const smtpPass = process.env.SMTP_PASS || await getConfig("smtp_pass")
   const smtpSecure = (process.env.SMTP_SECURE || await getConfig("smtp_secure")) === "1"
 
-  if (!smtpHost || !smtpUser || !smtpPass) return null
+  if (!smtpHost) return null
+  const isLocalhost = smtpHost === "localhost" || smtpHost === "127.0.0.1"
+  if (!isLocalhost && (!smtpUser || !smtpPass)) return null
 
   if (
     _cachedTransporter &&

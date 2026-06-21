@@ -12,7 +12,7 @@ interface Conversation {
   lastMessage: string; lastTime: number; msgCount: number; lock: ConvLock | null
   lastSenderFake: boolean; lastMsgRead: boolean
 }
-interface Message { id: number; u1: number; u2: number; message: string; time: number; read: number }
+interface Message { id: number; u1: number; u2: number; message: string; time: number; read: number; mediaUrl?: string; mediaType?: string }
 
 function timeLabel(ts: number) {
   if (!ts) return ""
@@ -412,7 +412,18 @@ export default function AdminChat() {
                       maxWidth: "70%", padding: "0.5rem 0.75rem", borderRadius: fromFake ? "1rem 1rem 0.25rem 1rem" : "1rem 1rem 1rem 0.25rem",
                       background: fromFake ? "#7c3aed" : "#1e293b", color: "#fff", fontSize: "0.82rem", lineHeight: 1.5,
                     }}>
-                      <div>{msg.message}</div>
+                      {msg.mediaUrl && msg.mediaType?.startsWith("image") && (
+                        <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginBottom: msg.message ? "0.4rem" : 0 }}>
+                          <img src={msg.mediaUrl} alt="Media" style={{ maxWidth: 200, maxHeight: 240, borderRadius: "0.5rem", display: "block", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none" }} />
+                        </a>
+                      )}
+                      {msg.mediaUrl && msg.mediaType?.startsWith("video") && (
+                        <video src={msg.mediaUrl} controls style={{ maxWidth: 200, maxHeight: 240, borderRadius: "0.5rem", display: "block", background: "#000", marginBottom: msg.message ? "0.4rem" : 0 }} preload="metadata" />
+                      )}
+                      {msg.mediaUrl && msg.mediaType?.startsWith("audio") && (
+                        <audio src={msg.mediaUrl} controls style={{ maxWidth: 200, marginBottom: msg.message ? "0.4rem" : 0 }} preload="metadata" />
+                      )}
+                      {msg.message && <div>{msg.message}</div>}
                       <div style={{ color: fromFake ? "rgba(255,255,255,0.55)" : "#475569", fontSize: "0.62rem", marginTop: "0.2rem", textAlign: "right", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.25rem" }}>
                         <span>{timeLabel(msg.time)}</span>
                         {fromFake && (

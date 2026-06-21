@@ -269,10 +269,12 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
     const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb } = req.body
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
     const fakeEmail = `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`
+    const { hashPassword: hashPw } = await import("../lib/password")
+    const testPassword = await hashPw("testuser")
     await db.insert(usersTable).values({
       name,
       email: fakeEmail,
-      password: "fake_user_no_login",
+      password: testPassword,
       gender: parseInt(gender) || 2,
       looking: parseInt(looking) || 1,
       city: city || "New York",
@@ -388,6 +390,19 @@ router.post("/fake-messages", requireAuth, requireAdmin, async (req, res) => {
       .orderBy(desc(fakeMessageTemplatesTable.id))
       .limit(1)
     res.json(msg)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Reset all fake users' passwords to "testuser"
+router.post("/fake-users/reset-passwords", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { hashPassword: hashPwReset } = await import("../lib/password")
+    const hashed = await hashPwReset("testuser")
+    await db.update(usersTable).set({ password: hashed }).where(eq(usersTable.fake, 1))
+    res.json({ success: true, message: "All fake user passwords reset to 'testuser'" })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
@@ -745,10 +760,12 @@ router.post("/import-fake-users", requireAuth, requireAdmin, async (req, res) =>
     let imported = 0
     for (const u of users.slice(0, 200)) {
       try {
+        const { hashPassword: hashPwImport } = await import("../lib/password")
+        const fakePass = await hashPwImport("testuser")
         await db.insert(usersTable).values({
           name: u.name,
           email: `fake_${u.origId || Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`,
-          password: "fake_user_no_login",
+          password: fakePass,
           gender: u.gender || 2,
           looking: u.looking || 1,
           city: u.city || "",

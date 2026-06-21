@@ -135,6 +135,21 @@ export default function AdminFakeUsers() {
           }}>
             ✨ Generate Real Profiles
           </button>
+          <button onClick={async () => {
+            if (!confirm("Reset ALL fake user passwords to 'testuser'?")) return
+            try {
+              const r = await authFetch("/api/admin/fake-users/reset-passwords", { method: "POST" })
+              const d = await r.json()
+              if (!r.ok) throw new Error(d.error)
+              toast.success(d.message || "Passwords reset!")
+            } catch (e: any) { toast.error(e.message || "Failed") }
+          }} style={{
+            padding: '0.5rem 1rem', background: '#f59e0b',
+            color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+            cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+            🔑 Reset All Passwords
+          </button>
           <button onClick={() => setShowCreate(!showCreate)} style={{
             padding: '0.5rem 1rem', background: '#FF192C',
             color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',

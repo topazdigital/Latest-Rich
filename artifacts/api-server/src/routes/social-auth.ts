@@ -70,9 +70,12 @@ router.post("/google", async (req, res) => {
     if (!user) {
       isNew = true
       const googleEmail = email.toLowerCase()
+      const baseUsername = googleEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 24)
+      const username = baseUsername + "_" + Math.random().toString(36).slice(2, 6)
       await db.insert(usersTable).values({
         name: name,
         email: googleEmail,
+        username,
         password: `google_${googleId}`,
         photo: picture,
         photoThumb: picture,
@@ -83,7 +86,6 @@ router.post("/google", async (req, res) => {
         superlike: 3,
         created: now(),
         lastAccess: String(now()),
-        online: 1,
       })
       const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, googleEmail)).limit(1)
       user = newUser
@@ -100,8 +102,8 @@ router.post("/google", async (req, res) => {
     const { password: _, ...safeUser } = user
     res.json({ token, user: safeUser, needsCompletion: isNew })
   } catch (err: any) {
-    console.error("Google auth error:", err)
-    res.status(500).json({ error: "Google login failed" })
+    console.error("Google auth error:", err?.message || err)
+    res.status(500).json({ error: "Google login failed", detail: err?.message })
   }
 })
 
@@ -132,9 +134,12 @@ router.post("/facebook", async (req, res) => {
     if (!user) {
       isFbNew = true
       const fbEmail = email.toLowerCase()
+      const fbBaseUsername = fbEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 24)
+      const fbUsername = fbBaseUsername + "_" + Math.random().toString(36).slice(2, 6)
       await db.insert(usersTable).values({
         name: profile.name || email.split("@")[0],
         email: fbEmail,
+        username: fbUsername,
         password: `facebook_${profile.id}`,
         photo: picture,
         photoThumb: picture,
@@ -145,7 +150,6 @@ router.post("/facebook", async (req, res) => {
         superlike: 3,
         created: now(),
         lastAccess: String(now()),
-        online: 1,
       })
       const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, fbEmail)).limit(1)
       user = newUser
