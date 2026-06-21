@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, activityTable, siteConfigTable } from "@workspace/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { requireAuth } from "../lib/auth-middleware"
 
@@ -72,26 +72,22 @@ router.post("/google", async (req, res) => {
       const googleEmail = email.toLowerCase()
       const baseUsername = googleEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 24)
       const username = baseUsername + "_" + Math.random().toString(36).slice(2, 6)
+      const googlePhone = `g_${googleId}`.slice(0, 30)
+      const t = now()
       try {
-        await db.insert(usersTable).values({
-          name: name,
-          email: googleEmail,
-          username,
-          phone: `g_${googleId}`.slice(0, 30),
-          password: `google_${googleId}`,
-          photo: picture,
-          photoThumb: picture,
-          gender: 1,
-          looking: 2,
-          verified: 1,
-          emailVerified: 1,
-          credits: 50,
-          superlike: 3,
-          created: now(),
-          lastAccess: String(now()),
-        })
+        // Raw SQL INSERT with only core columns — avoids Drizzle including ALL schema
+        // columns in the INSERT list, which fails if any new column doesn't exist yet
+        // in the legacy production MySQL table (e.g. profile_complete, welcome_shown).
+        await db.execute(sql`
+          INSERT INTO users
+            (name, email, username, phone, password, photo, photo_thumb, gender, looking, verified, credits, last_access, created, superlike)
+          VALUES
+            (${name}, ${googleEmail}, ${username}, ${googlePhone}, ${'google_' + googleId}, ${picture}, ${picture}, ${1}, ${2}, ${1}, ${50}, ${String(t)}, ${t}, ${3})
+        `)
+        // Best-effort: set email_verified if column exists (added by migration)
+        await db.execute(sql`UPDATE users SET email_verified = 1 WHERE email = ${googleEmail}`).catch(() => {})
       } catch (insertErr: any) {
-        const dbMsg = insertErr?.message || String(insertErr)
+        const dbMsg = (insertErr?.cause as any)?.message || insertErr?.sqlMessage || insertErr?.message || String(insertErr)
         console.error("Google auth: failed to insert new user:", dbMsg)
         res.status(500).json({ error: `Failed to create account: ${dbMsg}` }); return
       }

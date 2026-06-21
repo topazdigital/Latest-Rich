@@ -49,7 +49,7 @@ async function getTransporter() {
     auth: { user: smtpUser.trim(), pass: smtpPass.trim() },
     tls: { rejectUnauthorized: false },
   })
-  _cachedTransporter = { host: smtpHost, port: smtpPort, user: smtpUser, pass: smtpPass, secure: smtpSecure, transporter }
+  _cachedTransporter = { host: smtpHost, port: smtpPort, user: smtpUser.trim(), pass: smtpPass.trim(), secure: smtpSecure, transporter }
   return _cachedTransporter
 }
 
