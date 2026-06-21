@@ -122,7 +122,7 @@ export default function RegisterPage() {
   const [socialLoading, setSocialLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [socialConfig, setSocialConfig] = useState({ googleClientId: '', facebookAppId: '' })
-  const [uploadedPhoto, setUploadedPhoto] = useState<{ url: string; filename: string } | null>(null)
+  const [uploadedPhoto, setUploadedPhoto] = useState<{ url: string; filename: string; id: number } | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [usingSocialPhoto, setUsingSocialPhoto] = useState(false)
   const [showDialDropdown, setShowDialDropdown] = useState(false)
@@ -369,7 +369,7 @@ export default function RegisterPage() {
       })
       const data = await res.json()
       if (!res.ok) { setPreviewUrl(null); toast.error(data.error || 'Upload failed'); return }
-      setUploadedPhoto({ url: `/api/uploads/${data.photo.photo}`, filename: data.photo.photo })
+      setUploadedPhoto({ url: `/api/uploads/${data.photo.photo}`, filename: data.photo.photo, id: data.photo.id })
       toast.success('Photo uploaded!')
     } catch { setPreviewUrl(null); toast.error('Upload failed') }
     finally { setPhotoUploading(false) }
@@ -454,6 +454,18 @@ export default function RegisterPage() {
     if (!uploadedPhoto && !usingSocialPhoto) { toast.error('Please upload a profile photo to continue'); return }
     const auth = getStoredAuth()
     if (!auth?.user) { window.location.href = '/login'; return }
+    // If the user uploaded a new photo, explicitly set it as their profile photo.
+    // The upload endpoint only auto-promotes a photo when the user has no existing
+    // profile photo — users who already had a Google/Facebook avatar wouldn't get
+    // their uploaded photo set automatically.
+    if (uploadedPhoto?.id) {
+      try {
+        await fetch(`/api/photos/set-main/${uploadedPhoto.id}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${auth.token}` },
+        })
+      } catch { /* non-fatal — photo is in gallery even if set-main fails */ }
+    }
     if (auth.user.emailVerified === 0) {
       const requireVerify = await fetch('/api/admin/config/public').then(r => r.json()).then(d => d.require_email_verification === '1').catch(() => false)
       if (requireVerify) { window.location.href = '/verify-email'; return }
