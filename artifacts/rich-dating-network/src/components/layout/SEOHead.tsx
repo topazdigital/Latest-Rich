@@ -148,6 +148,9 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   if (path === '/home') return `Your Matches${loc ? ` in ${loc}` : ''} | Rich Dating Network`
   if (path === '/settings') return `Settings | Rich Dating Network`
   if (path === '/referrals') return `Referrals | Rich Dating Network`
+  if (path === '/contact') return `Contact Us | Rich Dating Network`
+  if (path === '/terms') return `Terms of Service | Rich Dating Network`
+  if (path === '/privacy') return `Privacy Policy | Rich Dating Network`
   if (path.startsWith('/profile/') || path.startsWith('/@')) return `Profile | Rich Dating Network`
   return `${siteTitle}${loc ? ` — ${loc}` : ''}`
 }

@@ -29,6 +29,7 @@ import VisitorsPage from "./pages/VisitorsPage"
 import LikesPage from "./pages/LikesPage"
 import BoostPage from "./pages/BoostPage"
 import ReferralsPage from "./pages/ReferralsPage"
+import ContactPage from "./pages/ContactPage"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
 import WelcomeModal from "./components/common/WelcomeModal"
@@ -430,6 +431,7 @@ function Router() {
           <Route path="/ref/:code" component={ReferralsPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/contact" component={ContactPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/:rest*" component={AdminPage} />
           <Route path="/moderator" component={ModeratorPage} />

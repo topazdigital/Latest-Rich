@@ -26,6 +26,8 @@ import customPaymentsRouter from "./custom-payments"
 import verificationRouter from "./verification"
 import referralsRouter from "./referrals"
 import emailCampaignsRouter from "./email-campaigns"
+import contactRouter from "./contact"
+import sitemapRouter from "./sitemap"
 
 const router: IRouter = Router()
 
@@ -55,6 +57,8 @@ router.use("/custom-payments", customPaymentsRouter)
 router.use("/verification", verificationRouter)
 router.use("/referrals", referralsRouter)
 router.use("/admin/email-campaigns", emailCampaignsRouter)
+router.use("/", contactRouter)
+router.use("/", sitemapRouter)
 router.use("/", blockRouter)
 
 export default router

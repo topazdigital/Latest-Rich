@@ -255,20 +255,28 @@ router.post("/payhero/test-credentials", requireAuth, async (req, res) => {
 })
 
 router.post("/payhero/callback", async (req, res) => {
-  const { external_reference, status, amount } = req.body
+  const { external_reference, status } = req.body
   if (status === "SUCCESS" && external_reference) {
     const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, external_reference)).limit(1)
     if (order && order.status === "pending") {
-      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
       if (order.type === "credits") {
-        const creditsToAdd = order.credits || 0
+        const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+        const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
         if (creditsToAdd > 0) {
           const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-          if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+          if (user) {
+            await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+            await db.update(ordersTable).set({ status: "completed", credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, external_reference))
+          }
+        } else {
+          await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
         }
       } else if (order.type === "premium") {
         const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
         if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
+      } else {
+        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
       }
     }
   }
@@ -298,16 +306,22 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
 
     // Belt-and-suspenders: PayHero says SUCCESS but callback hasn't fired yet — fulfill now
     if ((phStatus === "SUCCESS" || resultCode === 0) && order && order.status === "pending") {
-      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
       if (order.type === "credits") {
-        const creditsToAdd = order.credits || 0
+        const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+        const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
         if (creditsToAdd > 0) {
           const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
           if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+          await db.update(ordersTable).set({ status: "completed", credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+        } else {
+          await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
         }
       } else if (order.type === "premium") {
         const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
         if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+      } else {
+        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
       }
       res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
       return
