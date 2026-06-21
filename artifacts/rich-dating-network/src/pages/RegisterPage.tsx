@@ -183,31 +183,6 @@ export default function RegisterPage() {
   }, [])
 
   useEffect(() => {
-    if (!socialConfig.googleClientId) return
-    window.handleGoogleRegister = async (response: any) => {
-      setSocialLoading(true)
-      try {
-        const res = await fetch('/api/auth/social/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential: response.credential, client_id: socialConfig.googleClientId }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Google sign up failed')
-        const { setStoredAuth } = await import('../lib/auth')
-        setStoredAuth({ user: data.user, token: data.token })
-        if (data.needsCompletion) {
-          window.location.href = '/register?social=1'
-        } else {
-          window.location.href = '/discover'
-        }
-      } catch (err: any) {
-        toast.error(err.message || 'Google sign up failed')
-      } finally { setSocialLoading(false) }
-    }
-  }, [socialConfig.googleClientId])
-
-  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dialRef.current && !dialRef.current.contains(e.target as Node)) {
         setShowDialDropdown(false)
@@ -217,28 +192,61 @@ export default function RegisterPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function initAndPrompt() {
-    if (!window.google?.accounts) { setSocialLoading(false); toast.error('Google SDK not loaded'); return }
-    window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleRegister })
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-        setSocialLoading(false)
-        toast.error('Google sign-in was blocked by your browser. Try a regular (non-incognito) window, or make sure popups are allowed.', { duration: 6000 })
-      }
+  function loadGsiScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('google-gsi-script')
+      if (existing) { resolve(); return }
+      const script = document.createElement('script')
+      script.id = 'google-gsi-script'
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('Failed to load Google SDK'))
+      document.head.appendChild(script)
     })
   }
 
-  function handleGoogleSignUp() {
+  async function handleGoogleSignUp() {
     if (!socialConfig.googleClientId) { toast.error('Google login not configured'); return }
     setSocialLoading(true)
-    const existing = document.getElementById('google-gsi-script')
-    if (!existing) {
-      const script = document.createElement('script')
-      script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true
-      document.head.appendChild(script)
-      script.onload = () => initAndPrompt()
-      script.onerror = () => { setSocialLoading(false); toast.error('Failed to load Google SDK') }
-    } else { initAndPrompt() }
+    try {
+      await loadGsiScript()
+      if (!window.google?.accounts?.oauth2) throw new Error('Google SDK failed to load')
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: socialConfig.googleClientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse.error) {
+            setSocialLoading(false)
+            if (tokenResponse.error !== 'access_denied') toast.error('Google sign-in failed. Please try again.')
+            return
+          }
+          try {
+            const res = await fetch('/api/auth/social/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: tokenResponse.access_token, client_id: socialConfig.googleClientId }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Google sign up failed')
+            const { setStoredAuth } = await import('../lib/auth')
+            setStoredAuth({ user: data.user, token: data.token })
+            window.location.href = data.needsCompletion ? '/register?social=1' : '/discover'
+          } catch (err: any) {
+            setSocialLoading(false)
+            toast.error(err.message || 'Google sign up failed')
+          }
+        },
+        error_callback: (err: any) => {
+          setSocialLoading(false)
+          if (err?.type !== 'popup_closed') toast.error('Google sign-in was cancelled or failed.')
+        },
+      })
+      tokenClient.requestAccessToken({ prompt: '' })
+    } catch (err: any) {
+      setSocialLoading(false)
+      toast.error(err.message || 'Google sign-in failed')
+    }
   }
 
   function update(k: string, v: string) { setForm(p => ({ ...p, [k]: v })) }

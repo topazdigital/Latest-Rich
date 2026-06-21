@@ -142,66 +142,60 @@ export default function LoginPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  useEffect(() => {
-    if (!socialConfig.googleClientId) return
-    window.handleGoogleOneTap = async (response: any) => {
-      setSocialLoading('google')
-      try {
-        const res = await fetch('/api/auth/social/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential: response.credential, client_id: socialConfig.googleClientId }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Google login failed')
-        const { setStoredAuth } = await import('../lib/auth')
-        setStoredAuth({ user: data.user, token: data.token })
-        if (data.needsCompletion) {
-          window.location.href = '/register?social=1'
-        } else {
-          window.location.href = '/discover'
-        }
-      } catch (err: any) {
-        toast.error(err.message || 'Google login failed')
-      } finally { setSocialLoading(null) }
-    }
-    const existing = document.getElementById('google-gsi-script')
-    if (!existing) {
+  function loadGsiScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const existing = document.getElementById('google-gsi-script')
+      if (existing) { resolve(); return }
       const script = document.createElement('script')
-      script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true
+      script.id = 'google-gsi-script'
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('Failed to load Google SDK'))
       document.head.appendChild(script)
-    }
-    const initGoogle = () => {
-      if (!window.google?.accounts) return
-      window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleOneTap, auto_select: false })
-    }
-    if (window.google?.accounts) initGoogle()
-    else { const s = document.getElementById('google-gsi-script'); if (s) (s as HTMLScriptElement).onload = initGoogle }
-    return () => window.google?.accounts?.id?.cancel()
-  }, [socialConfig.googleClientId])
+    })
+  }
 
-  function handleGoogleLogin() {
+  async function handleGoogleLogin() {
     if (!socialConfig.googleClientId) { toast.error('Google login not configured'); return }
     setSocialLoading('google')
-    function doPrompt() {
-      if (!window.google?.accounts) { setSocialLoading(null); toast.error('Google SDK failed to load. Check your internet connection.'); return }
-      window.google.accounts.id.initialize({ client_id: socialConfig.googleClientId, callback: window.handleGoogleOneTap, auto_select: false })
-      window.google.accounts.id.prompt((notification: any) => {
-        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+    try {
+      await loadGsiScript()
+      if (!window.google?.accounts?.oauth2) throw new Error('Google SDK failed to load')
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: socialConfig.googleClientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse.error) {
+            setSocialLoading(null)
+            if (tokenResponse.error !== 'access_denied') toast.error('Google sign-in failed. Please try again.')
+            return
+          }
+          try {
+            const res = await fetch('/api/auth/social/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: tokenResponse.access_token, client_id: socialConfig.googleClientId }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Google login failed')
+            const { setStoredAuth } = await import('../lib/auth')
+            setStoredAuth({ user: data.user, token: data.token })
+            window.location.href = data.needsCompletion ? '/register?social=1' : '/discover'
+          } catch (err: any) {
+            setSocialLoading(null)
+            toast.error(err.message || 'Google login failed')
+          }
+        },
+        error_callback: (err: any) => {
           setSocialLoading(null)
-          toast.error('Google sign-in was blocked by your browser. Try opening this page in a regular (non-incognito) window, or make sure popups are allowed.', { duration: 6000 })
-        }
+          if (err?.type !== 'popup_closed') toast.error('Google sign-in was cancelled or failed.')
+        },
       })
-    }
-    const existing = document.getElementById('google-gsi-script')
-    if (!existing) {
-      const script = document.createElement('script')
-      script.id = 'google-gsi-script'; script.src = 'https://accounts.google.com/gsi/client'; script.async = true
-      document.head.appendChild(script)
-      script.onload = doPrompt
-      script.onerror = () => { setSocialLoading(null); toast.error('Failed to load Google SDK') }
-    } else {
-      doPrompt()
+      tokenClient.requestAccessToken({ prompt: '' })
+    } catch (err: any) {
+      setSocialLoading(null)
+      toast.error(err.message || 'Google sign-in failed')
     }
   }
 

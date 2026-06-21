@@ -340,6 +340,16 @@ export const emailCampaignLogsTable = pgTable("email_campaign_logs", {
   sentAt: integer("sent_at").default(0),
 })
 
+export const contactSubmissionsTable = pgTable("contact_submissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  subject: text("subject").default(""),
+  message: text("message").notNull(),
+  emailSent: integer("email_sent").default(0),
+  createdAt: integer("created_at").notNull(),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

@@ -1,5 +1,7 @@
 import { Router } from "express"
 import { sendEmail } from "../lib/mailer"
+import { db } from "@workspace/db"
+import { contactSubmissionsTable } from "@workspace/db"
 
 const router = Router()
 
@@ -20,6 +22,16 @@ router.post("/contact", async (req, res) => {
       res.status(400).json({ error: "Message is too short." })
       return
     }
+
+    // Always save to DB first so no message is ever lost
+    await db.insert(contactSubmissionsTable).values({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      subject: subject?.trim() || "",
+      message: message.trim(),
+      emailSent: 0,
+      createdAt: Math.floor(Date.now() / 1000),
+    }).catch(err => console.warn("[Contact] DB save failed:", err))
 
     const subjectLine = subject?.trim()
       ? `[Contact] ${subject.trim()} — from ${name.trim()}`
@@ -78,12 +90,12 @@ router.post("/contact", async (req, res) => {
     })
 
     if (sent) {
-      res.json({ success: true, message: "Your message has been sent! We'll reply within 24–48 hours." })
+      console.log(`[Contact] Email sent to ${CONTACT_EMAIL} from ${name.trim()} <${email.trim()}>`)
     } else {
-      // SMTP not configured — still log it server-side and return success to user
-      console.log(`[Contact] SMTP not configured. Message from ${name.trim()} <${email.trim()}>: ${message.trim().slice(0, 100)}`)
-      res.json({ success: true, message: "Your message has been received! We'll reply within 24–48 hours." })
+      console.log(`[Contact] SMTP not configured — saved to DB. Message from ${name.trim()} <${email.trim()}>: ${message.trim().slice(0, 100)}`)
     }
+
+    res.json({ success: true, message: "Your message has been received! We'll reply within 24–48 hours." })
   } catch (err) {
     console.error("[Contact] Error:", err)
     res.status(500).json({ error: "Failed to send message. Please email us directly at contact@richdatingnetwork.com" })

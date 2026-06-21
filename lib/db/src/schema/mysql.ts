@@ -341,6 +341,16 @@ export const emailCampaignLogsTable = mysqlTable("email_campaign_logs", {
   sentAt: int("sent_at").default(0),
 })
 
+export const contactSubmissionsTable = mysqlTable("contact_submissions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 300 }).notNull(),
+  email: varchar("email", { length: 300 }).notNull(),
+  subject: varchar("subject", { length: 500 }).default(""),
+  message: text("message").notNull(),
+  emailSent: int("email_sent").default(0),
+  createdAt: int("created_at").notNull(),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

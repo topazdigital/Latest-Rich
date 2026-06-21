@@ -13,26 +13,54 @@ async function getConfig(key: string): Promise<string> {
   return row?.value || ""
 }
 
-// Google OAuth - verify ID token
+// Fetch Google user profile via access token (OAuth2 token client flow — no third-party cookies needed)
+async function getGoogleProfileFromAccessToken(accessToken: string): Promise<{ email: string; name: string; picture: string; sub: string } | null> {
+  try {
+    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return null
+    return await res.json() as any
+  } catch { return null }
+}
+
+// Google OAuth - verify ID token (One Tap) OR access token (OAuth2 token client popup)
 router.post("/google", async (req, res) => {
   try {
-    const { credential, client_id } = req.body
-    if (!credential) { res.status(400).json({ error: "No credential provided" }); return }
+    const { credential, access_token, client_id } = req.body
 
-    // Verify the Google token
-    const googleClientId = await getConfig("google_client_id") || client_id
-    if (!googleClientId) { res.status(400).json({ error: "Google login not configured" }); return }
+    let email: string, name: string, picture: string, googleId: string
 
-    // Decode the JWT token from Google (verify signature via Google's API)
-    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`)
-    if (!verifyRes.ok) { res.status(401).json({ error: "Invalid Google token" }); return }
+    if (access_token) {
+      // OAuth2 token client flow — user granted permission via popup, no third-party cookies needed
+      const profile = await getGoogleProfileFromAccessToken(access_token)
+      if (!profile || !profile.email) {
+        res.status(401).json({ error: "Invalid Google access token" }); return
+      }
+      email = profile.email
+      name = profile.name || email.split("@")[0]
+      picture = profile.picture || ""
+      googleId = profile.sub
+    } else if (credential) {
+      // One Tap / GSI credential (ID token) flow
+      const googleClientId = await getConfig("google_client_id") || client_id
+      if (!googleClientId) { res.status(400).json({ error: "Google login not configured" }); return }
 
-    const profile = await verifyRes.json() as Record<string, string>
-    if (profile.aud !== googleClientId && !googleClientId.includes(profile.aud)) {
-      res.status(401).json({ error: "Token audience mismatch" }); return
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`)
+      if (!verifyRes.ok) { res.status(401).json({ error: "Invalid Google token" }); return }
+
+      const profile = await verifyRes.json() as Record<string, string>
+      if (profile.aud !== googleClientId && !googleClientId.includes(profile.aud)) {
+        res.status(401).json({ error: "Token audience mismatch" }); return
+      }
+      email = profile.email
+      name = profile.name || email.split("@")[0]
+      picture = profile.picture || ""
+      googleId = profile.sub
+    } else {
+      res.status(400).json({ error: "No credential provided" }); return
     }
 
-    const { email, name, picture, sub: googleId } = profile
     if (!email) { res.status(400).json({ error: "No email from Google" }); return }
 
     // Find or create user
@@ -43,11 +71,11 @@ router.post("/google", async (req, res) => {
       isNew = true
       const googleEmail = email.toLowerCase()
       await db.insert(usersTable).values({
-        name: name || email.split("@")[0],
+        name: name,
         email: googleEmail,
         password: `google_${googleId}`,
-        photo: picture || "",
-        photoThumb: picture || "",
+        photo: picture,
+        photoThumb: picture,
         gender: 1,
         looking: 2,
         verified: 1,
@@ -63,7 +91,6 @@ router.post("/google", async (req, res) => {
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Google registration", message: `${name} joined via Google`, time: now() }).catch(() => {})
     } else {
       if (user.banned === 1) { res.status(403).json({ error: "Account suspended" }); return }
-      // Update photo if changed
       const updates: any = { lastAccess: String(now()), online: 1 }
       if (picture && !user.photo) updates.photo = picture
       await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id))
@@ -88,12 +115,10 @@ router.post("/facebook", async (req, res) => {
     const fbAppSecret = await getConfig("facebook_app_secret")
     if (!fbAppId || !fbAppSecret) { res.status(400).json({ error: "Facebook login not configured" }); return }
 
-    // Verify the token with Facebook
     const debugRes = await fetch(`https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${fbAppId}|${fbAppSecret}`)
     const debug = await debugRes.json() as any
     if (!debug.data?.is_valid) { res.status(401).json({ error: "Invalid Facebook token" }); return }
 
-    // Get user profile
     const profileRes = await fetch(`https://graph.facebook.com/${fbUserId}?fields=id,name,email,picture&access_token=${accessToken}`)
     const profile = await profileRes.json() as any
     if (!profile.id) { res.status(401).json({ error: "Failed to get Facebook profile" }); return }
@@ -156,14 +181,12 @@ router.patch("/complete", requireAuth, async (req, res) => {
     const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 30)
     const cleanPhone = phone.replace(/\s/g, "")
 
-    // Check username uniqueness (allow same user)
     const [existingUser] = await db.select({ id: usersTable.id }).from(usersTable)
       .where(eq(usersTable.username, cleanUsername)).limit(1)
     if (existingUser && existingUser.id !== userId) {
       res.status(409).json({ error: "Username already taken" }); return
     }
 
-    // Check phone uniqueness (allow same user)
     const [existingPhone] = await db.select({ id: usersTable.id }).from(usersTable)
       .where(eq(usersTable.phone, cleanPhone)).limit(1)
     if (existingPhone && existingPhone.id !== userId) {
