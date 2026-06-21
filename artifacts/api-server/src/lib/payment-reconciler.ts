@@ -7,7 +7,7 @@
  */
 import { db } from "@workspace/db"
 import { ordersTable, usersTable, notificationsTable } from "@workspace/db/schema"
-import { eq, and, lt } from "drizzle-orm"
+import { eq, and, lt, sql } from "drizzle-orm"
 import { logger } from "./logger"
 
 function now() { return Math.floor(Date.now() / 1000) }
@@ -37,16 +37,22 @@ async function reconcile() {
       if (creditsToAdd <= 0) continue
 
       try {
+        // Atomically mark as completed ONLY if still pending — prevents double-credit
+        // if the PayHero callback fires concurrently while the reconciler is running.
+        await db.update(ordersTable)
+          .set({ status: "completed", credits: creditsToAdd })
+          .where(and(eq(ordersTable.id, order.id), eq(ordersTable.status, "pending")))
+
+        // Re-fetch to confirm WE were the one that claimed it
+        const [claimed] = await db.select().from(ordersTable).where(eq(ordersTable.id, order.id)).limit(1)
+        if (claimed?.status !== "completed" || claimed?.credits !== creditsToAdd) continue
+
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
         if (!user) continue
 
         await db.update(usersTable)
           .set({ credits: (user.credits || 0) + creditsToAdd })
           .where(eq(usersTable.id, order.userId))
-
-        await db.update(ordersTable)
-          .set({ status: "completed", credits: creditsToAdd })
-          .where(eq(ordersTable.id, order.id))
 
         await db.insert(notificationsTable).values({
           userId: order.userId,

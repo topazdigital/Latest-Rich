@@ -259,6 +259,16 @@ router.post("/payhero/callback", async (req, res) => {
   if (status === "SUCCESS" && external_reference) {
     const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, external_reference)).limit(1)
     if (order && order.status === "pending") {
+      // Atomically mark as completed first — this prevents double-credit if status poll
+      // also fires at the same time. Only ONE request will update a "pending" row.
+      await db.update(ordersTable)
+        .set({ status: "completed" })
+        .where(and(eq(ordersTable.stripeSessionId, external_reference), eq(ordersTable.status, "pending")))
+      // Re-fetch to confirm WE were the one that changed it (not a concurrent request)
+      const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, external_reference)).limit(1)
+      if (confirmed?.status !== "completed") {
+        res.json({ success: true }); return
+      }
       if (order.type === "credits") {
         const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
         const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
@@ -266,17 +276,12 @@ router.post("/payhero/callback", async (req, res) => {
           const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
           if (user) {
             await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
-            await db.update(ordersTable).set({ status: "completed", credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, external_reference))
+            await db.update(ordersTable).set({ credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, external_reference))
           }
-        } else {
-          await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
         }
       } else if (order.type === "premium") {
         const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
         if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
-        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
-      } else {
-        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, external_reference))
       }
     }
   }
@@ -304,24 +309,34 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
     const phStatus = String(data.status || "").toUpperCase()
     const resultCode = data.ResultCode ?? data.resultCode ?? null
 
-    // Belt-and-suspenders: PayHero says SUCCESS but callback hasn't fired yet — fulfill now
-    if ((phStatus === "SUCCESS" || resultCode === 0) && order && order.status === "pending") {
-      if (order.type === "credits") {
-        const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
-        const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
+    // Belt-and-suspenders: PayHero says SUCCESS but callback hasn't fired yet — fulfill now.
+    // Re-fetch order AFTER the PayHero API call — the callback may have fired during the
+    // 200-500ms we spent waiting for PayHero to respond (this was the Shivona double-credit bug).
+    if ((phStatus === "SUCCESS" || resultCode === 0) && order) {
+      const [freshOrder] = await db.select().from(ordersTable)
+        .where(eq(ordersTable.stripeSessionId, req.params.ref as string)).limit(1)
+      if (!freshOrder || freshOrder.status !== "pending") {
+        // Already completed by the callback — just report success, do NOT credit again
+        res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
+        return
+      }
+      // Atomically mark as completed (guard against concurrent callback)
+      await db.update(ordersTable)
+        .set({ status: "completed" })
+        .where(and(eq(ordersTable.stripeSessionId, req.params.ref as string), eq(ordersTable.status, "pending")))
+      if (freshOrder.type === "credits") {
+        const parsedFromDesc = freshOrder.description ? parseInt((freshOrder.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+        const creditsToAdd = (freshOrder.credits && freshOrder.credits > 0) ? freshOrder.credits : parsedFromDesc
         if (creditsToAdd > 0) {
-          const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-          if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
-          await db.update(ordersTable).set({ status: "completed", credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
-        } else {
-          await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+          const [u] = await db.select().from(usersTable).where(eq(usersTable.id, freshOrder.userId)).limit(1)
+          if (u) {
+            await db.update(usersTable).set({ credits: (u.credits || 0) + creditsToAdd }).where(eq(usersTable.id, freshOrder.userId))
+            await db.update(ordersTable).set({ credits: creditsToAdd }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+          }
         }
-      } else if (order.type === "premium") {
-        const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
-        if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
-        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
-      } else {
-        await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, req.params.ref as string))
+      } else if (freshOrder.type === "premium") {
+        const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === freshOrder.description)
+        if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, freshOrder.userId))
       }
       res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
       return
