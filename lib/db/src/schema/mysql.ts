@@ -97,6 +97,8 @@ export const messagesTable = mysqlTable("messages", {
   message: text("message").notNull(),
   time: int("time").default(0),
   read: int("read").default(0),
+  mediaUrl: varchar("media_url", { length: 500 }).default(""),
+  mediaType: varchar("media_type", { length: 20 }).default(""),
 })
 
 export const feedTable = mysqlTable("feed", {

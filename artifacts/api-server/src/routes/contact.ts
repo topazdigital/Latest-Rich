@@ -23,15 +23,21 @@ router.post("/contact", async (req, res) => {
       return
     }
 
-    // Always save to DB first so no message is ever lost
-    await db.insert(contactSubmissionsTable).values({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      subject: subject?.trim() || "",
-      message: message.trim(),
-      emailSent: 0,
-      createdAt: Math.floor(Date.now() / 1000),
-    }).catch(err => console.warn("[Contact] DB save failed:", err))
+    // Save to DB (wrapped so it never crashes the request even if table doesn't exist yet)
+    try {
+      if (contactSubmissionsTable) {
+        await db.insert(contactSubmissionsTable).values({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          subject: subject?.trim() || "",
+          message: message.trim(),
+          emailSent: 0,
+          createdAt: Math.floor(Date.now() / 1000),
+        })
+      }
+    } catch (dbErr) {
+      console.warn("[Contact] DB save failed (table may not exist yet — run MySQL migration):", (dbErr as any)?.message)
+    }
 
     const subjectLine = subject?.trim()
       ? `[Contact] ${subject.trim()} — from ${name.trim()}`
@@ -72,7 +78,7 @@ router.post("/contact", async (req, res) => {
     </td></tr>
   </table>
   <div style="margin-top:24px;text-align:center">
-    <a href="mailto:${email.trim()}?subject=Re: ${encodeURIComponent(subjectLine)}" 
+    <a href="mailto:${email.trim()}?subject=Re: ${encodeURIComponent(subjectLine)}"
        style="background:linear-gradient(135deg,#FF192C,#ff5f6b);color:#fff;text-decoration:none;padding:12px 28px;border-radius:50px;font-size:14px;font-weight:700;display:inline-block">
       Reply to ${name.trim()} →
     </a>
@@ -92,7 +98,7 @@ router.post("/contact", async (req, res) => {
     if (sent) {
       console.log(`[Contact] Email sent to ${CONTACT_EMAIL} from ${name.trim()} <${email.trim()}>`)
     } else {
-      console.log(`[Contact] SMTP not configured — saved to DB. Message from ${name.trim()} <${email.trim()}>: ${message.trim().slice(0, 100)}`)
+      console.log(`[Contact] SMTP not configured — saved to DB only. From: ${name.trim()} <${email.trim()}>`)
     }
 
     res.json({ success: true, message: "Your message has been received! We'll reply within 24–48 hours." })

@@ -96,6 +96,8 @@ export const messagesTable = pgTable("messages", {
   message: text("message").notNull(),
   time: integer("time").default(0),
   read: integer("read").default(0),
+  mediaUrl: text("media_url").default(""),
+  mediaType: text("media_type").default(""),
 })
 
 export const feedTable = pgTable("feed", {

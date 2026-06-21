@@ -5,9 +5,61 @@ import { eq, and, or, desc } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_CHAT_ERROR } from "../lib/contact-filter"
+import multer from "multer"
+import path from "path"
+import fs from "fs"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+
+// ── Chat media upload storage ────────────────────────────────────────────────
+const chatUploadDir = path.join(process.cwd(), "uploads", "chat")
+if (!fs.existsSync(chatUploadDir)) fs.mkdirSync(chatUploadDir, { recursive: true })
+
+const chatStorage = multer.diskStorage({
+  destination: chatUploadDir,
+  filename(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase()
+    cb(null, `chat-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`)
+  },
+})
+
+const ALLOWED_MIME: Record<string, string> = {
+  "image/jpeg": "image", "image/jpg": "image", "image/png": "image",
+  "image/gif": "image", "image/webp": "image", "image/heic": "image",
+  "video/mp4": "video", "video/webm": "video", "video/quicktime": "video",
+  "video/3gpp": "video", "video/x-msvideo": "video",
+  "audio/mpeg": "audio", "audio/mp4": "audio", "audio/ogg": "audio",
+  "audio/wav": "audio", "audio/webm": "audio", "audio/aac": "audio",
+  "audio/x-m4a": "audio",
+}
+
+const chatUpload = multer({
+  storage: chatStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
+  fileFilter(req, file, cb) {
+    if (ALLOWED_MIME[file.mimetype]) {
+      cb(null, true)
+    } else {
+      cb(new Error("Unsupported file type. Allowed: images, videos, audio."))
+    }
+  },
+})
+
+// ── Upload media for chat ────────────────────────────────────────────────────
+router.post("/upload", requireAuth, (req, res) => {
+  chatUpload.single("media")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Upload failed" })
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" })
+    }
+    const mediaType = ALLOWED_MIME[req.file.mimetype] || "image"
+    const url = `/api/uploads/chat/${req.file.filename}`
+    res.json({ url, type: mediaType })
+  })
+})
 
 async function getCreditCost(): Promise<number> {
   try {
@@ -27,7 +79,8 @@ router.get("/conversations", requireAuth, async (req, res) => {
     for (const m of msgs) {
       const otherId = m.u1 === myId ? m.u2 : m.u1
       if (!convMap.has(otherId)) {
-        convMap.set(otherId, { otherId, lastMsg: decodeHtml(m.message), lastTime: m.time, unread: 0 })
+        const preview = m.mediaType ? `📎 ${m.mediaType === "image" ? "Photo" : m.mediaType === "video" ? "Video" : "Audio"}` : decodeHtml(m.message)
+        convMap.set(otherId, { otherId, lastMsg: preview, lastTime: m.time, unread: 0 })
       }
       if (m.u2 === myId && m.read === 0) convMap.get(otherId).unread++
     }
@@ -68,9 +121,9 @@ router.get("/:otherId/messages", requireAuth, async (req, res) => {
 router.post("/", requireAuth, async (req, res) => {
   try {
     const myId = req.userId!
-    const { toUserId, message } = req.body
-    if (!toUserId || !message?.trim()) {
-      res.status(400).json({ error: "toUserId and message are required" }); return
+    const { toUserId, message, mediaUrl, mediaType } = req.body
+    if (!toUserId || (!message?.trim() && !mediaUrl)) {
+      res.status(400).json({ error: "toUserId and message or media are required" }); return
     }
 
     const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
@@ -82,8 +135,8 @@ router.post("/", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Cannot message between fake accounts" }); return
     }
 
-    // Block contact info for non-premium real users
-    if (sender.fake !== 1 && sender.premium !== 1 && containsContactInfo(message.trim())) {
+    // Block contact info for non-premium real users (text messages only)
+    if (message?.trim() && sender.fake !== 1 && sender.premium !== 1 && containsContactInfo(message.trim())) {
       res.status(403).json(CONTACT_INFO_CHAT_ERROR)
       return
     }
@@ -100,8 +153,11 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     const msgTime = now()
+    const msgText = message?.trim() || ""
     await db.insert(messagesTable).values({
-      u1: myId, u2: parseInt(toUserId), message: message.trim(), time: msgTime, read: 0,
+      u1: myId, u2: parseInt(toUserId), message: msgText, time: msgTime, read: 0,
+      mediaUrl: mediaUrl || "",
+      mediaType: mediaType || "",
     })
     const [msg] = await db.select().from(messagesTable)
       .where(and(eq(messagesTable.u1, myId), eq(messagesTable.u2, parseInt(toUserId)), eq(messagesTable.time, msgTime)))
@@ -112,20 +168,21 @@ router.post("/", requireAuth, async (req, res) => {
 
     // Log activity for admin
     const [recipient] = await db.select({ name: usersTable.name, fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
+    const logText = mediaType ? `[${mediaType}]` : (msgText.slice(0, 80))
     db.insert(activityTable).values({
       type: "message",
       userId: myId,
       title: "Message sent",
-      message: `${sender.name} → ${recipient?.name || 'Unknown'}: ${message.trim().slice(0, 80)}`,
+      message: `${sender.name} → ${recipient?.name || 'Unknown'}: ${logText}`,
       time: msgTime,
     }).catch(() => {})
 
-    // Push notify moderators when a real user messages a fake user (needs moderator reply)
+    // Push notify moderators when a real user messages a fake user
     if (sender.fake !== 1 && recipient?.fake === 1) {
       import("../lib/push").then(({ sendPushToModerators }) => {
         sendPushToModerators({
           title: `💬 ${sender.name} is waiting for a reply`,
-          body: message.trim().slice(0, 100),
+          body: mediaType ? `Sent a ${mediaType}` : msgText.slice(0, 100),
           url: "/admin",
           icon: "/icons/icon-192.svg",
         })

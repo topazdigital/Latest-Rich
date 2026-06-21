@@ -179,8 +179,54 @@ export default function RegisterPage() {
   }, [isSocial])
 
   useEffect(() => {
-    fetch('/api/auth/social/config').then(r => r.json()).then(d => setSocialConfig(d)).catch(() => {})
+    fetch('/api/auth/social/config').then(r => r.json()).then(d => {
+      setSocialConfig(d)
+      // Attempt Google One Tap auto-prompt after config loads
+      if (d.googleClientId && !isSocial) {
+        setTimeout(() => initOneTap(d.googleClientId), 800)
+      }
+    }).catch(() => {})
   }, [])
+
+  // One Tap auto-prompt helper (fires on page load, no loading spinner)
+  function initOneTap(clientId: string) {
+    const script = document.getElementById('google-gsi-script')
+    const doPrompt = () => {
+      if (!window.google?.accounts?.id) return
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: any) => {
+          if (!response.credential) return
+          setSocialLoading(true)
+          try {
+            const res = await fetch('/api/auth/social/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ credential: response.credential, client_id: clientId }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Google sign up failed')
+            const { setStoredAuth } = await import('../lib/auth')
+            setStoredAuth({ user: data.user, token: data.token })
+            window.location.href = data.needsCompletion ? '/register?social=1' : '/discover'
+          } catch (err: any) {
+            setSocialLoading(false)
+            toast.error(err.message || 'Google sign up failed')
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      })
+      window.google.accounts.id.prompt()
+    }
+    if (script) { doPrompt(); return }
+    const s = document.createElement('script')
+    s.id = 'google-gsi-script'
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.async = true
+    s.onload = doPrompt
+    document.head.appendChild(s)
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

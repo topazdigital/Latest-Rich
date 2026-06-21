@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getPhotoUrl, isOnline, timeAgo, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
-import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff, Paperclip, X, Play, Volume2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
@@ -17,11 +17,40 @@ interface Message {
   message: string
   time: number
   read: number
+  mediaUrl?: string
+  mediaType?: string
   _sending?: boolean
   _tempId?: string
+  _localPreview?: string
 }
 
 interface Props { me: any; other: any; initialMessages: Message[] }
+
+function MediaBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
+  const src = msg._localPreview || msg.mediaUrl || ""
+  if (!src) return null
+  if (msg.mediaType === "image") {
+    return (
+      <a href={msg.mediaUrl || src} target="_blank" rel="noopener noreferrer" className="block">
+        <img src={src} alt="Photo" className="max-w-[240px] max-h-[320px] rounded-2xl object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+      </a>
+    )
+  }
+  if (msg.mediaType === "video") {
+    return (
+      <video src={src} controls className="max-w-[240px] max-h-[320px] rounded-2xl bg-black" preload="metadata" />
+    )
+  }
+  if (msg.mediaType === "audio") {
+    return (
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl ${isMine ? 'bg-brand-500' : 'bg-white border border-gray-200'}`}>
+        <Volume2 size={16} className={isMine ? 'text-white' : 'text-brand-500'} />
+        <audio src={src} controls className="h-8 max-w-[180px]" preload="metadata" style={{ filter: isMine ? 'invert(1) brightness(2)' : 'none' }} />
+      </div>
+    )
+  }
+  return null
+}
 
 export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
@@ -32,9 +61,12 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [otherOnline, setOtherOnline] = useState(isOnline(other.lastAccess))
   const [credits, setCredits] = useState<number | null>(me.credits ?? null)
   const [creditCost, setCreditCost] = useState(10)
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; preview: string; type: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { token } = useAuth()
   const { connected, send } = useWebSocket()
 
@@ -61,7 +93,6 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       if (prev.some(m => m.id === msg.message.id)) return prev
       return [...prev, msg.message]
     })
-    // Auto-mark read
     send({ type: 'mark_read', fromUserId: other.id })
   }, [other.id])
 
@@ -76,9 +107,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   useWSEvent('typing', (msg) => {
     if (msg.fromUserId !== other.id) return
     setOtherTyping(msg.typing)
-    if (msg.typing) {
-      setTimeout(() => setOtherTyping(false), 4000)
-    }
+    if (msg.typing) setTimeout(() => setOtherTyping(false), 4000)
   }, [other.id])
 
   // WS: messages read
@@ -93,23 +122,15 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   }, [other.id])
 
   // WS: credits updated
-  useWSEvent('credits_updated', (msg) => {
-    setCredits(msg.credits)
-  })
+  useWSEvent('credits_updated', (msg) => { setCredits(msg.credits) })
 
   // WS: error
   useWSEvent('error', (msg) => {
     if (msg.code === 'insufficient_credits') {
       toast.error('Not enough credits! Buy more to continue chatting.')
-      // Remove temp message if it was optimistic
-      if (msg.tempId) {
-        setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
-      }
+      if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
     } else if (msg.code === 'contact_info_blocked') {
-      // Remove temp message
-      if (msg.tempId) {
-        setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
-      }
+      if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
       toast.custom((t) => (
         <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
           <div className="text-2xl">👑</div>
@@ -117,9 +138,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
             <p className="text-xs text-gray-500 mb-2">Sharing contact info, social handles, or links is a Premium-only feature.</p>
             <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
-              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
-              Upgrade Now
-            </a>
+              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
           </div>
         </div>
       ), { duration: 5000 })
@@ -130,11 +149,10 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   useEffect(() => {
     if (connected) return
     const interval = setInterval(() => {
-      fetch(`/api/chat/${other.id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(r => r.json()).then(data => {
-        if (Array.isArray(data) && data.length > messages.length) setMessages(data)
-      }).catch(() => {})
+      fetch(`/api/chat/${other.id}/messages`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).then(data => {
+          if (Array.isArray(data) && data.length > messages.length) setMessages(data)
+        }).catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
   }, [connected, other.id, token, messages.length])
@@ -151,45 +169,103 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
     }, 2000)
   }
 
-  async function sendMessage() {
-    if (!input.trim() || sending) return
-    const text = input.trim()
-    setInput('')
+  // ── Media file selection ──────────────────────────────────────────────────
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!e.target) return
+    ;(e.target as HTMLInputElement).value = ""
+    if (!file) return
+    const mime = file.type
+    const typeMap: Record<string, string> = {}
+    if (mime.startsWith("image/")) typeMap[mime] = "image"
+    else if (mime.startsWith("video/")) typeMap[mime] = "video"
+    else if (mime.startsWith("audio/")) typeMap[mime] = "audio"
+    const mediaType = typeMap[mime] || (mime.startsWith("image") ? "image" : mime.startsWith("video") ? "video" : "audio")
+    if (!["image", "video", "audio"].includes(mediaType)) {
+      toast.error("Unsupported file type. Please choose an image, video, or audio file.")
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("File too large. Maximum 50 MB allowed.")
+      return
+    }
+    const preview = URL.createObjectURL(file)
+    setPendingMedia({ file, preview, type: mediaType })
+  }
+
+  async function sendMessage(overrideText?: string) {
+    const text = overrideText ?? input.trim()
+    if ((!text && !pendingMedia) || sending || uploadingMedia) return
     setSending(true)
 
-    // Stop typing indicator
+    // Stop typing
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
-    if (isTypingRef.current) {
-      isTypingRef.current = false
-      send({ type: 'typing_stop', toUserId: other.id })
-    }
+    if (isTypingRef.current) { isTypingRef.current = false; send({ type: 'typing_stop', toUserId: other.id }) }
 
     const tempId = `temp_${Date.now()}`
-    const tempMsg: Message = {
-      id: Date.now(),
-      u1: me.id,
-      u2: other.id,
-      message: text,
-      time: Math.floor(Date.now() / 1000),
-      read: 0,
-      _sending: true,
-      _tempId: tempId,
-    }
-    setMessages(prev => [...prev, tempMsg])
+    let resolvedMediaUrl = ""
+    let resolvedMediaType = ""
 
-    // Try WebSocket first
-    if (connected) {
+    // Upload media first if pending
+    if (pendingMedia) {
+      setUploadingMedia(true)
+      const localPreview = pendingMedia.preview
+      const localType = pendingMedia.type
+      setPendingMedia(null)
+      try {
+        const formData = new FormData()
+        formData.append("media", pendingMedia.file)
+        const upRes = await fetch("/api/chat/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        })
+        const upData = await upRes.json()
+        if (!upRes.ok) throw new Error(upData.error || "Upload failed")
+        resolvedMediaUrl = upData.url
+        resolvedMediaType = upData.type
+        // Optimistic message with local preview
+        const tempMsg: Message = {
+          id: Date.now(), u1: me.id, u2: other.id,
+          message: text, time: Math.floor(Date.now() / 1000), read: 0,
+          mediaUrl: resolvedMediaUrl, mediaType: resolvedMediaType,
+          _localPreview: localPreview, _sending: true, _tempId: tempId,
+        }
+        setMessages(prev => [...prev, tempMsg])
+      } catch (err: any) {
+        setUploadingMedia(false)
+        setSending(false)
+        toast.error(err.message || "Upload failed")
+        return
+      }
+      setUploadingMedia(false)
+    } else {
+      // Text-only optimistic message
+      const tempMsg: Message = {
+        id: Date.now(), u1: me.id, u2: other.id,
+        message: text, time: Math.floor(Date.now() / 1000), read: 0,
+        _sending: true, _tempId: tempId,
+      }
+      setMessages(prev => [...prev, tempMsg])
+    }
+
+    if (!overrideText) setInput('')
+
+    // Try WebSocket first (text-only for now; media always uses REST)
+    if (connected && !resolvedMediaUrl) {
       send({ type: 'chat_message', toUserId: other.id, message: text, tempId })
       setSending(false)
       return
     }
 
-    // Fallback: REST API
+    // REST API
     try {
+      const body: any = { toUserId: other.id, message: text }
+      if (resolvedMediaUrl) { body.mediaUrl = resolvedMediaUrl; body.mediaType = resolvedMediaType }
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ toUserId: other.id, message: text }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -203,9 +279,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
                 <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
                 <p className="text-xs text-gray-500 mb-2">Sharing contact info is a Premium feature.</p>
                 <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
-                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
-                  Upgrade Now
-                </a>
+                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
               </div>
             </div>
           ), { duration: 5000 })
@@ -213,7 +287,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           toast.error(data.error || 'Failed to send')
         }
         setMessages(prev => prev.filter(m => (m as any)._tempId !== tempId))
-        setInput(text)
+        if (!resolvedMediaUrl) setInput(text)
       } else {
         const data = await res.json()
         setMessages(prev => prev.map(m => (m as any)._tempId === tempId ? { ...data, read: 0 } : m))
@@ -222,17 +296,14 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
     } catch {
       toast.error('Failed to send message')
       setMessages(prev => prev.filter(m => (m as any)._tempId !== tempId))
-      setInput(text)
+      if (!resolvedMediaUrl) setInput(text)
     } finally {
       setSending(false)
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
   return (
@@ -255,27 +326,19 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             {other.premium === 1 && <Crown size={14} className="text-amber-500 flex-shrink-0" />}
           </div>
           <p className="text-xs text-gray-400">
-            {otherTyping ? (
-              <span className="text-brand-500 font-medium">typing...</span>
-            ) : otherOnline ? (
-              <span className="text-green-500">Online now</span>
-            ) : (
-              `Last seen ${timeAgo(other.lastAccess)}`
-            )}
+            {otherTyping ? <span className="text-brand-500 font-medium">typing...</span>
+              : otherOnline ? <span className="text-green-500">Online now</span>
+              : `Last seen ${timeAgo(other.lastAccess)}`}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {credits !== null && (
             <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2.5 py-1 rounded-full text-xs font-semibold">
-              <span>💳</span>
-              <span>{credits}</span>
+              <span>💳</span><span>{credits}</span>
             </div>
           )}
           <div title={connected ? 'Real-time connected' : 'Polling mode'}>
-            {connected
-              ? <Wifi size={14} className="text-green-500" />
-              : <WifiOff size={14} className="text-gray-300" />
-            }
+            {connected ? <Wifi size={14} className="text-green-500" /> : <WifiOff size={14} className="text-gray-300" />}
           </div>
         </div>
       </div>
@@ -295,6 +358,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         {messages.map((msg) => {
           const isMine = msg.u1 === me.id
           const isTemp = (msg as any)._sending
+          const hasMedia = !!(msg.mediaType && (msg.mediaUrl || msg._localPreview))
           return (
             <div key={(msg as any)._tempId || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
               {!isMine && (
@@ -303,9 +367,18 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
                 </div>
               )}
               <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
-                <div className={`${isMine ? 'bubble-sent' : 'bubble-received'} ${isTemp ? 'opacity-70' : ''}`}>
-                  <p className="text-sm leading-relaxed">{msg.message}</p>
-                </div>
+                {/* Media bubble */}
+                {hasMedia && (
+                  <div className={`${isTemp ? 'opacity-70' : ''}`}>
+                    <MediaBubble msg={msg} isMine={isMine} />
+                  </div>
+                )}
+                {/* Text bubble (only shown if there's text, or no media) */}
+                {(msg.message || !hasMedia) && (
+                  <div className={`${isMine ? 'bubble-sent' : 'bubble-received'} ${isTemp ? 'opacity-70' : ''}`}>
+                    <p className="text-sm leading-relaxed">{msg.message || (hasMedia ? '' : '—')}</p>
+                  </div>
+                )}
                 <div className={`flex items-center gap-1 text-[10px] ${isMine ? 'text-gray-400 justify-end' : 'text-gray-400'}`}>
                   <span>{timeAgo(msg.time)}</span>
                   {isMine && (
@@ -340,10 +413,31 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         <div className="px-4 py-2 bg-white border-t border-gray-100 flex gap-2 overflow-x-auto flex-shrink-0">
           {QUICK_EMOJIS.map(e => (
             <button key={e} onClick={() => { setInput(prev => prev + e); setShowEmoji(false) }}
-              className="text-2xl hover:scale-125 transition-transform flex-shrink-0 leading-none p-0.5">
-              {e}
-            </button>
+              className="text-2xl hover:scale-125 transition-transform flex-shrink-0 leading-none p-0.5">{e}</button>
           ))}
+        </div>
+      )}
+
+      {/* Pending media preview */}
+      {pendingMedia && (
+        <div className="px-3 py-2 bg-white border-t border-gray-100 flex-shrink-0">
+          <div className="relative inline-block">
+            {pendingMedia.type === "image" && (
+              <img src={pendingMedia.preview} alt="Preview" className="h-20 w-20 object-cover rounded-xl border border-gray-200" />
+            )}
+            {pendingMedia.type === "video" && (
+              <video src={pendingMedia.preview} className="h-20 w-20 object-cover rounded-xl border border-gray-200 bg-black" />
+            )}
+            {pendingMedia.type === "audio" && (
+              <div className="h-10 flex items-center gap-2 bg-gray-100 rounded-xl px-3 text-xs text-gray-600">
+                <Volume2 size={14} /><span>Audio ready to send</span>
+              </div>
+            )}
+            <button onClick={() => { URL.revokeObjectURL(pendingMedia.preview); setPendingMedia(null) }}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-red-500 transition-colors">
+              <X size={10} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -366,6 +460,23 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             className={`w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center transition-colors ${showEmoji ? 'bg-brand-100 text-brand-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
             <Smile size={18} />
           </button>
+
+          {/* Media attachment button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-9 h-9 flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+            title="Send photo, video, or audio"
+          >
+            <Paperclip size={17} />
+          </button>
+
           <Link href={`/gifts?toId=${other.id}`}
             className="w-9 h-9 flex-shrink-0 bg-gray-100 text-amber-500 hover:bg-amber-50 rounded-full flex items-center justify-center transition-colors">
             <Gift size={17} />
@@ -375,14 +486,21 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
               value={input}
               onChange={e => { setInput(e.target.value); handleTyping() }}
               onKeyDown={handleKeyDown}
-              placeholder={`Message ${other.name}...`}
+              placeholder={pendingMedia ? `Add a caption...` : `Message ${other.name}...`}
               rows={1}
               className="w-full bg-transparent resize-none focus:outline-none text-sm text-gray-900 placeholder-gray-400 max-h-28 leading-relaxed"
             />
           </div>
-          <button onClick={sendMessage} disabled={!input.trim() || sending}
-            className="w-10 h-10 flex-shrink-0 bg-brand-500 text-white rounded-full flex items-center justify-center disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-sm">
-            <Send size={17} />
+          <button
+            onClick={() => sendMessage()}
+            disabled={(!input.trim() && !pendingMedia) || sending || uploadingMedia}
+            className="w-10 h-10 flex-shrink-0 bg-brand-500 text-white rounded-full flex items-center justify-center disabled:opacity-40 hover:bg-brand-600 transition-colors shadow-sm"
+          >
+            {uploadingMedia ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send size={17} />
+            )}
           </button>
         </div>
       </div>

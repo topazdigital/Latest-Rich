@@ -696,3 +696,45 @@ SET foreign_key_checks = 1;
 --     profile_boosts, fake_video_calls, custom_payments, custom_payment_orders,
 --     chat_locks, push_subscriptions, referrals, feed, feed_likes
 -- =============================================================================
+
+-- =============================================================================
+-- NEW TABLES & COLUMNS — run on production MySQL to add features
+-- =============================================================================
+
+-- contact_submissions table
+CREATE TABLE IF NOT EXISTS `contact_submissions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` varchar(300) NOT NULL DEFAULT '',
+  `email` varchar(300) NOT NULL DEFAULT '',
+  `subject` varchar(500) NOT NULL DEFAULT '',
+  `message` text NOT NULL,
+  `email_sent` tinyint NOT NULL DEFAULT 0,
+  `created_at` int NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Chat media columns (images, video, audio in messages)
+ALTER TABLE `messages`
+  ADD COLUMN IF NOT EXISTS `media_url` varchar(500) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `media_type` varchar(20) NOT NULL DEFAULT '';
+
+-- email_campaigns table (if not already present)
+CREATE TABLE IF NOT EXISTS `email_campaigns` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` varchar(500) NOT NULL DEFAULT '',
+  `subject` varchar(500) NOT NULL DEFAULT '',
+  `body` text NOT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'draft',
+  `sent_count` int NOT NULL DEFAULT 0,
+  `created_at` int NOT NULL DEFAULT 0,
+  `sent_at` int NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `email_campaign_logs` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `campaign_id` int NOT NULL DEFAULT 0,
+  `user_id` int NOT NULL DEFAULT 0,
+  `email` varchar(300) NOT NULL DEFAULT '',
+  `status` varchar(50) NOT NULL DEFAULT '',
+  `error` text NOT NULL DEFAULT '',
+  `sent_at` int NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
