@@ -72,22 +72,33 @@ router.post("/google", async (req, res) => {
       const googleEmail = email.toLowerCase()
       const baseUsername = googleEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9_.]/g, "").slice(0, 24)
       const username = baseUsername + "_" + Math.random().toString(36).slice(2, 6)
-      await db.insert(usersTable).values({
-        name: name,
-        email: googleEmail,
-        username,
-        password: `google_${googleId}`,
-        photo: picture,
-        photoThumb: picture,
-        gender: 1,
-        looking: 2,
-        verified: 1,
-        credits: 50,
-        superlike: 3,
-        created: now(),
-        lastAccess: String(now()),
-      })
+      try {
+        await db.insert(usersTable).values({
+          name: name,
+          email: googleEmail,
+          username,
+          phone: "",
+          password: `google_${googleId}`,
+          photo: picture,
+          photoThumb: picture,
+          gender: 1,
+          looking: 2,
+          verified: 1,
+          emailVerified: 1,
+          credits: 50,
+          superlike: 3,
+          created: now(),
+          lastAccess: String(now()),
+        })
+      } catch (insertErr: any) {
+        console.error("Google auth: failed to insert new user:", insertErr?.message || insertErr)
+        res.status(500).json({ error: "Failed to create account", detail: insertErr?.message }); return
+      }
       const [newUser] = await db.select().from(usersTable).where(eq(usersTable.email, googleEmail)).limit(1)
+      if (!newUser) {
+        console.error("Google auth: user not found after insert for email:", googleEmail)
+        res.status(500).json({ error: "Account creation failed, please try again" }); return
+      }
       user = newUser
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Google registration", message: `${name} joined via Google`, time: now() }).catch(() => {})

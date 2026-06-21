@@ -334,6 +334,26 @@ export default function AdminFakeUsers() {
                 <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.875rem' }}>{u.name}</div>
                 <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{u.age} · {u.gender === 1 ? "Man" : "Woman"} · {u.city}</div>
                 <div style={{ color: '#7c3aed', fontSize: '0.7rem', marginTop: '0.25rem' }}>🤖 Fake · {u.credits} credits</div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await authFetch(`/api/admin/fake-users/${u.id}/login-token`, { method: 'POST' })
+                      const d = await r.json()
+                      if (!r.ok) throw new Error(d.error || 'Failed')
+                      const { setStoredAuth } = await import('../../lib/auth')
+                      setStoredAuth({ user: d.user, token: d.token })
+                      window.open('/discover', '_blank')
+                    } catch (e: any) { toast.error(e.message || 'Login failed') }
+                  }}
+                  style={{
+                    marginTop: '0.5rem', width: '100%',
+                    padding: '0.3rem 0.5rem', background: '#0ea5e9',
+                    color: '#fff', border: 'none', borderRadius: '0.4rem',
+                    fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600
+                  }}
+                >
+                  🔑 Login as
+                </button>
               </div>
             </div>
           ))}

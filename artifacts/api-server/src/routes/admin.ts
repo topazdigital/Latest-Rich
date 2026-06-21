@@ -288,6 +288,7 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       created: now(), lastAccess: String(now()),
     })
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, fakeEmail)).limit(1)
+    await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
     await db.insert(activityTable).values({
       type: "admin", userId: req.userId,
       title: "Fake user created", message: `${name} (id: ${user.id})`, time: now()
@@ -390,6 +391,30 @@ router.post("/fake-messages", requireAuth, requireAdmin, async (req, res) => {
       .orderBy(desc(fakeMessageTemplatesTable.id))
       .limit(1)
     res.json(msg)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Generate a one-time login token to log in as a fake user (for testing chat flows)
+router.post("/fake-users/:id/login-token", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!targetUser) { res.status(404).json({ error: "User not found" }); return }
+    if (targetUser.fake !== 1) { res.status(403).json({ error: "Can only log in as fake users" }); return }
+    const { signToken } = await import("../lib/jwt")
+    const token = signToken({ userId: targetUser.id })
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId,
+      title: "Admin impersonated fake user",
+      message: `Admin logged in as fake user: ${targetUser.name} (id: ${targetUser.id})`,
+      time: now()
+    }).catch(() => {})
+    const { password: _, ...safeUser } = targetUser
+    res.json({ token, user: safeUser })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
