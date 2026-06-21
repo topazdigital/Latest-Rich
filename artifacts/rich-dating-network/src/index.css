@@ -17,6 +17,31 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ── Admin dark input — forces white text in dark panels ─────────── */
+.admin-dark-input {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  caret-color: #a78bfa !important;
+  border: 2px solid #475569 !important;
+  border-radius: 0.5rem !important;
+  outline: none !important;
+  font-family: inherit !important;
+}
+.admin-dark-input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1 !important;
+}
+.admin-dark-input:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.2) !important;
+}
+.admin-dark-input:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
 /* ── Base resets ──────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;

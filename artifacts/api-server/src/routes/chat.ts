@@ -111,7 +111,7 @@ router.post("/", requireAuth, async (req, res) => {
     const [updatedSender] = await db.select({ credits: usersTable.credits }).from(usersTable).where(eq(usersTable.id, myId)).limit(1)
 
     // Log activity for admin
-    const [recipient] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
+    const [recipient] = await db.select({ name: usersTable.name, fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
     db.insert(activityTable).values({
       type: "message",
       userId: myId,
@@ -119,6 +119,18 @@ router.post("/", requireAuth, async (req, res) => {
       message: `${sender.name} → ${recipient?.name || 'Unknown'}: ${message.trim().slice(0, 80)}`,
       time: msgTime,
     }).catch(() => {})
+
+    // Push notify moderators when a real user messages a fake user (needs moderator reply)
+    if (sender.fake !== 1 && recipient?.fake === 1) {
+      import("../lib/push").then(({ sendPushToModerators }) => {
+        sendPushToModerators({
+          title: `💬 ${sender.name} is waiting for a reply`,
+          body: message.trim().slice(0, 100),
+          url: "/admin",
+          icon: "/icons/icon-192.svg",
+        })
+      }).catch(() => {})
+    }
 
     res.json({ ...msg, credits: updatedSender?.credits })
   } catch (err) {

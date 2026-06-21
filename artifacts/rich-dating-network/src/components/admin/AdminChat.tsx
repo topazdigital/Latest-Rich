@@ -57,6 +57,7 @@ export default function AdminChat() {
   const [sending, setSending] = useState(false)
   const [myUserId, setMyUserId] = useState<number | null>(null)
   const [lockExpiry, setLockExpiry] = useState<number>(0)
+  const [pushEnabled, setPushEnabled] = useState<boolean | null>(null)
   const keepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollMsgRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollConvRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -66,7 +67,51 @@ export default function AdminChat() {
   useEffect(() => {
     authFetch("/api/moderator/me").then(r => r.json()).then(u => setMyUserId(u.id)).catch(() => {})
     loadConversations()
+    checkPushStatus()
   }, [page])
+
+  const checkPushStatus = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) { setPushEnabled(false); return }
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      setPushEnabled(!!sub)
+    } catch { setPushEnabled(false) }
+  }
+
+  const togglePush = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      toast.error("Push notifications not supported in this browser"); return
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) {
+        await existing.unsubscribe()
+        await authFetch("/api/moderator/push/unsubscribe", { method: "DELETE" })
+        setPushEnabled(false)
+        toast.success("Push notifications disabled")
+        return
+      }
+      const r = await authFetch("/api/moderator/push/vapid-key")
+      const { publicKey } = await r.json()
+      if (!publicKey) { toast.error("Push not configured on server"); return }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey,
+      })
+      const subJson = sub.toJSON() as any
+      await authFetch("/api/moderator/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
+      })
+      setPushEnabled(true)
+      toast.success("🔔 Push notifications enabled! You'll be alerted when users reply.")
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to set up push notifications")
+    }
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -186,9 +231,16 @@ export default function AdminChat() {
             Reply as fake users to real members · {total} conversations
           </p>
         </div>
-        <button onClick={() => loadConversations()} style={S.btn("#1e293b")}>
-          <RefreshCw size={12} /> Refresh
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          {pushEnabled !== null && (
+            <button onClick={togglePush} style={S.btn(pushEnabled ? "#334155" : "#7c3aed")} title={pushEnabled ? "Disable push notifications" : "Enable push notifications"}>
+              {pushEnabled ? "🔕 Mute" : "🔔 Enable Alerts"}
+            </button>
+          )}
+          <button onClick={() => loadConversations()} style={S.btn("#1e293b")}>
+            <RefreshCw size={12} /> Refresh
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: selected ? "320px 1fr" : "1fr", gap: "0.75rem", minHeight: 500 }}>
@@ -394,7 +446,8 @@ export default function AdminChat() {
                     onChange={e => setReply(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply() } }}
                     placeholder={`Reply as ${selected.fakeUser.name}…`}
-                    style={S.input}
+                    className="admin-dark-input"
+                    style={{ flex: 1, width: "100%", padding: "0.6rem 0.875rem", fontSize: "0.85rem", boxSizing: "border-box" }}
                     disabled={sending}
                     autoFocus
                   />
