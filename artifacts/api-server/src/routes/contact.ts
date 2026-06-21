@@ -1,11 +1,22 @@
 import { Router } from "express"
 import { sendEmail } from "../lib/mailer"
 import { db } from "@workspace/db"
-import { contactSubmissionsTable } from "@workspace/db"
+import { contactSubmissionsTable, siteConfigTable } from "@workspace/db"
+import { eq } from "drizzle-orm"
 
 const router = Router()
 
-const CONTACT_EMAIL = "contact@richdatingnetwork.com"
+const FALLBACK_CONTACT_EMAIL = "contact@richdatingnetwork.com"
+
+async function getContactEmail(): Promise<string> {
+  try {
+    for (const key of ["site_email", "contact_email", "smtp_user"]) {
+      const [row] = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
+      if (row?.value) return row.value
+    }
+  } catch {}
+  return FALLBACK_CONTACT_EMAIL
+}
 
 router.post("/contact", async (req, res) => {
   try {
@@ -43,8 +54,10 @@ router.post("/contact", async (req, res) => {
       ? `[Contact] ${subject.trim()} — from ${name.trim()}`
       : `[Contact] Message from ${name.trim()}`
 
+    const contactEmail = await getContactEmail()
     const sent = await sendEmail({
-      to: CONTACT_EMAIL,
+      to: contactEmail,
+      replyTo: email.trim(),
       subject: subjectLine,
       html: `
 <!DOCTYPE html>
@@ -96,9 +109,9 @@ router.post("/contact", async (req, res) => {
     })
 
     if (sent) {
-      console.log(`[Contact] Email sent to ${CONTACT_EMAIL} from ${name.trim()} <${email.trim()}>`)
+      console.log(`[Contact] Email sent to ${contactEmail} from ${name.trim()} <${email.trim()}>`)
     } else {
-      console.log(`[Contact] SMTP not configured — saved to DB only. From: ${name.trim()} <${email.trim()}>`)
+      console.log(`[Contact] SMTP not configured or send failed — saved to DB only. From: ${name.trim()} <${email.trim()}>`)
     }
 
     res.json({ success: true, message: "Your message has been received! We'll reply within 24–48 hours." })

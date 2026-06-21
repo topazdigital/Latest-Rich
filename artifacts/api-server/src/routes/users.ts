@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable, storiesTable } from "@workspace/db/schema"
 import { eq, and, ne, desc, sql, gt, lt, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -252,7 +252,7 @@ router.get("/meet", requireAuth, async (req, res) => {
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
         or(isNull(usersTable.admin), lt(usersTable.admin, 2))
       ))
-      .orderBy(sql`RANDOM()`)
+      .orderBy(sql.raw(isMysql ? "RAND()" : "RANDOM()"))
       .limit(50)
     res.json(users.map(safeUser))
   } catch {

@@ -34,12 +34,14 @@ export default function AdminFakeUsers() {
     age: "28", bio: "", photo: "", photoThumb: ""
   })
 
+  const [total, setTotal] = useState(0)
   const load = async () => {
     setLoading(true)
     try {
-      const r = await authFetch("/api/admin/users?filter=fake&page=1")
+      const r = await authFetch("/api/admin/users?filter=fake&page=1&limit=2000")
       const d = await r.json()
       setUsers(d.users || [])
+      setTotal(d.total || 0)
     } finally { setLoading(false) }
   }
 
@@ -119,7 +121,7 @@ export default function AdminFakeUsers() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>{users.length} Fake Users</h2>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>{users.length}{total > users.length ? ` of ${total}` : ""} Fake Users</h2>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button onClick={importFromSite} disabled={importing} style={{
             padding: '0.5rem 1rem', background: importing ? '#9ca3af' : '#7c3aed',

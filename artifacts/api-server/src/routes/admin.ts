@@ -94,7 +94,8 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
 router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(String(req.query.page || "1")))
-    const limit = 50
+    const requestedLimit = parseInt(String(req.query.limit || "50"))
+    const limit = isNaN(requestedLimit) || requestedLimit < 1 ? 50 : Math.min(requestedLimit, 2000)
     const offset = (page - 1) * limit
     const filter = String(req.query.filter || "all")
     const search = String(req.query.search || "").trim()

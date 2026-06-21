@@ -57,6 +57,7 @@ export interface MailOptions {
   subject: string
   html: string
   text?: string
+  replyTo?: string
 }
 
 export async function sendEmail(opts: MailOptions): Promise<boolean> {
@@ -75,6 +76,7 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
       subject: opts.subject,
       html: opts.html,
       text: opts.text || opts.html.replace(/<[^>]+>/g, ""),
+      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
     })
 
     return true

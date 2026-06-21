@@ -77,7 +77,7 @@ router.post("/google", async (req, res) => {
           name: name,
           email: googleEmail,
           username,
-          phone: "",
+          phone: `g_${googleId}`.slice(0, 30),
           password: `google_${googleId}`,
           photo: picture,
           photoThumb: picture,
