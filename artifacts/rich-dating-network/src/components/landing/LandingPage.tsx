@@ -201,11 +201,14 @@ export default function LandingPage() {
               Rich <span className={scrolled ? 'text-brand-500' : 'text-yellow-300'}>Dating</span> Network
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className={`font-medium text-sm px-4 py-2 rounded-xl transition-all hidden sm:block ${scrolled ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' : 'text-white/90 hover:text-white hover:bg-white/10'}`}>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Link href="/contact" className={`font-medium text-sm px-3 py-2 rounded-xl transition-all hidden md:block ${scrolled ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              Contact
+            </Link>
+            <Link href="/login" className={`font-semibold text-sm px-3 sm:px-4 py-2 rounded-xl transition-all border ${scrolled ? 'text-gray-700 border-gray-200 hover:bg-gray-100' : 'text-white border-white/30 hover:bg-white/10'}`}>
               Sign In
             </Link>
-            <Link href="/register" className={`font-semibold text-sm px-5 py-2 rounded-xl transition-all ${scrolled ? 'gradient-brand text-white shadow-md hover:shadow-lg hover:-translate-y-0.5' : 'bg-white text-brand-500 shadow-md hover:shadow-lg hover:-translate-y-0.5'}`}>
+            <Link href="/register" className={`font-semibold text-sm px-3 sm:px-5 py-2 rounded-xl transition-all ${scrolled ? 'gradient-brand text-white shadow-md hover:shadow-lg hover:-translate-y-0.5' : 'bg-white text-brand-500 shadow-md hover:shadow-lg hover:-translate-y-0.5'}`}>
               Join Free
             </Link>
           </div>
@@ -220,7 +223,7 @@ export default function LandingPage() {
             background: heroBg
               ? 'none'
               : 'linear-gradient(145deg, #1a0a0e 0%, #3d0d1a 40%, #7a1226 70%, #FF192C 100%)',
-            minHeight: '100vh',
+            minHeight: 'clamp(480px, 70vh, 100vh)',
           }}>
           {heroBg && (
             <>
@@ -418,6 +421,49 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SEO Rich Content Section */}
+      <section className="py-10 px-4 bg-white border-t border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">Find Sugar Daddies &amp; Sugar Mummies Online</h2>
+              <p className="text-sm text-gray-500 leading-relaxed mb-3">
+                Rich Dating Network is the leading luxury dating platform where ambitious singles meet wealthy, successful partners. Whether you are looking for a <strong>sugar daddy in Kenya</strong>, a <strong>sugar mummy in Nigeria</strong>, or a <strong>wealthy partner in the UK, USA, or Dubai</strong> — our platform connects you with verified, genuine profiles.
+              </p>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Our members include <strong>millionaires, executives, entrepreneurs, doctors, lawyers</strong>, and other high-achieving professionals from across Africa, Europe, America, the Middle East, and Asia. Join over 7,000 successful singles finding real love every day.
+              </p>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">Why Rich Dating Network Is Different</h2>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Verified wealthy profiles</strong> — every member goes through identity checks</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa, Paystack &amp; card payments</strong> — easy African-friendly payment methods</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>180+ countries</strong> — find love locally or internationally</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>100% free to join</strong> — browse, match, and receive messages at no cost</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Privacy &amp; security first</strong> — your data is encrypted and never shared</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Real-time chat</strong> — instant messaging with no delays</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            {[
+              { label: 'Sugar Daddies', icon: '👨‍💼', desc: 'Wealthy men seeking meaningful relationships' },
+              { label: 'Sugar Mummies', icon: '👩‍💼', desc: 'Successful women open to genuine connections' },
+              { label: 'Millionaire Singles', icon: '💎', desc: 'High-net-worth individuals looking for love' },
+              { label: 'Ambitious Singles', icon: '🌟', desc: 'Career-driven people seeking wealthy partners' },
+            ].map((c, i) => (
+              <div key={i} className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                <div className="text-2xl mb-2">{c.icon}</div>
+                <div className="text-sm font-bold text-gray-900 mb-1">{c.label}</div>
+                <div className="text-xs text-gray-400 leading-relaxed">{c.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-8 px-4 gradient-brand text-white relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -428,10 +474,16 @@ export default function LandingPage() {
           <div className="text-3xl mb-3">💝</div>
           <h2 className="text-xl md:text-2xl font-bold mb-2">Ready to Find Your Perfect Match?</h2>
           <p className="text-white/80 mb-5 text-sm">Join the most exclusive dating network for successful singles. Free to join, always.</p>
-          <Link href="/register"
-            className="bg-white text-brand-600 font-bold px-7 py-2.5 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
-            Create Free Account <ChevronRight size={16} />
-          </Link>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link href="/register"
+              className="bg-white text-brand-600 font-bold px-7 py-2.5 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
+              Create Free Account <ChevronRight size={16} />
+            </Link>
+            <Link href="/login"
+              className="border-2 border-white/40 text-white font-bold px-7 py-2.5 rounded-2xl hover:bg-white/10 transition-all inline-flex items-center gap-2 text-sm">
+              Sign In
+            </Link>
+          </div>
           <p className="text-white/60 text-xs mt-3">No credit card required • Join in 30 seconds</p>
         </div>
       </section>
