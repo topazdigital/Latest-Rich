@@ -399,6 +399,30 @@ router.post("/fake-messages", requireAuth, requireAdmin, async (req, res) => {
 })
 
 // Generate a one-time login token to log in as a fake user (for testing chat flows)
+router.post("/users/:id/impersonate", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    if (!me || me.admin < 2) { res.status(403).json({ error: "Super admin only" }); return }
+    const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!targetUser) { res.status(404).json({ error: "User not found" }); return }
+    const { signToken } = await import("../lib/jwt")
+    const token = signToken({ userId: targetUser.id })
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId,
+      title: "Admin impersonated user",
+      message: `Admin (id: ${req.userId}) logged in as: ${targetUser.name} (id: ${targetUser.id})`,
+      time: now()
+    }).catch(() => {})
+    const { password: _, ...safeUser } = targetUser
+    res.json({ token, user: safeUser })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 router.post("/fake-users/:id/login-token", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)

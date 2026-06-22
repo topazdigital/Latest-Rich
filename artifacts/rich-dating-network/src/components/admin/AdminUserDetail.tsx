@@ -3,7 +3,7 @@ import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import { formatDate, timeAgo } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { X, Shield, Crown, Ban, Trash2, Key, MessageSquare, CreditCard, User, Image, Activity, ChevronRight, AlertTriangle } from "lucide-react"
+import { X, Shield, Crown, Ban, Trash2, Key, MessageSquare, CreditCard, User, Image, Activity, ChevronRight, AlertTriangle, LogIn } from "lucide-react"
 
 interface DetailUser {
   id: number; name: string; email: string; username?: string; phone?: string
@@ -389,6 +389,39 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                     style={{ padding: "8px 16px", borderRadius: 8, border: "none", fontWeight: 600, fontSize: 13, cursor: "pointer", background: "#7f1d1d33", color: "#fca5a5", display: "flex", alignItems: "center", gap: 6 }}>
                     <Trash2 size={14} /> Delete Account
                   </button>
+                </div>
+              </div>
+
+              <div style={{ background: "#1f2937", borderRadius: 12, padding: 20 }}>
+                <div style={{ color: "white", fontWeight: 600, marginBottom: 6 }}>Login as this User</div>
+                <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 12 }}>
+                  Opens a new tab logged in as <strong style={{ color: "#e5e7eb" }}>{user.name}</strong> so you can see exactly what they see. Your current admin session stays active — just close the new tab when done.
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await authFetch(`/api/admin/users/${userId}/impersonate`, { method: "POST" })
+                      const d = await r.json()
+                      if (!r.ok) throw new Error(d.error || "Failed")
+                      const { setStoredAuth } = await import("../../lib/auth")
+                      // Save current admin token so this tab can restore it
+                      const adminAuth = localStorage.getItem("rdn_auth")
+                      if (adminAuth) sessionStorage.setItem("rdn_admin_backup", adminAuth)
+                      setStoredAuth({ user: d.user, token: d.token })
+                      const tab = window.open("/discover", "_blank")
+                      // Restore admin session in this tab after short delay
+                      setTimeout(() => {
+                        if (adminAuth) localStorage.setItem("rdn_auth", adminAuth)
+                      }, 500)
+                      if (!tab) toast.error("Pop-up blocked — allow pop-ups and try again")
+                      else toast.success(`Opened new tab as ${user.name}`)
+                    } catch (e: any) { toast.error(e.message || "Failed to impersonate user") }
+                  }}
+                  style={{ padding: "8px 18px", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", background: "#0ea5e9", color: "white", display: "flex", alignItems: "center", gap: 8 }}>
+                  <LogIn size={15} /> Login as {user.name}
+                </button>
+                <div style={{ color: "#4b5563", fontSize: 11, marginTop: 8 }}>
+                  ⚠️ This action is logged in the Activity Log
                 </div>
                 <div style={{ color: "#6b7280", fontSize: 12, marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
                   <AlertTriangle size={12} /> Delete is permanent and cannot be undone
