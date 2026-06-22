@@ -220,6 +220,20 @@ router.delete("/admin/reject/:id", requireAuth, async (req: any, res) => {
   } catch { res.status(500).json({ error: "Failed" }) }
 })
 
+router.post("/admin/set-main/:id", requireAuth, async (req: any, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
+    const [photo] = await db.select().from(photosTable).where(eq(photosTable.id, id)).limit(1)
+    if (!photo) { res.status(404).json({ error: "Photo not found" }); return }
+    await db.update(photosTable).set({ main: 0 }).where(eq(photosTable.userId, photo.userId))
+    await db.update(photosTable).set({ main: 1 }).where(eq(photosTable.id, id))
+    await db.update(usersTable).set({ photo: photo.photo, photoThumb: photo.thumb || photo.photo }).where(eq(usersTable.id, photo.userId))
+    res.json({ success: true })
+  } catch { res.status(500).json({ error: "Failed" }) }
+})
+
 router.get("/admin/pending", requireAuth, async (req, res) => {
   try {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)

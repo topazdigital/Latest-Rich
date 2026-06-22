@@ -251,15 +251,40 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
           {tab === "Media" && (
             <div>
               <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>{user.photos?.length || 0} photo(s) on record</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 14 }}>
                 {(user.photos || []).map(p => (
-                  <div key={p.id} style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${p.main ? "#FF192C" : "#374151"}`, position: "relative" }}>
-                    <img src={getPhotoUrl(p.photo)} alt="" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
+                  <div key={p.id} style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${p.main ? "#FF192C" : "#374151"}`, position: "relative", background: "#1f2937" }}>
+                    <img src={getPhotoUrl(p.photo)} alt="" style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }}
                       onError={e => { (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.svg" }} />
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px", background: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      {p.main === 1 && <span style={{ color: "#FF192C", fontSize: 9, fontWeight: 700 }}>MAIN</span>}
-                      {p.approved === 0 && <span style={{ color: "#fbbf24", fontSize: 9 }}>PENDING</span>}
-                      {p.approved === 1 && !p.main && <span style={{ color: "#86efac", fontSize: 9 }}>✓</span>}
+                    <div style={{ padding: "6px 8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
+                        {p.main === 1 && <span style={{ color: "#FF192C", fontSize: 9, fontWeight: 700, background: "#7f1d1d33", padding: "1px 5px", borderRadius: 4 }}>MAIN</span>}
+                        {p.approved === 0 && <span style={{ color: "#fbbf24", fontSize: 9, background: "#78350f33", padding: "1px 5px", borderRadius: 4 }}>PENDING</span>}
+                        {p.approved === 1 && p.main !== 1 && <span style={{ color: "#86efac", fontSize: 9 }}>✓ Approved</span>}
+                      </div>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {p.main !== 1 && (
+                          <button
+                            onClick={async () => {
+                              await authFetch(`/api/photos/admin/set-main/${p.id}`, { method: "POST" })
+                              toast.success("Set as main photo")
+                              load()
+                            }}
+                            style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 600, background: "#0ea5e933", color: "#38bdf8", border: "none", borderRadius: 5, cursor: "pointer" }}>
+                            Set Main
+                          </button>
+                        )}
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this photo?")) return
+                            await authFetch(`/api/photos/admin/reject/${p.id}`, { method: "DELETE" })
+                            toast.success("Photo deleted")
+                            load()
+                          }}
+                          style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 600, background: "#7f1d1d33", color: "#fca5a5", border: "none", borderRadius: 5, cursor: "pointer" }}>
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
