@@ -254,6 +254,87 @@ router.post("/payhero/test-credentials", requireAuth, async (req, res) => {
   }
 })
 
+/* ─── STRIPE test credentials ─── */
+router.post("/stripe/test-credentials", requireAuth, async (req, res) => {
+  const secretKey = process.env.STRIPE_SECRET_KEY || await getConfig("stripe_secret_key")
+  if (!secretKey) {
+    res.status(400).json({ ok: false, error: "No Stripe secret key saved yet. Enter it above and save first." })
+    return
+  }
+  try {
+    const response = await fetch("https://api.stripe.com/v1/balance", {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    })
+    const data = await response.json() as any
+    if (response.status === 401) {
+      res.status(400).json({ ok: false, error: "401 Unauthorized — invalid Stripe secret key", detail: data?.error?.message })
+      return
+    }
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from Stripe`, detail: data?.error?.message || JSON.stringify(data) })
+      return
+    }
+    const available = data.available?.map((b: any) => `${(b.amount / 100).toFixed(2)} ${b.currency.toUpperCase()}`).join(", ") || "–"
+    res.json({ ok: true, detail: `Stripe account active. Available balance: ${available}` })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching Stripe", detail: err?.message })
+  }
+})
+
+/* ─── PAYSTACK test credentials ─── */
+router.post("/paystack/test-credentials", requireAuth, async (req, res) => {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY || await getConfig("paystack_secret_key")
+  if (!secretKey) {
+    res.status(400).json({ ok: false, error: "No Paystack secret key saved yet. Enter it above and save first." })
+    return
+  }
+  try {
+    const response = await fetch("https://api.paystack.co/balance", {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    })
+    const data = await response.json() as any
+    if (response.status === 401) {
+      res.status(400).json({ ok: false, error: "401 Unauthorized — invalid Paystack secret key", detail: data?.message })
+      return
+    }
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from Paystack`, detail: data?.message || JSON.stringify(data) })
+      return
+    }
+    const balances = (data.data || []).map((b: any) => `${(b.balance / 100).toFixed(2)} ${b.currency}`).join(", ") || "–"
+    res.json({ ok: true, detail: `Paystack account active. Balance: ${balances}` })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching Paystack", detail: err?.message })
+  }
+})
+
+/* ─── PAYMONGO test credentials ─── */
+router.post("/paymongo/test-credentials", requireAuth, async (req, res) => {
+  const secretKey = process.env.PAYMONGO_SECRET_KEY || await getConfig("paymongo_secret_key")
+  if (!secretKey) {
+    res.status(400).json({ ok: false, error: "No PayMongo secret key saved yet. Enter it above and save first." })
+    return
+  }
+  try {
+    const credentials = Buffer.from(`${secretKey}:`).toString("base64")
+    const response = await fetch("https://api.paymongo.com/v1/payment_methods?type=gcash", {
+      headers: { Authorization: `Basic ${credentials}`, Accept: "application/json" },
+    })
+    const data = await response.json() as any
+    if (response.status === 401) {
+      res.status(400).json({ ok: false, error: "401 Unauthorized — invalid PayMongo secret key", detail: data?.errors?.[0]?.detail })
+      return
+    }
+    if (!response.ok && response.status !== 404) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from PayMongo`, detail: data?.errors?.[0]?.detail || JSON.stringify(data) })
+      return
+    }
+    res.json({ ok: true, detail: "PayMongo credentials accepted — account is active" })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching PayMongo", detail: err?.message })
+  }
+})
+
 router.post("/payhero/callback", async (req, res) => {
   const { external_reference, status } = req.body
   if (status === "SUCCESS" && external_reference) {

@@ -72,19 +72,20 @@ export default function AdminPayments() {
     setEdits(prev => ({ ...prev, [key]: value }))
   }
 
-  async function handleTestPayhero() {
+  async function handleTest() {
     setTesting(true)
     setTestResult(null)
+    const names: Record<string, string> = { stripe: 'Stripe', payhero: 'PayHero', paystack: 'Paystack', paymongo: 'PayMongo' }
     try {
-      const res = await authFetch('/api/payments/payhero/test-credentials', { method: 'POST' })
+      const res = await authFetch(`/api/payments/${activeProvider}/test-credentials`, { method: 'POST' })
       const data = await res.json()
       if (res.ok && data.ok) {
-        setTestResult({ ok: true, message: '✓ Credentials valid — PayHero accepted your API key', detail: data.detail })
+        setTestResult({ ok: true, message: `✓ Credentials valid — ${names[activeProvider]} accepted your API key`, detail: data.detail })
       } else {
         setTestResult({ ok: false, message: data.error || 'Connection failed', detail: data.detail })
       }
     } catch {
-      setTestResult({ ok: false, message: 'Network error — could not reach PayHero' })
+      setTestResult({ ok: false, message: `Network error — could not reach ${names[activeProvider]}` })
     }
     setTesting(false)
   }
@@ -144,7 +145,7 @@ export default function AdminPayments() {
           {/* Provider tabs */}
           <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             {PROVIDERS.map(p => (
-              <button key={p.id} onClick={() => setActiveProvider(p.id)} style={{
+              <button key={p.id} onClick={() => { setActiveProvider(p.id); setTestResult(null) }} style={{
                 display: 'flex', alignItems: 'center', gap: '0.4rem',
                 padding: '0.5rem 0.875rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer',
                 background: activeProvider === p.id ? p.color : '#1e293b',
@@ -212,17 +213,15 @@ export default function AdminPayments() {
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
                 {saved && <span style={{ color: '#22c55e', fontSize: '0.83rem', fontWeight: 600 }}>✓ Saved!</span>}
-                {activeProvider === 'payhero' && (
-                  <button onClick={() => { setTestResult(null); handleTestPayhero() }} disabled={testing} style={{
-                    padding: '0.6rem 1.25rem', borderRadius: '0.625rem', border: '1px solid #00a651',
-                    background: 'transparent', color: '#00a651', fontWeight: 700, fontSize: '0.85rem',
-                    fontFamily: 'inherit', cursor: 'pointer', opacity: testing ? 0.7 : 1,
-                  }}>
-                    {testing ? 'Testing...' : '🔍 Test Connection'}
-                  </button>
-                )}
+                <button onClick={() => { setTestResult(null); handleTest() }} disabled={testing} style={{
+                  padding: '0.6rem 1.25rem', borderRadius: '0.625rem', border: `1px solid ${provider.color}`,
+                  background: 'transparent', color: provider.color, fontWeight: 700, fontSize: '0.85rem',
+                  fontFamily: 'inherit', cursor: 'pointer', opacity: testing ? 0.7 : 1,
+                }}>
+                  {testing ? 'Testing…' : '🔍 Test Connection'}
+                </button>
               </div>
-              {activeProvider === 'payhero' && testResult && (
+              {testResult && (
                 <div style={{
                   marginTop: '0.875rem', padding: '0.75rem 1rem', borderRadius: '0.625rem',
                   background: testResult.ok ? '#052e16' : '#1c0a0a',
@@ -233,10 +232,10 @@ export default function AdminPayments() {
                   </p>
                   {testResult.detail && (
                     <p style={{ color: '#d1d5db', fontSize: '0.75rem', marginTop: '0.3rem', marginBottom: 0 }}>
-                      PayHero says: {testResult.detail}
+                      {testResult.detail}
                     </p>
                   )}
-                  {!testResult.ok && (
+                  {!testResult.ok && activeProvider === 'payhero' && (
                     <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.4rem', marginBottom: 0, lineHeight: 1.5 }}>
                       💡 The API password is <strong style={{ color: '#e2e8f0' }}>not</strong> your PayHero login password.
                       Go to PayHero → API Keys → delete the "Rich Dating Network" key → create a new one → set a new password → paste that password here.
