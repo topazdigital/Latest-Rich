@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { Lock, Send, RefreshCw, MessageSquare, ChevronLeft } from "lucide-react"
+import { Lock, Send, RefreshCw, MessageSquare, ChevronLeft, ExternalLink } from "lucide-react"
+import AdminUserDetail from "./AdminUserDetail"
 
 interface FakeUser { id: number; name: string; photo: string }
 interface RealUser { id: number; name: string; photo: string }
@@ -56,6 +57,7 @@ export default function AdminChat() {
   const [reply, setReply] = useState("")
   const [sending, setSending] = useState(false)
   const [myUserId, setMyUserId] = useState<number | null>(null)
+  const [viewUserId, setViewUserId] = useState<number | null>(null)
   const [lockExpiry, setLockExpiry] = useState<number>(0)
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null)
   const keepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -318,6 +320,13 @@ export default function AdminChat() {
                       </span>
                       <span style={{ color: "#475569", fontSize: "0.65rem", flexShrink: 0 }}>{timeLabel(conv.lastTime)}</span>
                     </div>
+                    <div style={{ color: "#334155", fontSize: "0.62rem", marginTop: "0.05rem" }}>
+                      Real user: <span style={{ color: "#64748b" }}>#{conv.realUser.id}</span>
+                      <button onClick={e => { e.stopPropagation(); setViewUserId(conv.realUser.id) }}
+                        style={{ marginLeft: "0.3rem", background: "none", border: "none", color: "#60a5fa", fontSize: "0.6rem", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                        view ↗
+                      </button>
+                    </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.1rem" }}>
                       <span style={{ color: "#64748b", fontSize: "0.7rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                         {conv.lastMessage || "No messages"}
@@ -382,6 +391,9 @@ export default function AdminChat() {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <button onClick={() => setViewUserId(selected.realUser.id)} style={S.btn("#1e293b")} title="View real user profile">
+                  <ExternalLink size={11} /> #{selected.realUser.id}
+                </button>
                 <span style={{ color: "#22c55e", fontSize: "0.6rem", fontWeight: 600 }}>● Live</span>
                 {!isLockedByMe && !selected.lock && (
                   <button onClick={lockConversation} style={S.btn("#7c3aed")}>
@@ -471,6 +483,9 @@ export default function AdminChat() {
           </div>
         )}
       </div>
+      {viewUserId && (
+        <AdminUserDetail userId={viewUserId} onClose={() => setViewUserId(null)} />
+      )}
     </div>
   )
 }
