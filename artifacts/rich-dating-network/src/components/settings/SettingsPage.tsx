@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { User, Camera, Lock, LogOut, Save, Loader2, X, Shield, Trash2, Bell, MapPin, BadgeCheck, Heart } from 'lucide-react'
+import { User, Camera, Lock, LogOut, Save, Loader2, X, Shield, Trash2, Bell, MapPin, BadgeCheck, Heart, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
 import { getPhotoUrl } from '../../lib/utils'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -255,6 +255,110 @@ function VerificationTab({ token, initialUser }: { token: string | null; initial
   )
 }
 
+// ── Profile Strength widget ───────────────────────────────────────────
+interface StrengthItem {
+  label: string
+  done: boolean
+  points: number
+  tab: string
+  hint: string
+}
+
+function ProfileStrength({
+  form, photos, interests, verified, onTabChange,
+}: {
+  form: Record<string, string>
+  photos: any[]
+  interests: string[]
+  verified: number
+  onTabChange: (t: string) => void
+}) {
+  const items: StrengthItem[] = [
+    { label: 'Profile photo', done: photos.length > 0, points: 20, tab: 'Photos', hint: 'Add your main photo' },
+    { label: 'Write a bio', done: (form.bio || '').trim().length >= 30, points: 15, tab: 'Profile', hint: 'At least 30 characters' },
+    { label: 'Add your location', done: !!(form.city || '').trim(), points: 10, tab: 'Profile', hint: 'City helps local matches' },
+    { label: 'Set your birthday', done: !!(form.birthday || '').trim(), points: 10, tab: 'Profile', hint: 'Required for age display' },
+    { label: 'Choose 3+ interests', done: interests.length >= 3, points: 15, tab: 'Interests', hint: 'Shows what you enjoy' },
+    { label: 'Add occupation', done: !!(form.occupation || '').trim(), points: 10, tab: 'Profile', hint: 'Career attracts quality matches' },
+    { label: 'Upload 2+ photos', done: photos.length >= 2, points: 10, tab: 'Photos', hint: 'More photos = more likes' },
+    { label: 'Verify your identity', done: verified === 1, points: 10, tab: 'Verify', hint: 'Get the blue verified badge' },
+  ]
+
+  const score = items.filter(i => i.done).reduce((acc, i) => acc + i.points, 0)
+
+  const barColor =
+    score >= 90 ? '#16a34a' :
+    score >= 70 ? '#2563eb' :
+    score >= 40 ? '#d97706' : '#ef4444'
+
+  const label =
+    score >= 90 ? 'Excellent' :
+    score >= 70 ? 'Strong' :
+    score >= 40 ? 'Good' : 'Needs Work'
+
+  return (
+    <div className="card p-5 mb-6">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="font-bold text-gray-900 text-sm">Profile Strength</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {score === 100 ? 'Your profile is complete!' : `${100 - score} points left to reach 100%`}
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="text-2xl font-black" style={{ color: barColor }}>{score}%</span>
+          <p className="text-xs font-semibold mt-0.5" style={{ color: barColor }}>{label}</p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-4">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${score}%`, background: barColor }}
+        />
+      </div>
+
+      {/* Checklist */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {items.map(item => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => !item.done && onTabChange(item.tab)}
+            disabled={item.done}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
+              item.done
+                ? 'bg-gray-50 cursor-default'
+                : 'bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 cursor-pointer'
+            }`}
+          >
+            {item.done
+              ? <CheckCircle2 size={15} className="text-green-500 flex-shrink-0" />
+              : <Circle size={15} className="text-gray-300 flex-shrink-0" />
+            }
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-semibold truncate ${item.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                {item.label}
+              </p>
+              {!item.done && (
+                <p className="text-[10px] text-gray-400 truncate">{item.hint}</p>
+              )}
+            </div>
+            {!item.done && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-[10px] font-bold text-brand-500">+{item.points}%</span>
+                <ChevronRight size={12} className="text-gray-300" />
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage({ user: initialUser }: Props) {
   const [tab, setTab] = useState('Profile')
   const [saving, setSaving] = useState(false)
@@ -392,6 +496,15 @@ export default function SettingsPage({ user: initialUser }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="section-title mb-6">Settings</h1>
+
+      <ProfileStrength
+        form={form}
+        photos={photos}
+        interests={selectedInterests}
+        verified={initialUser?.verified ?? 0}
+        onTabChange={setTab}
+      />
+
       <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 overflow-x-auto">
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
