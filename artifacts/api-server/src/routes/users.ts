@@ -138,10 +138,12 @@ router.get("/search", requireAuth, async (req, res) => {
     const ageMax = parseInt(String(req.query.ageMax || "99"))
     const gender = parseInt(String(req.query.gender || "0"))
     const onlineOnly = req.query.online === "1"
+    const mutualOnly = req.query.mutual === "1"
 
     const myUser = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     const myCity = myUser[0]?.city || ""
     const myCountry = myUser[0]?.country || ""
+    const myGender = myUser[0]?.gender || 0
 
     // Default gender filter to the current user's "looking for" preference when not explicitly set
     const effectiveGender = gender > 0 ? gender : (myUser[0]?.looking || 0)
@@ -166,6 +168,8 @@ router.get("/search", requireAuth, async (req, res) => {
       if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
       if (country && u.country !== country) return false
       if (effectiveGender > 0 && u.gender !== effectiveGender) return false
+      // Mutual match: only show users who are also looking for my gender
+      if (mutualOnly && myGender > 0 && u.looking !== myGender) return false
       const userAge = u.age ?? 0
       if (userAge > 0 && (userAge < ageMin || userAge > ageMax)) return false
       if (onlineOnly && u.online !== 1) return false

@@ -46,6 +46,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   const [filterOnline, setFilterOnline] = useState(false)
   const [filterPremium, setFilterPremium] = useState(false)
   const [filterCompatible, setFilterCompatible] = useState(false)
+  const [filterMutual, setFilterMutual] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [likedUsers, setLikedUsers] = useState<Set<number>>(new Set())
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set())
@@ -82,6 +83,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
       ageMax: String(filterAgeMax),
       gender: filterGender,
       online: filterOnline ? '1' : '0',
+      mutual: filterMutual ? '1' : '0',
     })
     authFetch(`/api/users/search?${params}`)
       .then(r => r.json())
@@ -92,7 +94,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => { fetchUsers() }, [filterGender, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium])
+  useEffect(() => { fetchUsers() }, [filterGender, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium, filterMutual])
   useEffect(() => { const t = setTimeout(fetchUsers, 400); return () => clearTimeout(t) }, [search])
 
   const filtered = useMemo(() => {
@@ -115,7 +117,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     })
   }, [users, filterPremium, filterCompatible, myInterests])
 
-  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 99 || filterOnline || filterPremium || filterCompatible
+  const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 99 || filterOnline || filterPremium || filterCompatible || filterMutual
 
   async function likeUser(targetId: number) {
     const isLiked = likedUsers.has(targetId)
@@ -127,8 +129,8 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   }
 
   function clearFilters() {
-    setFilterGender('0'); setFilterCity(''); setFilterCountry('')
-    setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setFilterCompatible(false); setSearch('')
+    setFilterGender(myLooking ? String(myLooking) : '0'); setFilterCity(''); setFilterCountry('')
+    setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setFilterCompatible(false); setFilterMutual(false); setSearch('')
   }
 
   const nearbyCount = filtered.filter(u => u.city === myCity || u.country === myCountry).length
@@ -218,6 +220,10 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={filterPremium} onChange={e => setFilterPremium(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
                 <span className="text-xs text-gray-600">👑 VIP only</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={filterMutual} onChange={e => setFilterMutual(e.target.checked)} className="rounded w-3.5 h-3.5 accent-brand-500" />
+                <span className="text-xs text-gray-600">🔁 Mutual match only</span>
               </label>
               {myInterests.length > 0 && (
                 <label className="flex items-center gap-2 cursor-pointer">
