@@ -123,6 +123,11 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       read: 0,
     })
 
+    // Update fake user's lastAccess so "Last seen" matches when they messaged
+    await db.update(usersTable)
+      .set({ lastAccess: String(msgTime) })
+      .where(eq(usersTable.id, faker.id))
+
     await db.insert(notificationsTable).values({
       userId: realUser.id,
       fromId: faker.id,
