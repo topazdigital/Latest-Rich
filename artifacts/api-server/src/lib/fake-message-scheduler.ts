@@ -3,7 +3,7 @@ import {
   usersTable, messagesTable, notificationsTable,
   fakeMessageTemplatesTable, autoMessageLogTable, likesTable, siteConfigTable
 } from "@workspace/db/schema"
-import { eq, and, inArray, notInArray } from "drizzle-orm"
+import { eq, and, inArray, notInArray, gte } from "drizzle-orm"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -39,6 +39,14 @@ async function getMessagesPerTrigger(): Promise<number> {
   return parseInt(await getConfigVal("auto_messages_count", "3"))
 }
 
+async function getMaxInactiveDays(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_max_inactive_days", "30"))
+}
+
+async function getDailyMessageCap(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_daily_cap", "5"))
+}
+
 function randomDelay(minSec: number, maxSec: number): number {
   return minSec + Math.floor(Math.random() * (maxSec - minSec + 1))
 }
@@ -54,6 +62,14 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
     .where(and(eq(usersTable.id, realUserId), eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
     .limit(1)
   if (!realUser) return 0
+
+  // Enforce daily cap — count messages sent to this user in the last 24 hours
+  const dailyCap = await getDailyMessageCap()
+  const dayAgo = now() - 86400
+  const todayLogs = await db.select({ id: autoMessageLogTable.id })
+    .from(autoMessageLogTable)
+    .where(and(eq(autoMessageLogTable.realUserId, realUser.id), gte(autoMessageLogTable.time, dayAgo)))
+  if (todayLogs.length >= dailyCap) return 0
 
   const genderFilter = realUser.looking === 3 ? [1, 2] : [realUser.looking ?? 2]
 
@@ -165,8 +181,12 @@ export async function triggerAutoMessages(realUserId?: number, isNewUser = false
     return 0
   }
 
+  // Only target users who have been active within the configured window
+  const maxInactiveDays = await getMaxInactiveDays()
+  const activeAfter = now() - maxInactiveDays * 86400
+
   const realUsers = await db.select().from(usersTable)
-    .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
+    .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0), gte(usersTable.lastAccess, String(activeAfter))))
     .limit(50)
 
   let total = 0

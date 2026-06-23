@@ -37,6 +37,8 @@ const SECTIONS = [
       { key: "auto_message_new_user_delay_seconds", label: "New User First Message Delay (seconds)", type: "number", placeholder: "5", help: "How many seconds after registration to send first message. Default: 5" },
       { key: "auto_message_min_delay_seconds", label: "Min Delay on Login (seconds)", type: "number", placeholder: "60", help: "Minimum seconds after login to trigger messages. Default: 60" },
       { key: "auto_message_max_delay_seconds", label: "Max Delay on Login (seconds)", type: "number", placeholder: "900", help: "Maximum seconds after login. Default: 900 (15 min). Message fires at random time in range." },
+      { key: "auto_message_max_inactive_days", label: "Max Inactive Days to Message", type: "number", placeholder: "30", help: "Only send auto messages to users who were active within this many days. Default: 30. Set to a lower number to avoid messaging long-inactive users." },
+      { key: "auto_message_daily_cap", label: "Max Auto Messages Per User Per Day", type: "number", placeholder: "5", help: "Maximum number of auto messages a single user can receive in a 24-hour period. Default: 5." },
       { key: "email_notifications_enabled", label: "Email Notifications", type: "select", options: [["1","Enabled"],["0","Disabled"]], help: "Send email alerts for new messages, likes, etc." },
     ]
   },
