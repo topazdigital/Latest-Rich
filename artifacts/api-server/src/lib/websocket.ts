@@ -189,6 +189,10 @@ function broadcastOnlineStatus(userId: number, online: boolean) {
   }
 }
 
+export function broadcastUserOnline(userId: number, online: boolean) {
+  broadcastOnlineStatus(userId, online)
+}
+
 export function send(userId: number, data: object) {
   const client = clients.get(userId)
   if (client && client.ws.readyState === WebSocket.OPEN) {

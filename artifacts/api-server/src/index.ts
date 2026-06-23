@@ -3,6 +3,7 @@ import app from "./app"
 import { logger } from "./lib/logger"
 import { setupWebSocket } from "./lib/websocket"
 import { startPaymentReconciler } from "./lib/payment-reconciler"
+import { startFakeOnlineSimulator } from "./lib/fake-message-scheduler"
 
 const rawPort = process.env["PORT"]
 
@@ -24,6 +25,7 @@ setupWebSocket(server)
 server.listen(port, () => {
   logger.info({ port }, "Server listening with WebSocket support")
   startPaymentReconciler()
+  startFakeOnlineSimulator()
 })
 
 server.on("error", (err) => {

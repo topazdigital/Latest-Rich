@@ -230,3 +230,61 @@ export function startAutoMessageScheduler() {
   setTimeout(() => { triggerAutoMessages().catch(console.error) }, 10000)
   setInterval(() => { triggerAutoMessages().catch(console.error) }, 30 * 60 * 1000)
 }
+
+// ── Fake Online Simulator ─────────────────────────────────────────────────────
+// Periodically marks a random set of fake users as "online" by bumping their
+// lastAccess to now, then broadcasts user_online events over WebSocket so
+// connected real users see the green dot in real time.
+
+async function runFakeOnlineSimulator() {
+  try {
+    const enabled = await getConfigVal("fake_online_enabled", "0")
+    if (enabled !== "1") return
+
+    const count = parseInt(await getConfigVal("fake_online_count", "5"))
+
+    const fakeUsers = await db.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.fake, 1), eq(usersTable.banned, 0)))
+
+    if (!fakeUsers.length) return
+
+    // Pick a random subset to be "online" right now
+    const shuffled = [...fakeUsers].sort(() => Math.random() - 0.5)
+    const toGoOnline = shuffled.slice(0, Math.min(count, shuffled.length))
+    const onlineIds = new Set(toGoOnline.map(u => u.id))
+
+    const ts = String(now())
+
+    // Set the chosen fakes as online
+    for (const u of toGoOnline) {
+      await db.update(usersTable).set({ lastAccess: ts }).where(eq(usersTable.id, u.id))
+    }
+
+    // Broadcast via WebSocket so connected users see it live
+    const { broadcastUserOnline } = await import("./websocket")
+    for (const u of fakeUsers) {
+      broadcastUserOnline(u.id, onlineIds.has(u.id))
+    }
+  } catch (err) {
+    console.error("[FakeOnline] Error:", err)
+  }
+}
+
+export function startFakeOnlineSimulator() {
+  // Run once shortly after boot, then on a configurable interval
+  setTimeout(() => { runFakeOnlineSimulator().catch(console.error) }, 15000)
+
+  // Re-check interval every minute; actual run frequency is config-driven
+  let lastRun = 0
+  setInterval(async () => {
+    try {
+      const intervalMin = parseInt(await getConfigVal("fake_online_interval_minutes", "3"))
+      const nowSec = now()
+      if (nowSec - lastRun >= intervalMin * 60) {
+        lastRun = nowSec
+        await runFakeOnlineSimulator()
+      }
+    } catch {}
+  }, 60 * 1000)
+}
