@@ -265,6 +265,9 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
       .orderBy(desc(messagesTable.id))
       .limit(1)
 
+    // Keep fake user's "Last seen" consistent with when they messaged
+    await db.update(usersTable).set({ lastAccess: String(msgTime) }).where(eq(usersTable.id, fakeUser.id))
+
     await db.update(chatLocksTable).set({ expiresAt: now() + LOCK_DURATION }).where(eq(chatLocksTable.conversationKey, key))
 
     await db.insert(activityTable).values({

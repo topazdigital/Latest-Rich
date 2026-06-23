@@ -164,6 +164,11 @@ router.post("/", requireAuth, async (req, res) => {
       .orderBy(desc(messagesTable.id))
       .limit(1)
 
+    // If sender is a fake user (admin logged in as fake), keep their "Last seen" consistent
+    if (sender.fake === 1) {
+      await db.update(usersTable).set({ lastAccess: String(msgTime) }).where(eq(usersTable.id, myId))
+    }
+
     const [updatedSender] = await db.select({ credits: usersTable.credits }).from(usersTable).where(eq(usersTable.id, myId)).limit(1)
 
     // Log activity for admin
