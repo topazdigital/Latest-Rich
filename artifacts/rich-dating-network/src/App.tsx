@@ -41,6 +41,8 @@ import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
+// Routes that require login (redirect to /login if not authed). Profile pages excluded so Google can crawl them.
+const AUTH_REQUIRED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
 const ADMIN_PREFIXES = ["/admin"]
 const MODERATOR_PREFIXES = ["/moderator"]
 
