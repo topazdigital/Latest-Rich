@@ -143,6 +143,9 @@ router.get("/search", requireAuth, async (req, res) => {
     const myCity = myUser[0]?.city || ""
     const myCountry = myUser[0]?.country || ""
 
+    // Default gender filter to the current user's "looking for" preference when not explicitly set
+    const effectiveGender = gender > 0 ? gender : (myUser[0]?.looking || 0)
+
     // Get currently boosted user IDs
     const boostedRows = await db.select({ userId: profileBoostsTable.userId })
       .from(profileBoostsTable)
@@ -162,14 +165,14 @@ router.get("/search", requireAuth, async (req, res) => {
       if (q && !u.name.toLowerCase().includes(q.toLowerCase()) && !u.city?.toLowerCase().includes(q.toLowerCase())) return false
       if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
       if (country && u.country !== country) return false
-      if (gender > 0 && u.gender !== gender) return false
+      if (effectiveGender > 0 && u.gender !== effectiveGender) return false
       const userAge = u.age ?? 0
       if (userAge > 0 && (userAge < ageMin || userAge > ageMax)) return false
       if (onlineOnly && u.online !== 1) return false
       return true
     })
 
-    // Sort: boosted first, then by proximity, then by last access
+    // Sort: boosted first, then nearby (same city → same country → worldwide), then by last access
     users.sort((a, b) => {
       const aBoost = boostedIds.has(a.id) ? 0 : 1
       const bBoost = boostedIds.has(b.id) ? 0 : 1

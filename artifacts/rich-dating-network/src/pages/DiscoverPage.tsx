@@ -22,6 +22,7 @@ export default function DiscoverPage() {
       myCity={user?.city}
       myCountry={user?.country}
       myInterests={myInterests}
+      myLooking={user?.looking}
     />
   )
 }

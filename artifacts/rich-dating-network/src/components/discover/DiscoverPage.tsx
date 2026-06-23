@@ -13,6 +13,7 @@ interface Props {
   myCity?: string;
   myCountry?: string;
   myInterests?: string[];
+  myLooking?: number;
 }
 
 function calcCompatibility(myInterests: string[], theirInterests: string[]): number {
@@ -23,12 +24,21 @@ function calcCompatibility(myInterests: string[], theirInterests: string[]): num
   return union === 0 ? 0 : Math.round((shared / union) * 100)
 }
 
-export default function DiscoverPage({ userId, myCity, myCountry, myInterests = [] }: Props) {
+export default function DiscoverPage({ userId, myCity, myCountry, myInterests = [], myLooking }: Props) {
   const [, setLocation] = useLocation()
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filterGender, setFilterGender] = useState('0')
+  const [genderInitialized, setGenderInitialized] = useState(false)
+
+  // Sync filterGender with user's "looking for" preference once it loads
+  useEffect(() => {
+    if (!genderInitialized && myLooking) {
+      setFilterGender(String(myLooking))
+      setGenderInitialized(true)
+    }
+  }, [myLooking, genderInitialized])
   const [filterCity, setFilterCity] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
   const [filterAgeMin, setFilterAgeMin] = useState(18)
