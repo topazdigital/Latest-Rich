@@ -86,6 +86,18 @@ const SECTIONS = [
     ]
   },
   {
+    title: "Fake Online Activity",
+    icon: Users,
+    color: "text-emerald-400",
+    fields: [
+      { key: "fake_online_enabled", label: "Fake Online Simulator", type: "select", options: [["0","Disabled"],["1","Enabled"]], help: "Periodically marks a random set of fake users as recently active so real users see green dots and 'Last seen' status." },
+      { key: "fake_online_count", label: "Fake Users Online at Once", type: "number", placeholder: "5", help: "How many fake profiles appear online simultaneously. Default: 5." },
+      { key: "fake_online_interval_minutes", label: "Rotate Online Users Every (minutes)", type: "number", placeholder: "3", help: "How often the set of 'online' fake users rotates. Default: 3 minutes." },
+      { key: "fake_last_seen_min_offset", label: "Last Seen Min Offset (seconds)", type: "number", placeholder: "120", help: "Minimum seconds in the past a fake user's 'Last seen' timestamp is set. Default: 120 (2 min). Keeps it from showing 'just now'." },
+      { key: "fake_last_seen_max_offset", label: "Last Seen Max Offset (seconds)", type: "number", placeholder: "900", help: "Maximum seconds in the past. Default: 900 (15 min). A random value between min and max is chosen each time." },
+    ]
+  },
+  {
     title: "Stripe Payments",
     icon: Shield,
     color: "text-orange-400",

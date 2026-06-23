@@ -55,8 +55,25 @@ async function getAutoMessageEmailMaxInactiveHours(): Promise<number> {
   return parseInt(await getConfigVal("auto_message_email_max_inactive_hours", "2"))
 }
 
+async function getLastSeenMinOffset(): Promise<number> {
+  return parseInt(await getConfigVal("fake_last_seen_min_offset", "120"))
+}
+
+async function getLastSeenMaxOffset(): Promise<number> {
+  return parseInt(await getConfigVal("fake_last_seen_max_offset", "900"))
+}
+
 function randomDelay(minSec: number, maxSec: number): number {
   return minSec + Math.floor(Math.random() * (maxSec - minSec + 1))
+}
+
+// Returns a timestamp that is slightly in the past (by a random offset within the configured range)
+// so fake users show "Last seen X minutes ago" rather than "just now".
+async function fakeLastSeenTimestamp(): Promise<number> {
+  const minOff = await getLastSeenMinOffset()
+  const maxOff = await getLastSeenMaxOffset()
+  const offset = randomDelay(minOff, maxOff)
+  return now() - offset
 }
 
 export async function sendAutoMessagesToUser(realUserId: number): Promise<number> {
@@ -123,9 +140,11 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       read: 0,
     })
 
-    // Update fake user's lastAccess so "Last seen" matches when they messaged
+    // Update fake user's lastAccess with a small random offset so "Last seen"
+    // looks natural (e.g. "3 minutes ago") instead of exactly matching the message time.
+    const fakeTs = await fakeLastSeenTimestamp()
     await db.update(usersTable)
-      .set({ lastAccess: String(msgTime) })
+      .set({ lastAccess: String(fakeTs) })
       .where(eq(usersTable.id, faker.id))
 
     await db.insert(notificationsTable).values({
@@ -254,11 +273,11 @@ async function runFakeOnlineSimulator() {
     const toGoOnline = shuffled.slice(0, Math.min(count, shuffled.length))
     const onlineIds = new Set(toGoOnline.map(u => u.id))
 
-    const ts = String(now())
-
-    // Set the chosen fakes as online
+    // Set the chosen fakes as "recently active" with a randomised last-seen offset
+    // so they show "Last seen 3 minutes ago" rather than "just now".
     for (const u of toGoOnline) {
-      await db.update(usersTable).set({ lastAccess: ts }).where(eq(usersTable.id, u.id))
+      const fakeTs = await fakeLastSeenTimestamp()
+      await db.update(usersTable).set({ lastAccess: String(fakeTs) }).where(eq(usersTable.id, u.id))
     }
 
     // Broadcast via WebSocket so connected users see it live
