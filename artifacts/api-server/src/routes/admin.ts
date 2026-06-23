@@ -1283,7 +1283,7 @@ router.get("/fetch-real-profiles", requireAuth, requireAdmin, async (req, res) =
 router.get("/public-config", async (req, res) => {
   try {
     const rows = await db.select().from(siteConfigTable)
-      .where(inArray(siteConfigTable.key as any, ["clarity_project_id", "site_name"] as any))
+      .where(inArray(siteConfigTable.key as any, ["clarity_project_id", "google_analytics_id", "site_name"] as any))
     const cfg: Record<string, string> = {}
     for (const r of rows) cfg[(r as any).key] = (r as any).value || ""
     res.json(cfg)
