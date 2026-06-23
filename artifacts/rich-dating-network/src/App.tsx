@@ -363,16 +363,16 @@ function DynamicFavicon() {
 }
 
 function AnalyticsInjector() {
+  const { user } = useAuth()
+
   useEffect(() => {
-    fetch('/api/admin/public-config').then(r => r.json()).then((cfg: Record<string, string>) => {
+    fetch('/api/admin/public-config').then(r => r.json()).then(async (cfg: Record<string, string>) => {
       const clarityId = cfg.clarity_project_id?.trim()
-      if (clarityId && !document.getElementById('ms-clarity')) {
-        const s = document.createElement('script')
-        s.id = 'ms-clarity'
-        s.type = 'text/javascript'
-        s.innerHTML = `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`
-        document.head.appendChild(s)
+      if (clarityId) {
+        const Clarity = (await import('@microsoft/clarity')).default
+        Clarity.init(clarityId)
       }
+
       const gaId = cfg.google_analytics_id?.trim()
       if (gaId && !document.getElementById('ga-gtag')) {
         const s1 = document.createElement('script')
@@ -386,6 +386,27 @@ function AnalyticsInjector() {
       }
     }).catch(() => {})
   }, [])
+
+  // Identify logged-in user so sessions are tagged in Clarity recordings
+  useEffect(() => {
+    if (!user) return
+    fetch('/api/admin/public-config').then(r => r.json()).then(async (cfg: Record<string, string>) => {
+      const clarityId = cfg.clarity_project_id?.trim()
+      if (!clarityId) return
+      const Clarity = (await import('@microsoft/clarity')).default
+      Clarity.identify(
+        String(user.id),
+        undefined,
+        undefined,
+        user.name || user.username || String(user.id)
+      )
+      Clarity.setTag('userId', String(user.id))
+      Clarity.setTag('username', user.username || '')
+      Clarity.setTag('city', user.city || '')
+      Clarity.setTag('premium', user.premium === 1 ? 'yes' : 'no')
+    }).catch(() => {})
+  }, [user?.id])
+
   return null
 }
 
