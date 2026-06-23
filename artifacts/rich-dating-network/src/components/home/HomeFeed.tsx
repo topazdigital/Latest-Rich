@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getPhotoUrl, timeAgo, isOnline, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
-import { Heart, MessageCircle, Plus, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight, Search, Zap } from 'lucide-react'
+import { Heart, MessageCircle, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight, Search, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -124,13 +124,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
               <div className="card" style={{ padding: '1rem' }}>
                 <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' }}>Stories</p>
                 <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                    <div style={{ width: '3.5rem', height: '3.5rem', borderRadius: '50%', border: '2px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-                      <Plus size={20} color="#9ca3af" />
-                    </div>
-                    <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>Add</span>
-                  </div>
-                  {stories.map((story: any, idx: number) => (
+                    {stories.map((story: any, idx: number) => (
                     <button key={story.id} onClick={() => setActiveStory({ story, idx })}
                       style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       <div style={{ width: '3.5rem', height: '3.5rem', borderRadius: '50%', outline: '2px solid #FF192C', outlineOffset: '2px', overflow: 'hidden' }}>

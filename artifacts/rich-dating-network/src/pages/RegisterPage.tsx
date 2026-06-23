@@ -11,8 +11,8 @@ declare global {
 }
 
 const STATS = [
-  { value: '2M+', label: 'Active Members' },
-  { value: '94%', label: 'Match Rate' },
+  { value: '7,000+', label: 'Active Members' },
+  { value: '98%', label: 'Satisfaction Rate' },
   { value: '180+', label: 'Countries' },
 ]
 
@@ -543,7 +543,7 @@ export default function RegisterPage() {
               {[
                 { icon: <Shield size={14} />, text: 'Verified & safe profiles only' },
                 { icon: <Crown size={14} />, text: 'Premium matching algorithm' },
-                { icon: <Users size={14} />, text: 'Millions of real members' },
+                { icon: <Users size={14} />, text: 'Thousands of verified members' },
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-3 text-white/70 text-sm">
                   <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-white/60">{f.icon}</div>

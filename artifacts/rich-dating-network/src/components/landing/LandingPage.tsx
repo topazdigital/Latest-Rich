@@ -421,38 +421,43 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SEO Rich Content Section */}
+      {/* About / Trust Section */}
       <section className="py-10 px-4 bg-white border-t border-gray-100">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Find Sugar Daddies &amp; Sugar Mummies Online</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">Where Ambition Meets Attraction</h2>
               <p className="text-sm text-gray-500 leading-relaxed mb-3">
-                Rich Dating Network is the leading luxury dating platform where ambitious singles meet wealthy, successful partners. Whether you are looking for a <strong>sugar daddy in Kenya</strong>, a <strong>sugar mummy in Nigeria</strong>, or a <strong>wealthy partner in the UK, USA, or Dubai</strong> — our platform connects you with verified, genuine profiles.
+                Rich Dating Network is a premium dating platform built exclusively for successful, motivated singles
+                who understand the value of a genuine connection. Our members are accomplished professionals —
+                executives, entrepreneurs, doctors, lawyers, and high-achievers — from Kenya, Nigeria, South Africa,
+                the UK, USA, Dubai, and 180+ countries worldwide.
               </p>
               <p className="text-sm text-gray-500 leading-relaxed">
-                Our members include <strong>millionaires, executives, entrepreneurs, doctors, lawyers</strong>, and other high-achieving professionals from across Africa, Europe, America, the Middle East, and Asia. Join over 7,000 successful singles finding real love every day.
+                Whether you are seeking a long-term relationship, a meaningful companionship, or simply someone
+                who matches your drive and lifestyle, Rich Dating Network brings together people who have standards —
+                and the means to enjoy life together.
               </p>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-3">Why Rich Dating Network Is Different</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">Why Members Choose Us</h2>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Verified wealthy profiles</strong> — every member goes through identity checks</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa, Paystack &amp; card payments</strong> — easy African-friendly payment methods</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>180+ countries</strong> — find love locally or internationally</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>100% free to join</strong> — browse, match, and receive messages at no cost</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Privacy &amp; security first</strong> — your data is encrypted and never shared</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Real-time chat</strong> — instant messaging with no delays</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Verified profiles</strong> — members go through identity checks for authenticity</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa, Paystack &amp; card payments</strong> — convenient African and global payment options</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>180+ countries</strong> — connect locally or discover love across borders</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Free to join</strong> — browse and receive messages at no cost</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Privacy first</strong> — your data is encrypted and never sold to third parties</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Real-time messaging</strong> — instant chat with no delays or hidden barriers</span></li>
               </ul>
             </div>
           </div>
 
           <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             {[
-              { label: 'Sugar Daddies', icon: '👨‍💼', desc: 'Wealthy men seeking meaningful relationships' },
-              { label: 'Sugar Mummies', icon: '👩‍💼', desc: 'Successful women open to genuine connections' },
-              { label: 'Millionaire Singles', icon: '💎', desc: 'High-net-worth individuals looking for love' },
-              { label: 'Ambitious Singles', icon: '🌟', desc: 'Career-driven people seeking wealthy partners' },
+              { label: 'Successful Men', icon: '👨‍💼', desc: 'Established professionals seeking genuine connections' },
+              { label: 'Successful Women', icon: '👩‍💼', desc: 'Independent, accomplished women open to real love' },
+              { label: 'High Achievers', icon: '💎', desc: 'Driven individuals who want a partner to match their pace' },
+              { label: 'Global Singles', icon: '🌍', desc: 'Members from 180+ countries, all walks of life' },
             ].map((c, i) => (
               <div key={i} className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
                 <div className="text-2xl mb-2">{c.icon}</div>
