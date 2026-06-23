@@ -47,6 +47,14 @@ async function getDailyMessageCap(): Promise<number> {
   return parseInt(await getConfigVal("auto_message_daily_cap", "5"))
 }
 
+async function getAutoMessageEmailEnabled(): Promise<boolean> {
+  return (await getConfigVal("auto_message_send_email", "0")) === "1"
+}
+
+async function getAutoMessageEmailMaxInactiveHours(): Promise<number> {
+  return parseInt(await getConfigVal("auto_message_email_max_inactive_hours", "2"))
+}
+
 function randomDelay(minSec: number, maxSec: number): number {
   return minSec + Math.floor(Math.random() * (maxSec - minSec + 1))
 }
@@ -141,11 +149,27 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
     } catch { /* ignore duplicate like */ }
 
     try {
-      const { sendNewMessageEmail } = await import("./mailer")
-      const siteUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN || "localhost"}`
-      const emailNotifs = await getConfigVal("email_notifications_enabled", "1")
-      if (emailNotifs === "1" && realUser.email && !realUser.email.includes("@rdn.local")) {
-        sendNewMessageEmail(realUser.email, realUser.name, faker.name, template.message, siteUrl).catch(() => {})
+      const autoEmailEnabled = await getAutoMessageEmailEnabled()
+      if (autoEmailEnabled && realUser.email && !realUser.email.includes("@rdn.local")) {
+        // Only email if user was active recently (within configured hours)
+        const maxInactiveHours = await getAutoMessageEmailMaxInactiveHours()
+        const recentCutoff = now() - maxInactiveHours * 3600
+        const lastAccess = parseInt(realUser.lastAccess || "0")
+        if (lastAccess >= recentCutoff) {
+          // Deduplicate: only 1 email per user per day from auto-messages
+          const emailSentToday = await db.select({ id: autoMessageLogTable.id })
+            .from(autoMessageLogTable)
+            .where(and(
+              eq(autoMessageLogTable.realUserId, realUser.id),
+              gte(autoMessageLogTable.time, dayAgo)
+            ))
+          const alreadyEmailedToday = emailSentToday.length > 1 // first message of the day gets email
+          if (!alreadyEmailedToday) {
+            const { sendNewMessageEmail } = await import("./mailer")
+            const siteUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN || "localhost"}`
+            sendNewMessageEmail(realUser.email, realUser.name, faker.name, template.message, siteUrl).catch(() => {})
+          }
+        }
       }
     } catch {}
 

@@ -39,7 +39,9 @@ const SECTIONS = [
       { key: "auto_message_max_delay_seconds", label: "Max Delay on Login (seconds)", type: "number", placeholder: "900", help: "Maximum seconds after login. Default: 900 (15 min). Message fires at random time in range." },
       { key: "auto_message_max_inactive_days", label: "Max Inactive Days to Message", type: "number", placeholder: "30", help: "Only send auto messages to users who were active within this many days. Default: 30. Set to a lower number to avoid messaging long-inactive users." },
       { key: "auto_message_daily_cap", label: "Max Auto Messages Per User Per Day", type: "number", placeholder: "5", help: "Maximum number of auto messages a single user can receive in a 24-hour period. Default: 5." },
-      { key: "email_notifications_enabled", label: "Email Notifications", type: "select", options: [["1","Enabled"],["0","Disabled"]], help: "Send email alerts for new messages, likes, etc." },
+      { key: "auto_message_send_email", label: "Send Email for Auto-Messages", type: "select", options: [["0","Disabled (recommended)"],["1","Enabled"]], help: "Whether to send email notifications when auto-messages are delivered. Default: Disabled — enable only to re-engage recently active users or you risk being flagged as spam." },
+      { key: "auto_message_email_max_inactive_hours", label: "Email Only If Active Within (hours)", type: "number", placeholder: "2", help: "When auto-message emails are enabled, only send to users who were online within this many hours. Default: 2. Prevents emailing offline users." },
+      { key: "email_notifications_enabled", label: "Email Notifications (Manual Messages)", type: "select", options: [["1","Enabled"],["0","Disabled"]], help: "Send email alerts for new messages, likes, etc. sent by real users or moderators." },
     ]
   },
   {
