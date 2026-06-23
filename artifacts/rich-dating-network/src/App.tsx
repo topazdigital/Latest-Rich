@@ -36,6 +36,7 @@ import WelcomeModal from "./components/common/WelcomeModal"
 import NewSiteModal from "./components/common/NewSiteModal"
 import ProfileQuestionsModal from "./components/common/ProfileQuestionsModal"
 import VideoCallModal from "./components/common/VideoCallModal"
+import CookieConsent from "./components/common/CookieConsent"
 import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
 
@@ -542,6 +543,7 @@ function App() {
           },
         }}
       />
+      <CookieConsent />
     </AuthContext.Provider>
   )
 }
