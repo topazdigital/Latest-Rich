@@ -79,6 +79,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   const [showQuick, setShowQuick] = useState(false)
   const [stories, setStories] = useState<any[]>([])
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
+  const [liveLastAccess, setLiveLastAccess] = useState(user.lastAccess)
   const msgRef = useRef<HTMLInputElement>(null)
   const [, setLocation] = useLocation()
   const { token } = useAuth()
@@ -90,6 +91,16 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       .then(data => setStories(Array.isArray(data) ? data : []))
       .catch(() => {})
   }, [user?.id])
+
+  // Fetch fresh lastAccess so "Last seen" reflects recent activity (e.g. fake user messages)
+  useEffect(() => {
+    if (!user?.id) return
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    fetch(`/api/users/${user.id}`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.lastAccess) setLiveLastAccess(data.lastAccess) })
+      .catch(() => {})
+  }, [user?.id, token])
 
   const allPhotos = [
     ...(user.photo ? [{ id: 0, photo: user.photo, thumb: user.photoThumb }] : []),
@@ -217,7 +228,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               )}
             </div>
             <div className="flex flex-col items-end gap-1.5">
-              {isOnline(user.lastAccess) && (
+              {isOnline(liveLastAccess) && (
                 <div className="flex items-center gap-1.5 bg-green-500/90 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full shadow-lg">
                   <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
                 </div>
@@ -249,8 +260,8 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                 <span className="flex items-center gap-1"><MapPin size={11} />{user.city}</span></>
               )}
             </div>
-            {!isOnline(user.lastAccess) && user.lastAccess && Number(user.lastAccess) > 0 && (
-              <p className="text-white/55 text-xs mt-0.5">Last seen {timeAgo(user.lastAccess)}</p>
+            {!isOnline(liveLastAccess) && liveLastAccess && Number(liveLastAccess) > 0 && (
+              <p className="text-white/55 text-xs mt-0.5">Last seen {timeAgo(liveLastAccess)}</p>
             )}
           </div>
         </div>

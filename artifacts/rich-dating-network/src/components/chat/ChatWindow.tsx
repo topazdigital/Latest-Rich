@@ -95,6 +95,10 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       return [...prev, msg.message]
     })
     send({ type: 'mark_read', fromUserId: other.id })
+    // Update the other user's lastSeen so the header stays fresh
+    const msgTime = msg.message?.time
+    setOtherLastSeen(msgTime ? String(msgTime) : String(Math.floor(Date.now() / 1000)))
+    setOtherOnline(true)
   }, [other.id])
 
   // WS: message sent confirmed (replace temp)
@@ -329,7 +333,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <p className="text-xs text-gray-400">
             {otherTyping ? <span className="text-brand-500 font-medium">typing...</span>
               : otherOnline ? <span className="text-green-500">Online now</span>
-              : `Last seen ${timeAgo(other.lastAccess)}`}
+              : `Last seen ${timeAgo(otherLastSeen)}`}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
