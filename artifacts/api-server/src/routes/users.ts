@@ -273,7 +273,7 @@ router.get("/public/:id", async (req, res) => {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(404).json({ error: "Not found" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!user || user.fake) { res.status(404).json({ error: "Not found" }); return }
+    if (!user) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     let photo = user.photo || ''
     let photoThumb = user.photoThumb || ''

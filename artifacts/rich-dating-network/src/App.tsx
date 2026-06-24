@@ -98,8 +98,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
+  const { user } = useAuth()
   const isAdmin = location.startsWith("/admin") || location.startsWith("/moderator")
-  const showNav = !isAdmin && matchesPrefix(location, PROTECTED_PREFIXES)
+  // Only show the app nav when the user is actually logged in
+  const showNav = !isAdmin && !!user && matchesPrefix(location, PROTECTED_PREFIXES)
   return (
     <div className={showNav ? "pt-14 pb-16 md:pb-0 min-h-screen bg-gray-50" : ""}>
       {showNav && <MainNav />}
@@ -446,7 +448,7 @@ function UsernameProfilePage({ params }: { params: { username: string } }) {
           The profile <span className="font-mono text-gray-700">@{params.username}</span> doesn't exist or has been removed.
         </p>
         <button
-          onClick={() => setLocation("/discover")}
+          onClick={() => setLocation("/")}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors text-sm"
         >
           Browse Profiles

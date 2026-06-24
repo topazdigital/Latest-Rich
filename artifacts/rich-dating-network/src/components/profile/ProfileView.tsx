@@ -335,7 +335,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
               <p className="text-gray-500 text-sm leading-relaxed pt-0.5">{htmlDecode(user.bio)}</p>
             )}
 
-            {/* Block/Report/Contact */}
+            {/* Block/Report */}
             <div className="flex gap-1 pt-1 border-t border-gray-100">
               <button onClick={blockUser}
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50">
@@ -345,10 +345,6 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-orange-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-orange-50">
                 <Flag size={12} /> Report
               </button>
-              <Link href="/contact"
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50 ml-auto">
-                <MessageCircle size={12} /> Contact Us
-              </Link>
             </div>
           </div>
         )}
@@ -365,6 +361,13 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             {user.bio && (
               <p className="text-gray-600 text-sm leading-relaxed">{htmlDecode(user.bio)}</p>
             )}
+            {/* Contact Us — on own profile so user can report site issues */}
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <Link href="/contact"
+                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-500 transition-colors py-1 rounded-lg">
+                <MessageCircle size={12} /> Have an issue or question? Contact Us
+              </Link>
+            </div>
           </div>
         )}
       </div>

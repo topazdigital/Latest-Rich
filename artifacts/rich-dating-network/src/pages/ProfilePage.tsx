@@ -171,49 +171,76 @@ export default function ProfilePage({ params }: Props) {
   )
 
   if (!profileUser?.id) return (
-    <div className="text-center py-20">
-      <div className="text-5xl mb-4">😕</div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not found</h2>
-      <p className="text-gray-500 text-sm mb-6">This profile may have been removed or doesn't exist.</p>
-      <Link href="/discover" className="btn-primary">Browse Members</Link>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="flex items-center px-5 py-4 bg-white border-b border-gray-100">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-2xl">❤️</span>
+          <span className="font-bold text-gray-900 text-lg"><span className="text-brand-500">Rich</span> Dating Network</span>
+        </Link>
+      </div>
+      <div className="flex-1 flex items-center justify-center text-center px-4 py-20">
+        <div>
+          <div className="text-5xl mb-4">😕</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile not found</h2>
+          <p className="text-gray-500 text-sm mb-6">This profile may have been removed or doesn't exist.</p>
+          <Link href={token ? "/discover" : "/"} className="btn-primary">Browse Members</Link>
+        </div>
+      </div>
     </div>
   )
 
   // Guest view (unauthenticated) — show profile info with a join CTA instead of messaging actions
   if (!token) return (
-    <div className="max-w-lg mx-auto px-0 sm:px-4 py-0 sm:py-4">
-      <div className="card overflow-hidden mb-3 rounded-none sm:rounded-2xl shadow-xl">
-        <div className="relative bg-gray-900 overflow-hidden" style={{ aspectRatio: '4/5', maxHeight: '520px', minHeight: '300px' }}>
-          <img
-            src={getPhotoUrl(profileUser.photo || profileUser.photoThumb)}
-            alt={profileUser.name || 'Profile'}
-            className="absolute inset-0 w-full h-full object-cover object-center"
-          />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 30%, rgba(0,0,0,0.85) 100%)' }} />
-          <div className="absolute bottom-0 left-0 right-0 p-5">
-            <h1 className="text-3xl font-bold text-white mb-1">
-              {profileUser.name}{profileUser.age ? `, ${profileUser.age}` : ''}
-            </h1>
-            {profileUser.city && (
-              <p className="text-white/80 text-sm mb-3">📍 {profileUser.city}{profileUser.country ? `, ${profileUser.country}` : ''}</p>
-            )}
-            {profileUser.userExtended?.occupation || profileUser.occupation ? (
-              <p className="text-white/70 text-sm mb-3">💼 {profileUser.userExtended?.occupation || profileUser.occupation}</p>
-            ) : null}
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Minimal branded header — no app nav since user isn't logged in */}
+      <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-2xl">❤️</span>
+          <span className="font-bold text-gray-900 text-lg"><span className="text-brand-500">Rich</span> Dating Network</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors px-3 py-1.5">Sign In</Link>
+          <Link href="/register" className="btn-primary text-sm px-4 py-2">Join Free</Link>
         </div>
-        <div className="p-5 space-y-3">
-          {(profileUser.userExtended?.bio || profileUser.bio) && (
-            <p className="text-gray-600 text-sm leading-relaxed">{profileUser.userExtended?.bio || profileUser.bio}</p>
-          )}
-          <div className="bg-gradient-to-r from-brand-50 to-pink-50 rounded-2xl p-4 text-center">
-            <p className="font-semibold text-gray-900 mb-1">Want to connect with {profileUser.name}?</p>
-            <p className="text-gray-500 text-sm mb-3">Join Rich Dating Network free and start messaging verified wealthy singles today.</p>
-            <Link href="/register" className="btn-primary w-full block text-center">Join Free — Start Chatting</Link>
+      </div>
+
+      <div className="max-w-lg mx-auto px-0 sm:px-4 py-0 sm:py-6">
+        <div className="bg-white sm:rounded-2xl shadow-xl overflow-hidden mb-4">
+          {/* Photo hero */}
+          <div className="relative bg-gray-900 overflow-hidden" style={{ aspectRatio: '4/5', maxHeight: '520px', minHeight: '300px' }}>
+            <img
+              src={getPhotoUrl(profileUser.photo || profileUser.photoThumb)}
+              alt={profileUser.name || 'Profile'}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 30%, rgba(0,0,0,0.85) 100%)' }} />
+            <div className="absolute bottom-0 left-0 right-0 p-5">
+              <h1 className="text-3xl font-bold text-white mb-1">
+                {profileUser.name}{profileUser.age ? `, ${profileUser.age}` : ''}
+              </h1>
+              {profileUser.city && (
+                <p className="text-white/80 text-sm">📍 {profileUser.city}{profileUser.country ? `, ${profileUser.country}` : ''}</p>
+              )}
+              {(profileUser.userExtended?.occupation || profileUser.occupation) && (
+                <p className="text-white/70 text-sm mt-0.5">💼 {profileUser.userExtended?.occupation || profileUser.occupation}</p>
+              )}
+            </div>
           </div>
-          <p className="text-center text-sm text-gray-400">
-            Already a member? <Link href="/login" className="text-brand-500 font-medium hover:underline">Sign in</Link>
-          </p>
+
+          {/* Bio + CTA */}
+          <div className="p-5 space-y-4">
+            {(profileUser.userExtended?.bio || profileUser.bio) && (
+              <p className="text-gray-600 text-sm leading-relaxed">{profileUser.userExtended?.bio || profileUser.bio}</p>
+            )}
+            <div className="bg-gradient-to-r from-brand-50 to-pink-50 rounded-2xl p-4 text-center">
+              <p className="font-semibold text-gray-900 mb-1">Want to connect with {profileUser.name}?</p>
+              <p className="text-gray-500 text-sm mb-3">Join Rich Dating Network free and start messaging verified wealthy singles today.</p>
+              <Link href="/register" className="btn-primary w-full block text-center">Join Free — Start Chatting</Link>
+            </div>
+            <p className="text-center text-sm text-gray-400">
+              Already a member? <Link href="/login" className="text-brand-500 font-medium hover:underline">Sign in</Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
