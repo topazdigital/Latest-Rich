@@ -59,6 +59,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [otherTyping, setOtherTyping] = useState(false)
   const [otherOnline, setOtherOnline] = useState(isOnline(other.lastAccess))
+  const [otherLastSeen, setOtherLastSeen] = useState(other.lastAccess)
   const [credits, setCredits] = useState<number | null>(me.credits ?? null)
   const [creditCost, setCreditCost] = useState(10)
   const [uploadingMedia, setUploadingMedia] = useState(false)
