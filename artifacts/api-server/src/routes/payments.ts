@@ -51,11 +51,35 @@ const PAYSTACK_COUNTRIES = ["NG", "GH", "ZA", "EG"]
 const PAYMONGO_COUNTRIES = ["PH"]
 const STRIPE_COUNTRIES = ["US", "GB", "CA", "AU", "DE", "FR", "NL", "SE", "NO", "DK", "FI", "IT", "ES", "PT", "IE", "BE", "CH", "AT", "NZ", "SG", "JP", "HK", "AE", "SA"]
 
+// Fallback: full country name → ISO code (for legacy users with empty countryCode)
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  "kenya": "KE", "tanzania": "TZ", "uganda": "UG", "rwanda": "RW", "ethiopia": "ET",
+  "nigeria": "NG", "ghana": "GH", "south africa": "ZA", "egypt": "EG",
+  "philippines": "PH",
+  "united states": "US", "usa": "US", "united kingdom": "GB", "uk": "GB",
+  "canada": "CA", "australia": "AU", "germany": "DE", "france": "FR",
+  "netherlands": "NL", "sweden": "SE", "norway": "NO", "denmark": "DK",
+  "finland": "FI", "italy": "IT", "spain": "ES", "portugal": "PT",
+  "ireland": "IE", "belgium": "BE", "switzerland": "CH", "austria": "AT",
+  "new zealand": "NZ", "singapore": "SG", "japan": "JP", "hong kong": "HK",
+  "uae": "AE", "united arab emirates": "AE", "saudi arabia": "SA",
+  "zambia": "ZM", "zimbabwe": "ZW", "malawi": "MW", "mozambique": "MZ",
+}
+
 async function getConfig(key: string): Promise<string> {
   try {
     const rows = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
     return rows[0]?.value || ""
   } catch { return "" }
+}
+
+function resolveCountryCode(countryCode: string | null | undefined, countryName: string | null | undefined): string {
+  // Use the stored ISO code first (the clean path)
+  const cc = (countryCode || "").trim().toUpperCase()
+  if (cc.length >= 2) return cc
+  // Fall back to mapping from the full country name (legacy users)
+  const name = (countryName || "").trim().toLowerCase()
+  return (COUNTRY_NAME_TO_CODE[name] || "").toUpperCase()
 }
 
 function getProviderForCountry(countryCode: string): string {
@@ -69,14 +93,15 @@ function getProviderForCountry(countryCode: string): string {
 /* ─── GET: Which payment method for this user ─── */
 router.get("/method", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-  const provider = getProviderForCountry(user?.countryCode || "")
+  const resolvedCode = resolveCountryCode(user?.countryCode, user?.country)
+  const provider = getProviderForCountry(resolvedCode)
   const methods: Record<string, { name: string; icon: string; description: string; currencies: string[] }> = {
     payhero: { name: "M-Pesa", icon: "📱", description: "Pay via M-Pesa mobile money", currencies: ["KES"] },
     paystack: { name: "Card / Bank", icon: "💳", description: "Pay via card or bank transfer", currencies: ["NGN", "GHS", "ZAR"] },
     paymongo: { name: "GCash / Maya", icon: "📲", description: "Pay via GCash or Maya", currencies: ["PHP"] },
     stripe: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP"] },
   }
-  res.json({ provider, country: user?.countryCode || "", ...methods[provider] })
+  res.json({ provider, country: resolvedCode, ...methods[provider] })
 })
 
 /* ─── STRIPE ─── */
