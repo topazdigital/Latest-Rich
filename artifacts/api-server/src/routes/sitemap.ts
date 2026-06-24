@@ -8,7 +8,15 @@ const router = Router()
 const DOMAIN = "https://richdatingnetwork.com"
 
 const STATIC_PAGES = [
-  { loc: "/",         priority: "1.0", changefreq: "daily" },
+  { loc: "/",              priority: "1.0", changefreq: "daily" },
+  { loc: "/members",       priority: "0.9", changefreq: "daily" },
+  { loc: "/members?gender=male",   priority: "0.8", changefreq: "daily" },
+  { loc: "/members?gender=female", priority: "0.8", changefreq: "daily" },
+  { loc: "/members?country=United+States", priority: "0.8", changefreq: "weekly" },
+  { loc: "/members?country=United+Kingdom", priority: "0.8", changefreq: "weekly" },
+  { loc: "/members?country=Kenya",         priority: "0.8", changefreq: "weekly" },
+  { loc: "/members?country=Nigeria",       priority: "0.8", changefreq: "weekly" },
+  { loc: "/members?country=UAE",           priority: "0.8", changefreq: "weekly" },
   { loc: "/register", priority: "0.9", changefreq: "monthly" },
   { loc: "/contact",  priority: "0.8", changefreq: "monthly" },
   { loc: "/terms",    priority: "0.5", changefreq: "yearly" },

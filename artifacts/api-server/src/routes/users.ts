@@ -267,6 +267,62 @@ router.get("/meet", requireAuth, async (req, res) => {
   }
 })
 
+// Public members listing — no auth required; powers the /members SEO page
+router.get("/public/members", async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt((req.query.page as string) || "1"))
+    const limit = 24
+    const offset = (page - 1) * limit
+    const gender = (req.query.gender as string) || ""
+    const country = (req.query.country as string) || ""
+    const city = (req.query.city as string) || ""
+
+    const conditions: any[] = [
+      or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      or(isNull(usersTable.admin), eq(usersTable.admin, 0)),
+    ]
+    if (gender) conditions.push(eq(usersTable.gender, gender))
+    if (country) conditions.push(sql`lower(${usersTable.country}) = ${country.toLowerCase()}`)
+    if (city) conditions.push(sql`lower(${usersTable.city}) LIKE ${city.toLowerCase() + "%"}`)
+
+    const members = await db
+      .select({
+        id: usersTable.id,
+        username: usersTable.username,
+        name: usersTable.name,
+        age: usersTable.age,
+        gender: usersTable.gender,
+        city: usersTable.city,
+        country: usersTable.country,
+        countryCode: usersTable.countryCode,
+        photo: usersTable.photo,
+        photoThumb: usersTable.photoThumb,
+        verified: usersTable.verified,
+        premium: usersTable.premium,
+        lastAccess: usersTable.lastAccess,
+      })
+      .from(usersTable)
+      .where(and(...conditions))
+      .orderBy(desc(usersTable.lastAccess))
+      .limit(limit)
+      .offset(offset)
+
+    // Fill in first approved photo if no profile photo set
+    const enriched = await Promise.all(members.map(async (m) => {
+      if (m.photo) return m
+      const [fp] = await db.select().from(photosTable)
+        .where(and(eq(photosTable.userId, m.id), eq(photosTable.approved, 1)))
+        .orderBy(desc(photosTable.main), photosTable.id).limit(1)
+      return { ...m, photo: fp?.photo || '', photoThumb: fp?.thumb || fp?.photo || '' }
+    }))
+
+    // Only return members that have a profile photo (quality filter)
+    res.json(enriched.filter(m => m.photo))
+  } catch {
+    res.status(500).json([])
+  }
+})
+
 // Public profile endpoint — no auth required so Google/crawlers can index individual profiles
 router.get("/public/:id", async (req, res) => {
   try {
