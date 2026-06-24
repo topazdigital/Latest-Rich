@@ -294,3 +294,8 @@ ALTER TABLE `users`
   ADD INDEX IF NOT EXISTS `idx_users_premium`      (`premium`),
   ADD INDEX IF NOT EXISTS `idx_users_banned`       (`banned`),
   ADD INDEX IF NOT EXISTS `idx_users_last_access`  (`last_access`);
+
+-- ─── CLEAR STORED FAVICON OVERRIDE ──────────────────────────
+-- Removes any custom favicon URL stored in the DB so the new
+-- /favicon.svg file is used instead of the old uploaded image.
+DELETE FROM `site_config` WHERE `key` = 'branding_favicon';

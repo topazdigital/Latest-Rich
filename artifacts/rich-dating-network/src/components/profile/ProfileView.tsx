@@ -5,6 +5,7 @@ import { Heart, MessageCircle, BadgeCheck, Crown, MapPin, Edit3, Gift, Flag, Shi
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { INTERESTS } from '../settings/SettingsPage'
+import { ScrollToTopButton } from '../ui/ScrollToTopButton'
 
 interface Props {
   user: any; photos: any[]; isOwnProfile: boolean;
@@ -595,6 +596,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
           </div>
         </div>
       )}
+    <ScrollToTopButton />
     </div>
   )
 }

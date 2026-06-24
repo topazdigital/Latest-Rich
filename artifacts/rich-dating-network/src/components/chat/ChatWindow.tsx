@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getPhotoUrl, isOnline, timeAgo, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
-import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff, Paperclip, X, Play, Volume2 } from 'lucide-react'
+import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff, Paperclip, X, Play, Volume2, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
@@ -64,7 +64,9 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [creditCost, setCreditCost] = useState(10)
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [pendingMedia, setPendingMedia] = useState<{ file: File; preview: string; type: string } | null>(null)
+  const [showScrollBottom, setShowScrollBottom] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -73,8 +75,23 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
 
   // Scroll to bottom on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+    if (!container) return
+    const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    if (distFromBottom < 200) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, otherTyping])
+
+  // Show "scroll to bottom" button when user scrolls up in chat
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const onScroll = () => {
+      const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+      setShowScrollBottom(distFromBottom > 150)
+    }
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [])
 
   // Fetch credit cost
   useEffect(() => {
@@ -349,7 +366,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 bg-gray-50">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 bg-gray-50 relative">
         {messages.length === 0 && (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">💬</div>
@@ -411,6 +428,15 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           </div>
         )}
         <div ref={bottomRef} />
+        {showScrollBottom && (
+          <button
+            onClick={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="sticky bottom-4 ml-auto mr-2 w-9 h-9 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-brand-500 hover:border-brand-300 transition-all z-10"
+            aria-label="Scroll to latest"
+          >
+            <ChevronDown size={18} />
+          </button>
+        )}
       </div>
 
       {/* Emoji picker */}
