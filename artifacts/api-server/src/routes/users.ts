@@ -267,6 +267,50 @@ router.get("/meet", requireAuth, async (req, res) => {
   }
 })
 
+// Public profile endpoint — no auth required so Google/crawlers can index individual profiles
+router.get("/public/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(404).json({ error: "Not found" }); return }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!user || user.fake) { res.status(404).json({ error: "Not found" }); return }
+    const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
+    let photo = user.photo || ''
+    let photoThumb = user.photoThumb || ''
+    if (!photo) {
+      const [firstPhoto] = await db.select().from(photosTable)
+        .where(and(eq(photosTable.userId, id), eq(photosTable.approved, 1)))
+        .orderBy(desc(photosTable.main), photosTable.id)
+        .limit(1)
+      if (firstPhoto) { photo = firstPhoto.photo; photoThumb = firstPhoto.thumb || firstPhoto.photo }
+    }
+    res.json({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      age: user.age,
+      gender: user.gender,
+      city: user.city,
+      country: user.country,
+      countryCode: user.countryCode,
+      verified: user.verified,
+      premium: user.premium,
+      photo,
+      photoThumb,
+      bio: user.bio ? decodeHtml(user.bio) : '',
+      occupation: user.occupation,
+      lastAccess: user.lastAccess,
+      userExtended: {
+        bio: extended?.bio ? decodeHtml(extended.bio) : '',
+        occupation: extended?.occupation || '',
+        interests: extended?.interests || '[]',
+      }
+    })
+  } catch {
+    res.status(500).json({ error: "Failed" })
+  }
+})
+
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)

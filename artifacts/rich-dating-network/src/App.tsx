@@ -62,11 +62,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return
     const isProtected = matchesPrefix(location, PROTECTED_PREFIXES)
+    const isAuthRequired = matchesPrefix(location, AUTH_REQUIRED_PREFIXES)
     const isAdmin = matchesPrefix(location, ADMIN_PREFIXES)
     const isModerator = matchesPrefix(location, MODERATOR_PREFIXES)
     // Allow logged-in users to stay on /register?social=1 for profile completion
     const isSocialCompletion = location === "/register" && search.includes("social=1")
-    if (!user && (isProtected || isAdmin || isModerator)) setLocation("/login")
+    // Profile pages (/profile/:id and /@username) are public — Google can crawl them without auth
+    if (!user && (isAuthRequired || isAdmin || isModerator)) setLocation("/login")
     else if (user && (location === "/" || location === "/login" || location === "/register") && !isSocialCompletion) setLocation("/discover")
     else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
     else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
