@@ -357,10 +357,12 @@ function IOSInstallBanner() {
 function DynamicFavicon() {
   useEffect(() => {
     fetch('/api/branding/public').then(r => r.json()).then((d: Record<string, string>) => {
-      if (d.branding_favicon) {
-        let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-        if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link) }
-        link.href = d.branding_favicon
+      // Only override if a real custom favicon URL is stored (not the default SVG path)
+      const custom = d.branding_favicon
+      if (custom && !custom.includes('/favicon.svg') && !custom.includes('/favicon.png')) {
+        document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]').forEach(link => {
+          link.href = custom
+        })
       }
       if (d.site_name && !document.title.includes(d.site_name)) {
         document.title = document.title.replace('Rich Dating Network', d.site_name)
