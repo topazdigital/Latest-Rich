@@ -3,6 +3,7 @@ import { db, isMysql } from "@workspace/db"
 import { usersTable, messagesTable, chatLocksTable, activityTable, pushSubscriptionsTable } from "@workspace/db/schema"
 import { eq, sql, and, or, desc, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { send as wsSend } from "../lib/websocket"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -252,6 +253,9 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     const realUser = users.find(u => u.fake !== 1)
     if (!fakeUser || !realUser) { res.status(400).json({ error: "Could not identify fake/real users" }); return }
 
+    // Show typing indicator to real user before sending
+    wsSend(realUser.id, { type: 'typing', fromUserId: fakeUser.id, typing: true })
+
     const msgTime = now()
     await db.insert(messagesTable).values({
       u1: fakeUser.id,
@@ -264,6 +268,9 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
       .where(and(eq(messagesTable.u1, fakeUser.id), eq(messagesTable.u2, realUser.id), eq(messagesTable.time, msgTime)))
       .orderBy(desc(messagesTable.id))
       .limit(1)
+
+    // Clear typing indicator
+    wsSend(realUser.id, { type: 'typing', fromUserId: fakeUser.id, typing: false })
 
     // Keep fake user's "Last seen" consistent with when they messaged
     await db.update(usersTable).set({ lastAccess: String(msgTime) }).where(eq(usersTable.id, fakeUser.id))

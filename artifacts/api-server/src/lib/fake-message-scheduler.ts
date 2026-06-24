@@ -4,6 +4,7 @@ import {
   fakeMessageTemplatesTable, autoMessageLogTable, likesTable, siteConfigTable
 } from "@workspace/db/schema"
 import { eq, and, inArray, notInArray, gte } from "drizzle-orm"
+import { send as wsSend } from "./websocket"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -130,6 +131,9 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
   for (let i = 0; i < selectedFakers.length; i++) {
     const faker = selectedFakers[i]
     const template = shuffledTemplates[i % shuffledTemplates.length]
+    // Emit typing indicator to real user before message lands
+    wsSend(realUser.id, { type: 'typing', fromUserId: faker.id, typing: true })
+
     const msgTime = now()
 
     await db.insert(messagesTable).values({
@@ -139,6 +143,8 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       time: msgTime,
       read: 0,
     })
+
+    wsSend(realUser.id, { type: 'typing', fromUserId: faker.id, typing: false })
 
     // Update fake user's lastAccess with a small random offset so "Last seen"
     // looks natural (e.g. "3 minutes ago") instead of exactly matching the message time.

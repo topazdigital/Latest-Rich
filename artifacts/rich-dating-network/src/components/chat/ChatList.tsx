@@ -1,12 +1,42 @@
 import { getPhotoUrl, isOnline, timeAgo, truncate } from '../../lib/utils'
 import { Link } from 'wouter'
-import { BadgeCheck, Crown, MessageCircle } from 'lucide-react'
-import { useState } from 'react'
+import { BadgeCheck, Crown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { useWSEvent } from '../../hooks/useWebSocket'
 
 interface Props { userId: number; conversations: any[] }
 
 export default function ChatList({ userId, conversations: initial }: Props) {
   const [convos] = useState(initial)
+  const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set())
+  const typingTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+
+  useWSEvent('typing', (data: { fromUserId: number; typing: boolean }) => {
+    const fromId = data.fromUserId
+    // Only show typing in list if it's the OTHER person (not current user)
+    if (fromId === userId) return
+
+    if (data.typing) {
+      setTypingUsers(prev => new Set(prev).add(fromId))
+      // Clear any existing timer for this user
+      const existing = typingTimers.current.get(fromId)
+      if (existing) clearTimeout(existing)
+      // Auto-clear after 5 seconds in case typing_stop never arrives
+      const timer = setTimeout(() => {
+        setTypingUsers(prev => { const s = new Set(prev); s.delete(fromId); return s })
+        typingTimers.current.delete(fromId)
+      }, 5000)
+      typingTimers.current.set(fromId, timer)
+    } else {
+      const existing = typingTimers.current.get(fromId)
+      if (existing) clearTimeout(existing)
+      typingTimers.current.delete(fromId)
+      setTypingUsers(prev => { const s = new Set(prev); s.delete(fromId); return s })
+    }
+  })
+
+  // Clear timers on unmount
+  useEffect(() => () => { typingTimers.current.forEach(t => clearTimeout(t)) }, [])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -24,37 +54,51 @@ export default function ChatList({ userId, conversations: initial }: Props) {
         </div>
       ) : (
         <div className="card divide-y divide-gray-50">
-          {convos.map((c: any) => (
-            <Link key={c.otherId} href={`/chat/${c.otherId}`}
-              className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
-              <div className="relative flex-shrink-0">
-                <div className={`w-12 h-12 rounded-full overflow-hidden ${isOnline(c.lastAccess) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
-                  <img src={getPhotoUrl(c.photoThumb || c.photo)} alt={c.name} className="w-full h-full object-cover" />
+          {convos.map((c: any) => {
+            const isTyping = typingUsers.has(c.otherId)
+            return (
+              <Link key={c.otherId} href={`/chat/${c.otherId}`}
+                className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                <div className="relative flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-full overflow-hidden ${isOnline(c.lastAccess) ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}>
+                    <img src={getPhotoUrl(c.photoThumb || c.photo)} alt={c.name} className="w-full h-full object-cover" />
+                  </div>
+                  {isOnline(c.lastAccess) && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
+                  )}
                 </div>
-                {isOnline(c.lastAccess) && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="font-semibold text-gray-900">{c.name}</span>
-                  {c.verified === 1 && <BadgeCheck size={14} className="text-blue-500" />}
-                  {c.premium === 1 && <Crown size={14} className="text-amber-500" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <span className="font-semibold text-gray-900">{c.name}</span>
+                    {c.verified === 1 && <BadgeCheck size={14} className="text-blue-500" />}
+                    {c.premium === 1 && <Crown size={14} className="text-amber-500" />}
+                  </div>
+                  {isTyping ? (
+                    <p className="text-sm text-brand-500 font-medium flex items-center gap-1">
+                      <span>typing</span>
+                      <span className="inline-flex gap-0.5 items-end h-3">
+                        <span className="w-1 h-1 bg-brand-500 rounded-full animate-bounce [animation-delay:0ms]" />
+                        <span className="w-1 h-1 bg-brand-500 rounded-full animate-bounce [animation-delay:150ms]" />
+                        <span className="w-1 h-1 bg-brand-500 rounded-full animate-bounce [animation-delay:300ms]" />
+                      </span>
+                    </p>
+                  ) : (
+                    <p className={`text-sm truncate ${parseInt(c.unread) > 0 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>
+                      {c.lastMsg || 'Start a conversation'}
+                    </p>
+                  )}
                 </div>
-                <p className={`text-sm truncate ${parseInt(c.unread) > 0 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>
-                  {c.lastMsg || 'Start a conversation'}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="text-xs text-gray-400">{c.lastTime ? timeAgo(c.lastTime) : ''}</span>
-                {parseInt(c.unread) > 0 && (
-                  <span className="w-5 h-5 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {parseInt(c.unread) > 9 ? '9+' : c.unread}
-                  </span>
-                )}
-              </div>
-            </Link>
-          ))}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className="text-xs text-gray-400">{c.lastTime ? timeAgo(c.lastTime) : ''}</span>
+                  {parseInt(c.unread) > 0 && (
+                    <span className="w-5 h-5 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {parseInt(c.unread) > 9 ? '9+' : c.unread}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>
