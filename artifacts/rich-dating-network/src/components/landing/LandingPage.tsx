@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter'
 import { Heart, Shield, Star, Users, MessageCircle, Crown, MapPin, Zap, Check, ChevronRight, Eye, EyeOff, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import PopularSearches from '../common/PopularSearches'
 
 declare global {
   interface Window { google?: any; handleGoogleOneTapLanding?: (r: any) => void }
@@ -492,6 +493,9 @@ export default function LandingPage() {
           <p className="text-white/60 text-xs mt-3">No credit card required • Join in 30 seconds</p>
         </div>
       </section>
+
+      {/* Popular Searches — internal links for SEO */}
+      <PopularSearches />
 
       {/* Footer */}
       <footer className="py-7 px-4 bg-gray-950 text-gray-400">

@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { Link } from 'wouter'
 import { Heart, Shield, Users, Check, ChevronRight } from 'lucide-react'
-import { getSeoLandingPage } from '../data/seoLandingPages'
+import { getSeoLandingPage, SEO_LANDING_PAGES } from '../data/seoLandingPages'
 import NotFound from './not-found'
+import PopularSearches from '../components/common/PopularSearches'
 
 function upsertMeta(name: string, content: string, property = false) {
   const attr = property ? 'property' : 'name'
@@ -63,6 +64,14 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
 
   if (!page) return <NotFound />
 
+  const relatedByCity = page.city
+    ? SEO_LANDING_PAGES.filter(p => p.city === page.city && p.slug !== page.slug)
+    : []
+  const relatedGeneric = SEO_LANDING_PAGES.filter(p => !p.city && p.slug !== page.slug).slice(0, 6)
+  const otherCities = page.city
+    ? SEO_LANDING_PAGES.filter(p => p.city && p.city !== page.city && p.slug.startsWith(page.slug.split('-').slice(0, 2).join('-'))).slice(0, 8)
+    : []
+
   return (
     <div className="min-h-screen bg-white">
       <section className="bg-gradient-to-br from-[#2a0a10] via-[#7a0e18] to-[#FF192C] text-white px-6 py-20">
@@ -118,7 +127,50 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
             Create Your Free Account <ChevronRight className="w-5 h-5" />
           </Link>
         </div>
+
+        {(relatedByCity.length > 0 || otherCities.length > 0 || relatedGeneric.length > 0) && (
+          <div className="mt-14 grid sm:grid-cols-2 gap-8">
+            {relatedByCity.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Also in {page.city}</h3>
+                <div className="flex flex-col gap-2 text-sm">
+                  {relatedByCity.map(p => (
+                    <Link key={p.slug} href={`/${p.slug}`} className="text-gray-500 hover:text-[#FF192C] transition-colors">
+                      {p.h1}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {otherCities.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Other Cities</h3>
+                <div className="flex flex-col gap-2 text-sm">
+                  {otherCities.map(p => (
+                    <Link key={p.slug} href={`/${p.slug}`} className="text-gray-500 hover:text-[#FF192C] transition-colors">
+                      {p.h1}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relatedByCity.length === 0 && otherCities.length === 0 && relatedGeneric.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">You Might Also Like</h3>
+                <div className="flex flex-col gap-2 text-sm">
+                  {relatedGeneric.map(p => (
+                    <Link key={p.slug} href={`/${p.slug}`} className="text-gray-500 hover:text-[#FF192C] transition-colors">
+                      {p.h1}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </section>
+
+      <PopularSearches excludeSlug={page.slug} />
     </div>
   )
 }
