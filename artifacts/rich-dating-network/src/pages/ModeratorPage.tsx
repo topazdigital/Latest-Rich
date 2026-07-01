@@ -378,8 +378,8 @@ export default function ModeratorPage() {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Left sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      {/* Left sidebar — full screen on mobile when no conv selected, hidden when conv open */}
+      <div className={`${selectedConv ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 bg-white border-r border-gray-200 flex-col shrink-0`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -467,8 +467,8 @@ export default function ModeratorPage() {
         </div>
       </div>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main area — full screen on mobile when conv selected, hidden otherwise */}
+      <div className={`${selectedConv ? 'flex' : 'hidden lg:flex'} flex-1 flex-col overflow-hidden`}>
         {!selectedConv ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">

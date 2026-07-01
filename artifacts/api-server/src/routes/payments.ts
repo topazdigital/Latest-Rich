@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -453,6 +453,14 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
     if (phStatus === "FAILED" || phStatus === "CANCELLED" || phStatus === "TIMEOUT") {
       // ResultCode 1032 = user cancelled/ignored the STK push
       finalStatus = (resultCode === 1032 || resultCode === "1032") ? "cancelled" : "failed"
+      // CRITICAL: Mark the order as failed/cancelled in DB immediately so the payment
+      // reconciler never auto-credits it later. Without this, cancelled STK push orders
+      // stay "pending" and the reconciler grants free credits after 15 minutes.
+      if (order && order.status === "pending") {
+        await db.update(ordersTable)
+          .set({ status: finalStatus })
+          .where(and(eq(ordersTable.stripeSessionId, req.params.ref as string), eq(ordersTable.status, "pending")))
+      }
     }
 
     res.json({ ...data, orderStatus: order?.status || "pending", finalStatus })

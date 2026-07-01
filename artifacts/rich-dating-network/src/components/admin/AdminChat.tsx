@@ -52,6 +52,7 @@ export default function AdminChat() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Conversation | null>(null)
+  const [mobileShowChat, setMobileShowChat] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [msgLoading, setMsgLoading] = useState(false)
   const [reply, setReply] = useState("")
@@ -171,6 +172,7 @@ export default function AdminChat() {
 
   const openConversation = async (conv: Conversation) => {
     setSelected(conv)
+    setMobileShowChat(true)
     setMessages([])
     setMsgLoading(true)
     setReply("")
@@ -245,9 +247,9 @@ export default function AdminChat() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: selected ? "320px 1fr" : "1fr", gap: "0.75rem", minHeight: 500 }}>
+      <div className={`admin-chat-grid ${mobileShowChat ? 'admin-chat-grid--chat' : ''}`} style={{ display: "grid", gridTemplateColumns: selected ? "320px 1fr" : "1fr", gap: "0.75rem", minHeight: 500 }}>
         {/* Conversation list */}
-        <div style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600, overflowY: "auto" }}>
+        <div className={`admin-chat-list ${mobileShowChat ? 'admin-chat-list--hidden' : ''}`} style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600, overflowY: "auto" }}>
           {/* Filter tabs */}
           <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1e293b", flexShrink: 0 }}>
             {([
@@ -370,10 +372,10 @@ export default function AdminChat() {
 
         {/* Chat panel */}
         {selected && (
-          <div style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600 }}>
+          <div className="admin-chat-panel" style={{ ...S.card, display: "flex", flexDirection: "column", maxHeight: 600 }}>
             {/* Header */}
             <div style={{ padding: "0.75rem", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button onClick={() => { setSelected(null); if (pollMsgRef.current) clearInterval(pollMsgRef.current) }} style={S.btn("#1e293b")}>
+              <button onClick={() => { setSelected(null); setMobileShowChat(false); if (pollMsgRef.current) clearInterval(pollMsgRef.current) }} style={S.btn("#1e293b")}>
                 <ChevronLeft size={12} /> Back
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, minWidth: 0 }}>

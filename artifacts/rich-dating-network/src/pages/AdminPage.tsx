@@ -250,6 +250,28 @@ export default function AdminPage() {
           .campaign-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .campaign-meta-grid { grid-template-columns: 1fr !important; }
         }
+
+        /* ── AdminChat mobile: single-panel toggle ── */
+        @media (max-width: 767px) {
+          /* Always use single column on mobile */
+          .admin-chat-grid {
+            grid-template-columns: 1fr !important;
+            min-height: calc(100vh - 120px) !important;
+          }
+          /* Hide conversation list when chat panel is showing */
+          .admin-chat-grid--chat .admin-chat-list,
+          .admin-chat-list--hidden {
+            display: none !important;
+          }
+          /* Chat panel fills full height on mobile */
+          .admin-chat-panel {
+            max-height: calc(100vh - 120px) !important;
+          }
+          /* Conversation list fills full height when visible on mobile */
+          .admin-chat-list {
+            max-height: calc(100vh - 120px) !important;
+          }
+        }
       `}</style>
     </div>
   )
