@@ -33,7 +33,7 @@ import ContactPage from "./pages/ContactPage"
 import MembersPage from "./pages/MembersPage"
 import KeywordLandingPage from "./pages/KeywordLandingPage"
 import LocationsPage from "./pages/LocationsPage"
-import { SEO_LANDING_PAGES } from "./data/seoLandingPages"
+import { getSeoLandingPage } from "./data/seoLandingPages"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
 import WelcomeModal from "./components/common/WelcomeModal"
@@ -520,22 +520,17 @@ function Router() {
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/:rest*" component={AdminPage} />
           <Route path="/moderator" component={ModeratorPage} />
-          {/* SEO keyword landing pages (sugar daddy / sugar mummy / rich dating city pages) */}
-          {SEO_LANDING_PAGES.map(p => (
-            <Route key={p.slug} path={`/${p.slug}`}>
-              {() => <KeywordLandingPage params={{ slug: p.slug }} />}
-            </Route>
-          ))}
-          {/* Username-based profile URLs: /@username — must come last so it
-              doesn't shadow any of the named routes above.
-              Wouter/regexparam doesn't treat @ as a valid param prefix, so
-              /@:username never matches; we use /:atusername and check for @. */}
-          <Route path="/:atusername">
-            {(params: { atusername: string }) =>
-              params.atusername?.startsWith('@')
-                ? <UsernameProfilePage params={{ username: params.atusername.slice(1) }} />
-                : <NotFound />
-            }
+          {/* Single dynamic catch: SEO keyword pages, @username profiles, 404.
+              Using one route instead of mapping thousands avoids rendering ~5000
+              Route nodes in the DOM and keeps the Switch fast. */}
+          <Route path="/:slug">
+            {(params: { slug: string }) => {
+              const seoPage = getSeoLandingPage(params.slug)
+              if (seoPage) return <KeywordLandingPage params={{ slug: params.slug }} />
+              if (params.slug?.startsWith('@'))
+                return <UsernameProfilePage params={{ username: params.slug.slice(1) }} />
+              return <NotFound />
+            }}
           </Route>
           <Route component={NotFound} />
         </Switch>
