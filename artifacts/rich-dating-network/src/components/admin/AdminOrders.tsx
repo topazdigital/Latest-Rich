@@ -54,6 +54,18 @@ const CARD: React.CSSProperties = {
 const FILTERS = ["all", "pending", "completed", "failed", "cancelled"] as const
 type Filter = typeof FILTERS[number]
 
+interface AuditOrder {
+  order: {
+    id: number; userId: number; type: string; description: string
+    amount: number; credits?: number; status: string; time: number
+    stripeSessionId?: string; currency?: string
+  }
+  user: { id: number; name: string; email: string; credits: number } | null
+  verdict?: "SUCCESS" | "FAILED" | "CANCELLED" | "PENDING" | "UNKNOWN"
+  verifying?: boolean
+  reversing?: boolean
+}
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,6 +85,64 @@ export default function AdminOrders() {
   const [grantCredits, setGrantCredits] = useState("")
   const [grantNote, setGrantNote] = useState("")
   const [granting, setGranting] = useState(false)
+
+  // Credit audit panel
+  const [auditOpen, setAuditOpen] = useState(false)
+  const [auditOrders, setAuditOrders] = useState<AuditOrder[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+
+  const loadAudit = async () => {
+    setAuditLoading(true)
+    try {
+      const r = await authFetch("/api/admin/orders/credit-audit")
+      if (r.ok) setAuditOrders((await r.json()).map((o: AuditOrder) => ({ ...o, verdict: undefined })))
+      else toast.error("Failed to load audit data")
+    } catch { toast.error("Network error") }
+    setAuditLoading(false)
+  }
+
+  const openAudit = () => { setAuditOpen(true); loadAudit() }
+
+  const verifyOrder = async (orderId: number) => {
+    setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, verifying: true } : o))
+    try {
+      const r = await authFetch(`/api/admin/orders/${orderId}/verify-payhero`, { method: "POST" })
+      const d = await r.json()
+      if (r.ok) {
+        setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, verdict: d.verdict, verifying: false } : o))
+      } else {
+        toast.error(d.error || "Verification failed")
+        setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, verifying: false } : o))
+      }
+    } catch {
+      toast.error("Network error")
+      setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, verifying: false } : o))
+    }
+  }
+
+  const reverseOrder = async (orderId: number) => {
+    if (!confirm("Are you sure? This will deduct the credits from the user's account and mark the order as failed.")) return
+    setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, reversing: true } : o))
+    try {
+      const r = await authFetch(`/api/admin/orders/${orderId}/reverse-credits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Cancelled M-Pesa transaction — credits reversed by admin audit" }),
+      })
+      const d = await r.json()
+      if (r.ok) {
+        toast.success(d.message)
+        setAuditOrders(prev => prev.filter(o => o.order.id !== orderId))
+        await load(true)
+      } else {
+        toast.error(d.error || "Reversal failed")
+        setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, reversing: false } : o))
+      }
+    } catch {
+      toast.error("Network error")
+      setAuditOrders(prev => prev.map(o => o.order.id === orderId ? { ...o, reversing: false } : o))
+    }
+  }
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -197,6 +267,116 @@ export default function AdminOrders() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
+      {/* Credit Audit Modal */}
+      {auditOpen && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000,
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+          padding: "1rem", overflowY: "auto",
+        }}>
+          <div style={{
+            background: "#0f172a", border: "1px solid #334155", borderRadius: "1rem",
+            padding: "1.5rem", width: "100%", maxWidth: "780px", margin: "auto",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <div>
+                <h3 style={{ color: "#f1f5f9", fontWeight: 800, fontSize: "1rem", margin: 0 }}>
+                  🔍 Credit Audit — PayHero Orders
+                </h3>
+                <p style={{ color: "#64748b", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                  Verify each completed M-Pesa order against PayHero. Reverse credits for any that were never paid.
+                </p>
+              </div>
+              <button onClick={() => setAuditOpen(false)} style={{ background: "#1e293b", border: "1px solid #334155", color: "#94a3b8", borderRadius: "0.5rem", padding: "0.3rem 0.75rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "inherit" }}>✕ Close</button>
+            </div>
+
+            {auditLoading ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "#64748b" }}>
+                <div style={{ width: "1.5rem", height: "1.5rem", border: "2px solid #ef4444", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 0.75rem" }} />
+                Loading PayHero orders…
+              </div>
+            ) : auditOrders.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "#22c55e", fontSize: "0.9rem", fontWeight: 600 }}>
+                ✅ No completed PayHero credit orders found.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginTop: "1rem" }}>
+                <p style={{ color: "#94a3b8", fontSize: "0.75rem", margin: 0 }}>
+                  {auditOrders.length} completed PayHero credit order{auditOrders.length !== 1 ? "s" : ""} found.
+                  Click <strong style={{ color: "#f1f5f9" }}>Verify</strong> to check each one against PayHero, then <strong style={{ color: "#ef4444" }}>Reverse</strong> any that were never paid.
+                </p>
+                {auditOrders.map(ao => {
+                  const verdictColor = ao.verdict === "SUCCESS" ? "#22c55e" : ao.verdict === "CANCELLED" || ao.verdict === "FAILED" ? "#ef4444" : ao.verdict === "PENDING" ? "#f59e0b" : "#94a3b8"
+                  const verdictLabel = ao.verdict === "SUCCESS" ? "✅ Paid" : ao.verdict === "CANCELLED" ? "❌ Cancelled" : ao.verdict === "FAILED" ? "❌ Failed" : ao.verdict === "PENDING" ? "⏳ Pending" : ao.verdict === "UNKNOWN" ? "❓ Unknown" : undefined
+                  return (
+                    <div key={ao.order.id} style={{ background: "#1e293b", border: `1px solid ${ao.verdict === "CANCELLED" || ao.verdict === "FAILED" ? "#ef4444" : ao.verdict === "SUCCESS" ? "#22c55e" : "#334155"}`, borderRadius: "0.75rem", padding: "0.875rem", display: "flex", alignItems: "center", gap: "0.875rem", flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: "0.82rem" }}>#{ao.order.id}</span>
+                          <span style={{ color: "#a855f7", fontSize: "0.72rem", fontWeight: 600, background: "rgba(168,85,247,0.12)", padding: "1px 6px", borderRadius: "999px" }}>
+                            {ao.order.credits || "?"} credits
+                          </span>
+                          <span style={{ color: "#64748b", fontSize: "0.72rem" }}>
+                            {ao.order.currency} {ao.order.amount?.toFixed(0)} · {ao.order.stripeSessionId}
+                          </span>
+                        </div>
+                        <div style={{ color: "#94a3b8", fontSize: "0.75rem", marginTop: "0.2rem" }}>
+                          {ao.user ? <><strong style={{ color: "#e2e8f0" }}>{ao.user.name}</strong> · {ao.user.email} · balance: {ao.user.credits} cr</> : "Unknown user"}
+                        </div>
+                        <div style={{ color: "#64748b", fontSize: "0.7rem", marginTop: "0.1rem" }}>
+                          {new Date((ao.order.time || 0) * 1000).toLocaleString()}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0, flexWrap: "wrap" }}>
+                        {verdictLabel && (
+                          <span style={{ color: verdictColor, fontWeight: 700, fontSize: "0.8rem" }}>{verdictLabel}</span>
+                        )}
+                        {!ao.verdict && (
+                          <button
+                            onClick={() => verifyOrder(ao.order.id)}
+                            disabled={ao.verifying}
+                            style={{ background: "#334155", color: "#f1f5f9", border: "none", borderRadius: "0.5rem", padding: "0.35rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, cursor: ao.verifying ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: ao.verifying ? 0.6 : 1 }}
+                          >
+                            {ao.verifying ? "⏳ Checking…" : "🔍 Verify"}
+                          </button>
+                        )}
+                        {(ao.verdict === "CANCELLED" || ao.verdict === "FAILED") && (
+                          <button
+                            onClick={() => reverseOrder(ao.order.id)}
+                            disabled={ao.reversing}
+                            style={{ background: ao.reversing ? "#334155" : "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", border: "none", borderRadius: "0.5rem", padding: "0.35rem 0.875rem", fontSize: "0.75rem", fontWeight: 700, cursor: ao.reversing ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: ao.reversing ? 0.6 : 1 }}
+                          >
+                            {ao.reversing ? "⏳ Reversing…" : `↩ Reverse ${ao.order.credits || "?"} Credits`}
+                          </button>
+                        )}
+                        {ao.verdict === "SUCCESS" && (
+                          <span style={{ color: "#475569", fontSize: "0.72rem" }}>No action needed</span>
+                        )}
+                        {(ao.verdict === "PENDING" || ao.verdict === "UNKNOWN") && (
+                          <button
+                            onClick={() => verifyOrder(ao.order.id)}
+                            disabled={ao.verifying}
+                            style={{ background: "#334155", color: "#94a3b8", border: "none", borderRadius: "0.5rem", padding: "0.35rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            ↺ Re-check
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {!auditLoading && auditOrders.length > 0 && (
+              <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+                <button onClick={loadAudit} style={{ background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", borderRadius: "0.5rem", padding: "0.4rem 0.875rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>↺ Reload</button>
+                <button onClick={() => setAuditOpen(false)} style={{ background: "#22c55e", color: "#fff", border: "none", borderRadius: "0.5rem", padding: "0.4rem 0.875rem", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✓ Done</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Manual Grant Modal */}
       {grantModal && (
         <div style={{
@@ -272,6 +452,18 @@ export default function AdminOrders() {
           Orders &amp; Revenue
         </h2>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          <button
+            onClick={openAudit}
+            style={{
+              background: "linear-gradient(135deg,#ef4444,#dc2626)",
+              color: "#fff", border: "none", borderRadius: "0.5rem",
+              padding: "0.4rem 0.875rem", fontSize: "0.78rem",
+              fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              display: "flex", alignItems: "center", gap: "0.35rem",
+            }}
+          >
+            🔍 Credit Audit
+          </button>
           <button
             onClick={() => setGrantModal(true)}
             style={{

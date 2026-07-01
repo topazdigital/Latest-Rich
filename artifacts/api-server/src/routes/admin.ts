@@ -11,6 +11,12 @@ import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+async function getConfig(key: string): Promise<string> {
+  try {
+    const rows = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, key)).limit(1)
+    return (rows[0] as any)?.value || ""
+  } catch { return "" }
+}
 
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
@@ -1276,6 +1282,147 @@ router.get("/fetch-real-profiles", requireAuth, requireAdmin, async (req, res) =
     res.json({ profiles })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+// ── CREDIT AUDIT ─────────────────────────────────────────────────────────────
+// Returns completed PayHero credit orders that may have been wrongly auto-credited.
+// PayHero order refs have the pattern RDN-{userId}-{timestamp}.
+router.get("/orders/credit-audit", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        order: ordersTable,
+        user: {
+          id: usersTable.id,
+          name: usersTable.name,
+          email: usersTable.email,
+          credits: usersTable.credits,
+        },
+      })
+      .from(ordersTable)
+      .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(ordersTable.status, "completed"),
+          eq(ordersTable.type, "credits"),
+        )
+      )
+      .orderBy(desc(ordersTable.id))
+      .limit(200)
+
+    // Filter to PayHero orders only (ref pattern: RDN-{num}-{num}, NOT RDN-PS- or cs_ or MANUAL-)
+    const payHeroOrders = rows.filter(r => {
+      const ref = r.order.stripeSessionId || ""
+      if (!ref) return false
+      if (ref.startsWith("cs_")) return false
+      if (ref.startsWith("RDN-PS-")) return false
+      if (ref.startsWith("RDN-PM-")) return false
+      if (ref.startsWith("MANUAL-")) return false
+      if (ref.startsWith("STRAT-")) return false
+      return /^RDN-\d+-\d+$/.test(ref)
+    })
+
+    res.json(payHeroOrders)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Verify a single completed order against the PayHero API.
+// Returns the actual PayHero payment status for that ref.
+router.post("/orders/:id/verify-payhero", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid order ID" }); return }
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1)
+    if (!order) { res.status(404).json({ error: "Order not found" }); return }
+    const ref = order.stripeSessionId
+    if (!ref) { res.status(400).json({ error: "Order has no reference" }); return }
+
+    const apiUsername = await getConfig("payhero_api_username")
+    const apiPassword = await getConfig("payhero_api_password")
+    if (!apiUsername || !apiPassword) {
+      res.status(400).json({ error: "PayHero credentials not configured — set them in Admin → Payment Providers" }); return
+    }
+
+    const credentials = Buffer.from(`${apiUsername}:${apiPassword}`).toString("base64")
+    const response = await fetch(`https://backend.payhero.co.ke/api/v2/transaction-status/${ref}`, {
+      headers: { Authorization: `Basic ${credentials}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+    const data = await response.json() as Record<string, unknown>
+    const phStatus = String(data.status || "").toUpperCase()
+    const resultCode = data.ResultCode ?? data.resultCode ?? null
+
+    let verdict: "SUCCESS" | "FAILED" | "CANCELLED" | "PENDING" | "UNKNOWN"
+    if (phStatus === "SUCCESS" || resultCode === 0) verdict = "SUCCESS"
+    else if (phStatus === "CANCELLED" || resultCode === 1032 || resultCode === "1032") verdict = "CANCELLED"
+    else if (phStatus === "FAILED" || phStatus === "TIMEOUT") verdict = "FAILED"
+    else if (phStatus === "PENDING" || phStatus === "") verdict = "PENDING"
+    else verdict = "UNKNOWN"
+
+    res.json({ verdict, phStatus, resultCode, raw: data })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: `PayHero check failed: ${msg}` })
+  }
+})
+
+// Reverse a wrongly-credited order: deduct the credits from the user's balance
+// and mark the order as "failed". Logs to activity for audit trail.
+router.post("/orders/:id/reverse-credits", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid order ID" }); return }
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1)
+    if (!order) { res.status(404).json({ error: "Order not found" }); return }
+    if (order.status === "failed" || order.status === "cancelled") {
+      res.status(400).json({ error: "Order is already marked as failed/cancelled" }); return
+    }
+    if (order.type !== "credits") {
+      res.status(400).json({ error: "Only credit orders can be reversed" }); return
+    }
+
+    const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
+    const creditsToRemove = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
+    if (creditsToRemove <= 0) {
+      res.status(400).json({ error: "Cannot determine credits to deduct — credits value is 0 on this order" }); return
+    }
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+
+    const newCredits = Math.max(0, (user.credits || 0) - creditsToRemove)
+    const actuallyDeducted = (user.credits || 0) - newCredits
+
+    await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, order.userId))
+    await db.update(ordersTable).set({ status: "failed" }).where(eq(ordersTable.id, id))
+
+    const reason = req.body.reason || "Cancelled M-Pesa transaction — credits reversed by admin"
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId,
+      title: "Credits reversed",
+      message: `Order #${id} (${order.stripeSessionId}): -${actuallyDeducted} credits from ${user.name} (${user.email}). New balance: ${newCredits}. Reason: ${reason}`,
+      time: now(),
+    }).catch(() => {})
+
+    await db.insert(notificationsTable).values({
+      userId: order.userId, type: "admin",
+      message: `${actuallyDeducted} credits have been removed from your account (payment verification failed).`,
+      time: now(), read: 0,
+    } as any).catch(() => {})
+
+    res.json({
+      success: true,
+      message: `✅ Reversed ${actuallyDeducted} credits from ${user.name}. New balance: ${newCredits}`,
+      deducted: actuallyDeducted,
+      newBalance: newCredits,
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
   }
 })
 
