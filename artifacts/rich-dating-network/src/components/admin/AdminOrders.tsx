@@ -306,10 +306,11 @@ export default function AdminOrders() {
                   Click <strong style={{ color: "#f1f5f9" }}>Verify</strong> to check each one against PayHero, then <strong style={{ color: "#ef4444" }}>Reverse</strong> any that were never paid.
                 </p>
                 {auditOrders.map(ao => {
-                  const verdictColor = ao.verdict === "SUCCESS" ? "#22c55e" : ao.verdict === "CANCELLED" || ao.verdict === "FAILED" ? "#ef4444" : ao.verdict === "PENDING" ? "#f59e0b" : "#94a3b8"
-                  const verdictLabel = ao.verdict === "SUCCESS" ? "✅ Paid" : ao.verdict === "CANCELLED" ? "❌ Cancelled" : ao.verdict === "FAILED" ? "❌ Failed" : ao.verdict === "PENDING" ? "⏳ Pending" : ao.verdict === "UNKNOWN" ? "❓ Unknown" : undefined
+                  const isReversible = ao.verdict === "CANCELLED" || ao.verdict === "FAILED" || ao.verdict === "PENDING"
+                  const verdictColor = ao.verdict === "SUCCESS" ? "#22c55e" : isReversible ? "#ef4444" : "#94a3b8"
+                  const verdictLabel = ao.verdict === "SUCCESS" ? "✅ Paid" : ao.verdict === "CANCELLED" ? "❌ Cancelled" : ao.verdict === "FAILED" ? "❌ Failed" : ao.verdict === "PENDING" ? "❌ Not Paid (STK abandoned)" : ao.verdict === "UNKNOWN" ? "❓ Unknown" : undefined
                   return (
-                    <div key={ao.order.id} style={{ background: "#1e293b", border: `1px solid ${ao.verdict === "CANCELLED" || ao.verdict === "FAILED" ? "#ef4444" : ao.verdict === "SUCCESS" ? "#22c55e" : "#334155"}`, borderRadius: "0.75rem", padding: "0.875rem", display: "flex", alignItems: "center", gap: "0.875rem", flexWrap: "wrap" }}>
+                    <div key={ao.order.id} style={{ background: "#1e293b", border: `1px solid ${isReversible ? "#ef4444" : ao.verdict === "SUCCESS" ? "#22c55e" : "#334155"}`, borderRadius: "0.75rem", padding: "0.875rem", display: "flex", alignItems: "center", gap: "0.875rem", flexWrap: "wrap" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                           <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: "0.82rem" }}>#{ao.order.id}</span>
@@ -340,7 +341,7 @@ export default function AdminOrders() {
                             {ao.verifying ? "⏳ Checking…" : "🔍 Verify"}
                           </button>
                         )}
-                        {(ao.verdict === "CANCELLED" || ao.verdict === "FAILED") && (
+                        {isReversible && (
                           <button
                             onClick={() => reverseOrder(ao.order.id)}
                             disabled={ao.reversing}
@@ -352,7 +353,7 @@ export default function AdminOrders() {
                         {ao.verdict === "SUCCESS" && (
                           <span style={{ color: "#475569", fontSize: "0.72rem" }}>No action needed</span>
                         )}
-                        {(ao.verdict === "PENDING" || ao.verdict === "UNKNOWN") && (
+                        {ao.verdict === "UNKNOWN" && (
                           <button
                             onClick={() => verifyOrder(ao.order.id)}
                             disabled={ao.verifying}
