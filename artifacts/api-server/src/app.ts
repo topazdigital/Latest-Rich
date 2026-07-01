@@ -38,13 +38,41 @@ app.get("/robots.txt", (_req, res) => {
   res.type("text/plain").send(
 `User-agent: *
 Allow: /
+Allow: /profile/
+Allow: /@
 Disallow: /admin
 Disallow: /moderator
 Disallow: /api/
+Disallow: /chat
+Disallow: /notifications
+Disallow: /settings
+Disallow: /home
+Disallow: /likes
+Disallow: /visitors
+Disallow: /gifts
+Disallow: /boost
 
 Sitemap: https://richdatingnetwork.com/sitemap.xml
 `)
 })
+
+// Keyword landing page slugs targeting high-intent search queries
+// (sugar daddy / sugar mummy / blesser / rich dating, by city and generically).
+// Must stay in sync with artifacts/rich-dating-network/src/data/seoLandingPages.ts
+const SEO_LANDING_CITIES = [
+  "nairobi", "mombasa", "kisumu", "lagos", "abuja", "port-harcourt", "accra", "kumasi",
+  "kampala", "dar-es-salaam", "johannesburg", "cape-town", "durban", "manila", "cebu",
+  "dubai", "london", "new-york", "los-angeles",
+]
+const SEO_LANDING_GENERIC = [
+  "sugar-daddy", "sugar-mummy", "blesser-dating", "rich-men-dating", "rich-women-dating",
+  "sugar-baby", "millionaire-dating", "seeking-arrangement", "wealthy-singles",
+]
+const SEO_LANDING_SLUGS = [
+  ...SEO_LANDING_GENERIC,
+  ...SEO_LANDING_CITIES.map(c => `sugar-daddy-${c}`),
+  ...SEO_LANDING_CITIES.map(c => `sugar-mummy-${c}`),
+]
 
 // ── SEO: sitemap.xml ─────────────────────────────────────────────────────────
 app.get("/sitemap.xml", (_req, res) => {
@@ -57,6 +85,8 @@ app.get("/sitemap.xml", (_req, res) => {
     { path: "/register",priority: "0.9", freq: "weekly" },
     { path: "/login",   priority: "0.8", freq: "monthly" },
     { path: "/discover",priority: "0.8", freq: "daily" },
+    { path: "/members", priority: "0.9", freq: "daily" },
+    { path: "/contact", priority: "0.6", freq: "monthly" },
     { path: "/privacy", priority: "0.3", freq: "monthly" },
     { path: "/terms",   priority: "0.3", freq: "monthly" },
   ]
@@ -97,6 +127,13 @@ app.get("/sitemap.xml", (_req, res) => {
     <lastmod>${today}</lastmod>
     <changefreq>${freq}</changefreq>
     <priority>${priority}</priority>
+  </url>`),
+    ...SEO_LANDING_SLUGS.map(slug => `
+  <url>
+    <loc>${base}/${slug}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>`),
     ...countries.map(cc => `
   <url>

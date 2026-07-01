@@ -31,6 +31,8 @@ import BoostPage from "./pages/BoostPage"
 import ReferralsPage from "./pages/ReferralsPage"
 import ContactPage from "./pages/ContactPage"
 import MembersPage from "./pages/MembersPage"
+import KeywordLandingPage from "./pages/KeywordLandingPage"
+import { SEO_LANDING_PAGES } from "./data/seoLandingPages"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
 import WelcomeModal from "./components/common/WelcomeModal"
@@ -516,6 +518,12 @@ function Router() {
           <Route path="/admin" component={AdminPage} />
           <Route path="/admin/:rest*" component={AdminPage} />
           <Route path="/moderator" component={ModeratorPage} />
+          {/* SEO keyword landing pages (sugar daddy / sugar mummy / rich dating city pages) */}
+          {SEO_LANDING_PAGES.map(p => (
+            <Route key={p.slug} path={`/${p.slug}`}>
+              {() => <KeywordLandingPage params={{ slug: p.slug }} />}
+            </Route>
+          ))}
           {/* Username-based profile URLs: /@username — must come last so it
               doesn't shadow any of the named routes above.
               Wouter/regexparam doesn't treat @ as a valid param prefix, so
