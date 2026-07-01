@@ -2,6 +2,8 @@ import { Router } from "express"
 
 const router = Router()
 
+const BASE = "https://richdatingnetwork.com"
+
 // All places used for SEO landing pages
 const PLACES = [
   // Kenya
@@ -116,40 +118,77 @@ function toSlug(s: string) {
   return s.toLowerCase().replace(/['']/g, "").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
 }
 
-router.get("/sitemap.xml", (_req, res) => {
-  const base = "https://richdatingnetwork.com"
-  const today = new Date().toISOString().slice(0, 10)
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
 
-  const urls: string[] = []
+function urlTag(loc: string, priority: string, freq: string, mod: string) {
+  return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${mod}</lastmod>\n    <changefreq>${freq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
+}
 
-  const add = (loc: string, priority: string, freq: string) => {
-    urls.push(
-      `  <url>\n    <loc>${base}${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${freq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
-    )
-  }
+function sitemapDoc(urls: string[]) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`
+}
 
-  // Static pages
-  for (const p of STATIC_PAGES) add(p, "0.8", "weekly")
-
-  // Generic SEO pages
-  for (const slug of GENERIC_SLUGS) add(`/${slug}`, "0.7", "monthly")
-
-  // City pages — 10 categories × ~486 cities
-  for (const place of PLACES) {
-    const citySlug = toSlug(place)
-    for (const prefix of CATEGORY_PREFIXES) {
-      add(`/${prefix}-${citySlug}`, "0.6", "monthly")
-    }
-  }
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join("\n")}
-</urlset>`
-
+function sendXml(res: any, xml: string) {
   res.setHeader("Content-Type", "application/xml; charset=utf-8")
   res.setHeader("Cache-Control", "public, max-age=86400")
   res.send(xml)
+}
+
+// ── Sitemap Index ─────────────────────────────────────────────────────────────
+// Lists: 1 static sitemap + 10 per-category sitemaps
+router.get("/sitemap-index.xml", (_req, res) => {
+  const mod = today()
+  const children = ["sitemap-static.xml", ...CATEGORY_PREFIXES.map(p => `sitemap-${p}.xml`)]
+  const entries = children
+    .map(name => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${mod}</lastmod>\n  </sitemap>`)
+    .join("\n")
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</sitemapindex>`
+  sendXml(res, xml)
+})
+
+// ── Static sitemap ────────────────────────────────────────────────────────────
+// Static pages + generic keyword pages (no city suffix)
+router.get("/sitemap-static.xml", (_req, res) => {
+  const mod = today()
+  const urls: string[] = []
+  for (const p of STATIC_PAGES) urls.push(urlTag(`${BASE}${p}`, "0.9", "weekly", mod))
+  for (const slug of GENERIC_SLUGS) urls.push(urlTag(`${BASE}/${slug}`, "0.7", "monthly", mod))
+  sendXml(res, sitemapDoc(urls))
+})
+
+// ── Per-category sitemaps ─────────────────────────────────────────────────────
+// One sitemap per keyword type, each contains all city pages for that category.
+// e.g. /sitemap-sugar-daddy.xml → ~479 URLs
+for (const prefix of CATEGORY_PREFIXES) {
+  router.get(`/sitemap-${prefix}.xml`, (_req, res) => {
+    const mod = today()
+    const urls = PLACES.map(place =>
+      urlTag(`${BASE}/${prefix}-${toSlug(place)}`, "0.6", "monthly", mod)
+    )
+    sendXml(res, sitemapDoc(urls))
+  })
+}
+
+// ── Legacy /sitemap.xml ───────────────────────────────────────────────────────
+// Kept for backwards compatibility — redirects crawlers to the index.
+router.get("/sitemap.xml", (_req, res) => {
+  res.redirect(301, "/sitemap-index.xml")
+})
+
+// ── robots.txt ────────────────────────────────────────────────────────────────
+router.get("/robots.txt", (_req, res) => {
+  res.setHeader("Content-Type", "text/plain")
+  res.setHeader("Cache-Control", "public, max-age=86400")
+  res.send(
+    [
+      "User-agent: *",
+      "Allow: /",
+      "",
+      `Sitemap: ${BASE}/sitemap-index.xml`,
+    ].join("\n")
+  )
 })
 
 export default router
