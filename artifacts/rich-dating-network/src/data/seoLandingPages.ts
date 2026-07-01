@@ -679,6 +679,29 @@ const cityPages: SeoLandingPage[] = PLACES_LIST.flatMap(({ city, country }) => {
   }))
 })
 
+// ── Generate country hub pages ────────────────────────────────────────────
+// One page per country × category (e.g. /sugar-daddy-kenya, /rich-men-nigeria).
+// These act as mid-level hubs that link down to all city pages.
+
+const uniqueCountries = Array.from(new Set(PLACES_LIST.map(p => p.country)))
+
+const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
+  const countrySlug = slugify(country)
+  // Remove redundant "City, Country" → "Country" duplication in copy
+  const dedup = (s: string) =>
+    s.replace(new RegExp(`, ${country.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), '')
+  return CATEGORIES.map(cat => ({
+    slug: `${cat.prefix}-${countrySlug}`,
+    country,
+    category: cat.prefix,
+    h1: cat.h1(country),
+    title: dedup(cat.title(country, country)),
+    description: dedup(cat.description(country, country)),
+    keywords: cat.keywords(country),
+    intro: dedup(cat.intro(country, country)),
+  }))
+})
+
 // ── Generic (non-city) pages ──────────────────────────────────────────────
 
 const genericPages: SeoLandingPage[] = [
@@ -770,6 +793,7 @@ const _slugMap = new Map<string, SeoLandingPage>()
 
 export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   ...genericPages,
+  ...countryPages,
   ...cityPages,
 ]
 

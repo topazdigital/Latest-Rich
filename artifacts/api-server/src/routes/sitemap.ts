@@ -158,15 +158,36 @@ router.get("/sitemap-static.xml", (_req, res) => {
   sendXml(res, sitemapDoc(urls))
 })
 
+// All unique countries (mirrors uniqueCountries in seoLandingPages.ts)
+const COUNTRIES = [
+  "Kenya","Nigeria","Uganda","Tanzania","Ghana","South Africa","Zimbabwe","Zambia",
+  "Ethiopia","Cameroon","Côte d'Ivoire","Senegal","Rwanda","Mozambique","Malawi",
+  "Botswana","Namibia","Angola","DRC","Sudan","South Sudan","Somalia","Eswatini",
+  "Lesotho","the Philippines","the UAE","Saudi Arabia","Qatar","Kuwait","Bahrain",
+  "Oman","the UK","the USA","Canada","Australia","New Zealand","Germany","France",
+  "Spain","Italy","the Netherlands","Belgium","Switzerland","Austria","Sweden",
+  "Norway","Denmark","Finland","India","Pakistan","Bangladesh","Sri Lanka","Nepal",
+  "Myanmar","Malaysia","Singapore","Indonesia","Thailand","Vietnam","Cambodia",
+  "Laos","China","Japan","South Korea","Taiwan","Brazil","Mexico","Argentina",
+  "Colombia","Chile","Peru","Egypt","Morocco","Tunisia","Algeria","Russia",
+  "Turkey","Israel","Iran","Iraq","Afghanistan",
+]
+
 // ── Per-category sitemaps ─────────────────────────────────────────────────────
-// One sitemap per keyword type, each contains all city pages for that category.
-// e.g. /sitemap-sugar-daddy.xml → ~479 URLs
+// One sitemap per keyword type: country hubs (priority 0.7) + city pages (0.6).
+// e.g. /sitemap-sugar-daddy.xml → 81 country hubs + ~479 city pages = ~560 URLs
 for (const prefix of CATEGORY_PREFIXES) {
   router.get(`/sitemap-${prefix}.xml`, (_req, res) => {
     const mod = today()
-    const urls = PLACES.map(place =>
-      urlTag(`${BASE}/${prefix}-${toSlug(place)}`, "0.6", "monthly", mod)
-    )
+    const urls: string[] = []
+    // Country hub pages — higher priority as mid-level hubs
+    for (const country of COUNTRIES) {
+      urls.push(urlTag(`${BASE}/${prefix}-${toSlug(country)}`, "0.7", "monthly", mod))
+    }
+    // City-level pages
+    for (const place of PLACES) {
+      urls.push(urlTag(`${BASE}/${prefix}-${toSlug(place)}`, "0.6", "monthly", mod))
+    }
     sendXml(res, sitemapDoc(urls))
   })
 }
