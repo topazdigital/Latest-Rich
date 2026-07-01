@@ -32,6 +32,7 @@ import ReferralsPage from "./pages/ReferralsPage"
 import ContactPage from "./pages/ContactPage"
 import MembersPage from "./pages/MembersPage"
 import KeywordLandingPage from "./pages/KeywordLandingPage"
+import LocationsPage from "./pages/LocationsPage"
 import { SEO_LANDING_PAGES } from "./data/seoLandingPages"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
@@ -512,6 +513,7 @@ function Router() {
           <Route path="/referrals" component={ReferralsPage} />
           <Route path="/ref/:code" component={ReferralsPage} />
           <Route path="/members" component={MembersPage} />
+          <Route path="/locations" component={LocationsPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/contact" component={ContactPage} />
