@@ -23,6 +23,11 @@ interface Props {
   formatLocalPrice?: (price: number, provider: string, country: string) => string
   handleBuy?: (pkg: any) => void
   handleCustomSubmit?: () => void
+  hasLocalMethod?: boolean
+  useCard?: boolean
+  setUseCard?: (v: boolean) => void
+  originalProviderInfo?: any
+  effectiveProvider?: string
 }
 
 export default function PremiumPage({
@@ -31,6 +36,7 @@ export default function PremiumPage({
   activeTab = 'auto', setActiveTab, selectedGateway, setSelectedGateway,
   selectedPkg, setSelectedPkg, proof = '', setProof, submitting = false, loading = false,
   formatLocalPrice, handleBuy, handleCustomSubmit,
+  hasLocalMethod = false, useCard = false, setUseCard, originalProviderInfo, effectiveProvider,
 }: Props) {
   const [localSelected, setLocalSelected] = useState(packages.find(p => p.popular === 1) || packages[0])
   const { token } = useAuth()
@@ -165,11 +171,30 @@ export default function PremiumPage({
       {/* Auto payment — package grid */}
       {(activeTab === 'auto' || !hasManualGateways) && (
         <>
+          {/* Method switcher: M-Pesa/GCash users can choose Card instead */}
+          {hasLocalMethod && setUseCard && originalProviderInfo && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', background: '#f9fafb', borderRadius: '0.875rem', padding: '0.3rem' }}>
+              <button onClick={() => setUseCard(false)} style={{
+                flex: 1, padding: '0.55rem 0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: !useCard ? '#fff' : 'transparent', color: !useCard ? '#111827' : '#6b7280',
+                fontWeight: 700, fontSize: '0.82rem', boxShadow: !useCard ? '0 1px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s',
+              }}>
+                {originalProviderInfo.icon} {originalProviderInfo.name}
+              </button>
+              <button onClick={() => setUseCard(true)} style={{
+                flex: 1, padding: '0.55rem 0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: useCard ? '#fff' : 'transparent', color: useCard ? '#111827' : '#6b7280',
+                fontWeight: 700, fontSize: '0.82rem', boxShadow: useCard ? '0 1px 4px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s',
+              }}>
+                💳 Pay by Card
+              </button>
+            </div>
+          )}
           {providerInfo && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '0.4rem 0.875rem', fontSize: '0.82rem', fontWeight: 600 }}>
               <span>{providerInfo.icon}</span>
               <span style={{ color: providerInfo.color }}>Paying with {providerInfo.name}</span>
-              {paymentMethod?.country && <span style={{ color: '#6b7280' }}>({paymentMethod.country})</span>}
+              {paymentMethod?.country && !useCard && <span style={{ color: '#6b7280' }}>({paymentMethod.country})</span>}
             </div>
           )}
 
@@ -189,9 +214,9 @@ export default function PremiumPage({
                   )}
                   <div className="font-bold text-gray-900 text-sm mb-1 mt-1">{pkg.name}</div>
                   <div className="text-2xl font-black text-brand-500 my-2">
-                    {formatLocalPrice ? formatLocalPrice(pkg.price, provider, country) : `$${pkg.price}`}
+                    {useCard ? `${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `${pkg.price}`}
                   </div>
-                  {formatLocalPrice && country && (
+                  {formatLocalPrice && country && !useCard && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
                   )}
                   <div className="text-xs text-gray-400 mt-1">{pkg.description}</div>

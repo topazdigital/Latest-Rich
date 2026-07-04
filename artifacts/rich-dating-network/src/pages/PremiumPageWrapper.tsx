@@ -46,6 +46,7 @@ export default function PremiumPageWrapper() {
   const [proof, setProof] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState<'auto' | 'manual'>('auto')
+  const [useCard, setUseCard] = useState(false)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -66,7 +67,9 @@ export default function PremiumPageWrapper() {
   }, [token])
 
   const provider = paymentMethod?.provider || 'paystack'
-  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.paystack
+  const hasLocalMethod = provider === 'payhero' || provider === 'paymongo'
+  const effectiveProvider = hasLocalMethod && useCard ? 'paystack' : provider
+  const providerInfo = PROVIDER_INFO[effectiveProvider] || PROVIDER_INFO.paystack
   const hasManualGateways = customGateways.length > 0
 
   const stopPolling = useCallback(() => {
@@ -99,8 +102,8 @@ export default function PremiumPageWrapper() {
     try {
       let endpoint = '/api/payments/paystack/initiate'
       let body: any = { packageId: pkg.id, type: 'premium' }
-      if (provider === 'payhero') { endpoint = '/api/payments/payhero/initiate'; body.phone = phoneNum || phone }
-      else if (provider === 'paymongo') { endpoint = '/api/payments/paymongo/initiate'; body.paymentMethod = 'gcash' }
+      if (effectiveProvider === 'payhero') { endpoint = '/api/payments/payhero/initiate'; body.phone = phoneNum || phone }
+      else if (effectiveProvider === 'paymongo') { endpoint = '/api/payments/paymongo/initiate'; body.paymentMethod = 'gcash' }
       else { endpoint = '/api/payments/paystack/initiate'; body.email = user?.email }
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
@@ -113,7 +116,7 @@ export default function PremiumPageWrapper() {
 
   async function handleBuy(pkg: any) {
     setSelectedPkg(pkg)
-    if (provider === 'payhero') { setStep('confirm') }
+    if (effectiveProvider === 'payhero') { setStep('confirm') }
     else { await initiatePayment(pkg) }
   }
 
@@ -221,6 +224,11 @@ export default function PremiumPageWrapper() {
       formatLocalPrice={formatLocalPrice}
       handleBuy={handleBuy}
       handleCustomSubmit={handleCustomSubmit}
+      hasLocalMethod={hasLocalMethod}
+      useCard={useCard}
+      setUseCard={setUseCard}
+      originalProviderInfo={hasLocalMethod ? PROVIDER_INFO[provider] : undefined}
+      effectiveProvider={effectiveProvider}
     />
   )
 }

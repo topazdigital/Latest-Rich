@@ -51,6 +51,7 @@ export default function CreditsPageWrapper() {
   const [customOrders, setCustomOrders] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState<'auto' | 'manual'>('auto')
+  const [useCard, setUseCard] = useState(false)
 
   useEffect(() => {
     fetch('/api/credits/packages').then(r => r.json()).then((d: any[]) => {
@@ -91,12 +92,14 @@ export default function CreditsPageWrapper() {
   }, [token])
 
   const provider = paymentMethod?.provider || 'paystack'
-  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.paystack
+  const hasLocalMethod = provider === 'payhero' || provider === 'paymongo'
+  const effectiveProvider = hasLocalMethod && useCard ? 'paystack' : provider
+  const providerInfo = PROVIDER_INFO[effectiveProvider] || PROVIDER_INFO.paystack
   const pkg = packages.find(p => p.id === selectedPkg)
 
   async function handleBuy(pkgId: number) {
     setSelectedPkg(pkgId)
-    if (provider === 'payhero') {
+    if (effectiveProvider === 'payhero') {
       setStep('confirm')
     } else {
       await initiatePayment(pkgId)
@@ -109,14 +112,13 @@ export default function CreditsPageWrapper() {
       let endpoint = '/api/payments/paystack/initiate'
       let body: any = { packageId: pkgId, type: paymentType }
 
-      if (provider === 'payhero') {
+      if (effectiveProvider === 'payhero') {
         endpoint = '/api/payments/payhero/initiate'
         body.phone = phoneNum || phone
-      } else if (provider === 'paymongo') {
+      } else if (effectiveProvider === 'paymongo') {
         endpoint = '/api/payments/paymongo/initiate'
         body.paymentMethod = 'gcash'
       } else {
-        // paystack (default) + any other providers
         endpoint = '/api/payments/paystack/initiate'
         body.email = user?.email
       }
@@ -270,10 +272,35 @@ export default function CreditsPageWrapper() {
       {/* Auto payment tab */}
       {(activeTab === 'auto' || !hasManualGateways) && step === 'packages' && (
         <>
+          {/* Payment method switcher (M-Pesa / GCash users can switch to Card) */}
+          {hasLocalMethod && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', background: '#f9fafb', borderRadius: '0.875rem', padding: '0.3rem' }}>
+              <button onClick={() => setUseCard(false)} style={{
+                flex: 1, padding: '0.55rem 0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: !useCard ? '#fff' : 'transparent',
+                color: !useCard ? '#111827' : '#6b7280',
+                fontWeight: 700, fontSize: '0.82rem',
+                boxShadow: !useCard ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
+              }}>
+                {PROVIDER_INFO[provider]?.icon} {PROVIDER_INFO[provider]?.name}
+              </button>
+              <button onClick={() => setUseCard(true)} style={{
+                flex: 1, padding: '0.55rem 0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                background: useCard ? '#fff' : 'transparent',
+                color: useCard ? '#111827' : '#6b7280',
+                fontWeight: 700, fontSize: '0.82rem',
+                boxShadow: useCard ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
+              }}>
+                💳 Pay by Card
+              </button>
+            </div>
+          )}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '0.4rem 0.875rem', fontSize: '0.82rem', fontWeight: 600 }}>
             <span>{providerInfo.icon}</span>
             <span style={{ color: providerInfo.color }}>Paying with {providerInfo.name}</span>
-            {paymentMethod?.country && <span style={{ color: '#6b7280' }}>({paymentMethod.country})</span>}
+            {paymentMethod?.country && !useCard && <span style={{ color: '#6b7280' }}>({paymentMethod.country})</span>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem', marginBottom: '1.5rem' }}>
             {packages.map(pkg => (
@@ -294,8 +321,8 @@ export default function CreditsPageWrapper() {
                   <span style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 700 }}> credits</span>
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: '0.75rem', fontWeight: 700 }}>
-                  {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}
-                  {provider === 'payhero' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
+                  {useCard ? `${pkg.usdPrice}` : formatLocalPrice(pkg.usdPrice, effectiveProvider, paymentMethod?.country || '')}
+                  {effectiveProvider === 'payhero' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
                 </div>
                 <button style={{
                   width: '100%', padding: '0.55rem', borderRadius: '0.75rem', border: 'none',
