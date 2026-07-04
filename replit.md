@@ -58,6 +58,7 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 
 ## Gotchas
 
+- **Production site**: `richdatingnetwork.com` — deploy by SSHing into the server and running `bash /home/admin/domains/richdatingnetwork.com/public_html/deploy.sh`
 - After editing DB schema in **Replit dev**: run `pnpm --filter @workspace/db run push` (PostgreSQL only). For **production MySQL**, schema changes are applied via `scripts/migrate-from-legacy.sql` — add new `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements there. Never run drizzle-kit push on the production server — it hangs interactively on legacy tables.
 - API server must be restarted after route changes (esbuild rebuild)
 - Vite proxies `/api` → `http://localhost:8080` (configured in `artifacts/rich-dating-network/vite.config.ts`)
