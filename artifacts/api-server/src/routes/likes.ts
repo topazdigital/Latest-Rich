@@ -118,16 +118,16 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     if (isMatch) {
+      const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
       await db.insert(notificationsTable).values({
         userId: myId,
         fromId: targetId,
         type: "match",
-        message: `You matched with ${me?.name}! 💝`,
+        message: `You matched with ${target?.name}! 💝`,
         link: `/profile/${targetId}`,
         time: now(),
       })
       // Notify the liker too
-      const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
       if (target) {
         send(myId, { type: "matched", otherUser: { id: target.id, name: target.name, photo: target.photoThumb || target.photo } })
       }

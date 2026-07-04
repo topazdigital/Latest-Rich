@@ -197,7 +197,7 @@ function ConvItem({ conv, selected, myUserId, onClick }: {
 
 function MessageBubble({ msg, fakeUserId, users }: { msg: Message; fakeUserId: number; users: Record<string, ConvUser> }) {
   const isByFake = msg.u1 === fakeUserId
-  const sender = users[isByFake ? String(msg.u1) : String(msg.u2)]
+  const sender = users[String(msg.u1)]
   return (
     <div className={`flex gap-2 ${isByFake ? 'justify-end' : 'justify-start'}`}>
       {!isByFake && <Avatar photo={sender?.photo || ''} name={sender?.name || '?'} size={28} />}
@@ -226,12 +226,15 @@ export default function ModeratorPage() {
   const [replyText, setReplyText] = useState('')
   const [loadingConvs, setLoadingConvs] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasOlder, setHasOlder] = useState(false)
   const [sendingReply, setSendingReply] = useState(false)
   const [locking, setLocking] = useState(false)
   const [search, setSearch] = useState('')
   const [stats, setStats] = useState({ activeLocks: 0, totalConversations: 0 })
   const [filter, setFilter] = useState<'all' | 'mine' | 'available'>('all')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -266,20 +269,62 @@ export default function ModeratorPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [loadConversations, loadStats])
 
+  const prevMsgCountRef = useRef(0)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const prev = prevMsgCountRef.current
+    const curr = messages.length
+    // Only auto-scroll to bottom when new messages arrive at the end, not when loading older ones
+    if (curr > prev && messages[curr - 1]?.id !== messages[prev > 0 ? prev - 1 : 0]?.id) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    prevMsgCountRef.current = curr
   }, [messages])
 
   async function loadMessages(conv: Conversation) {
     setLoadingMsgs(true)
+    setHasOlder(false)
     try {
       const r = await authFetch(`/api/moderator/conversations/${conv.key}/messages`)
       if (!r.ok) return
       const d = await r.json()
-      setMessages(d.messages || [])
+      const msgs: Message[] = d.messages || []
+      setMessages(msgs)
       setMsgUsers(d.users || {})
+      setHasOlder(msgs.length === 100)
     } catch {}
     finally { setLoadingMsgs(false) }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedConv || loadingOlder || !hasOlder || messages.length === 0) return
+    const oldestId = messages[0].id
+    setLoadingOlder(true)
+    try {
+      const r = await authFetch(`/api/moderator/conversations/${selectedConv.key}/messages?beforeId=${oldestId}`)
+      if (!r.ok) return
+      const d = await r.json()
+      const older: Message[] = d.messages || []
+      if (older.length === 0) { setHasOlder(false); return }
+      const container = messagesContainerRef.current
+      const prevScrollHeight = container?.scrollHeight ?? 0
+      setMessages(prev => [...older, ...prev])
+      setHasOlder(older.length === 100)
+      // Restore scroll position so the view doesn't jump
+      requestAnimationFrame(() => {
+        if (container) {
+          container.scrollTop = container.scrollHeight - prevScrollHeight
+        }
+      })
+    } catch {}
+    finally { setLoadingOlder(false) }
+  }
+
+  function handleMessagesScroll() {
+    const container = messagesContainerRef.current
+    if (!container) return
+    if (container.scrollTop < 80) {
+      loadOlderMessages()
+    }
   }
 
   function selectConv(conv: Conversation) {
@@ -547,7 +592,11 @@ export default function ModeratorPage() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleMessagesScroll}
+              className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
+            >
               {loadingMsgs ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 size={20} className="animate-spin text-brand-500" />
@@ -558,9 +607,26 @@ export default function ModeratorPage() {
                   <p className="text-sm text-gray-400">No messages yet in this conversation</p>
                 </div>
               ) : (
-                messages.map(msg => (
-                  <MessageBubble key={msg.id} msg={msg} fakeUserId={selectedConv.fakeUser.id} users={msgUsers} />
-                ))
+                <>
+                  {loadingOlder && (
+                    <div className="flex items-center justify-center py-2">
+                      <Loader2 size={16} className="animate-spin text-brand-500" />
+                    </div>
+                  )}
+                  {!loadingOlder && hasOlder && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={loadOlderMessages}
+                        className="text-xs text-brand-500 hover:text-brand-600 py-1 px-3 rounded-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        Load older messages
+                      </button>
+                    </div>
+                  )}
+                  {messages.map(msg => (
+                    <MessageBubble key={msg.id} msg={msg} fakeUserId={selectedConv.fakeUser.id} users={msgUsers} />
+                  ))}
+                </>
               )}
               <div ref={messagesEndRef} />
             </div>

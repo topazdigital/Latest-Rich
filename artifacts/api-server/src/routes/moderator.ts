@@ -211,13 +211,23 @@ router.get("/conversations/:key/messages", requireAuth, requireModerator, async 
     const [a, b] = parts.map(Number)
     if (isNaN(a) || isNaN(b)) { res.status(400).json({ error: "Invalid user IDs" }); return }
 
+    const beforeId = req.query.beforeId ? Number(req.query.beforeId) : null
+    const PAGE = 100
+
+    const baseWhere = or(
+      and(eq(messagesTable.u1, a), eq(messagesTable.u2, b)),
+      and(eq(messagesTable.u1, b), eq(messagesTable.u2, a)),
+    )
+    const whereClause = beforeId
+      ? and(baseWhere, sql`${messagesTable.id} < ${beforeId}`)
+      : baseWhere
+
     const msgs = await db.select().from(messagesTable)
-      .where(or(
-        and(eq(messagesTable.u1, a), eq(messagesTable.u2, b)),
-        and(eq(messagesTable.u1, b), eq(messagesTable.u2, a)),
-      ))
-      .orderBy(messagesTable.time, messagesTable.id)
-      .limit(300)
+      .where(whereClause)
+      .orderBy(desc(messagesTable.id))
+      .limit(PAGE)
+
+    msgs.reverse()
 
     const users = await db.select({ id: usersTable.id, name: usersTable.name, photo: usersTable.photo, fake: usersTable.fake })
       .from(usersTable)
