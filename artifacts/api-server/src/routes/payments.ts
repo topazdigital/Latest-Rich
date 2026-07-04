@@ -87,7 +87,7 @@ function getProviderForCountry(countryCode: string): string {
   if (PAYHERO_COUNTRIES.includes(cc)) return "payhero"
   if (PAYSTACK_COUNTRIES.includes(cc)) return "paystack"
   if (PAYMONGO_COUNTRIES.includes(cc)) return "paymongo"
-  return "flutterwave"
+  return "paddle"
 }
 
 /* ─── GET: Which payment method for this user ─── */
@@ -101,6 +101,7 @@ router.get("/method", requireAuth, async (req, res) => {
     paymongo: { name: "GCash / Maya", icon: "📲", description: "Pay via GCash or Maya", currencies: ["PHP"] },
     stripe: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP"] },
     flutterwave: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP", "KES", "NGN"] },
+    paddle: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, Amex, Apple Pay or Google Pay", currencies: ["USD", "EUR", "GBP"] },
   }
   res.json({ provider, country: resolvedCode, ...methods[provider] })
 })
@@ -601,12 +602,120 @@ router.get("/paymongo/success", async (req, res) => {
   res.redirect("/credits?success=1")
 })
 
+/* ─── PADDLE (Universal card payments — Visa, Mastercard, Apple/Google Pay) ─── */
+router.post("/paddle/checkout", requireAuth, async (req, res) => {
+  const apiKey = process.env.PADDLE_API_KEY || await getConfig("paddle_api_key")
+  if (!apiKey) {
+    res.status(400).json({ error: "Card payments not configured yet. Contact support." })
+    return
+  }
+  const { packageId, type } = req.body
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+  const creditPkgs = await getCreditPackages()
+  let amount = 0, description = "", credits = 0
+  if (type === "credits") {
+    const pkg = creditPkgs[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = Math.round(pkg.price * 100)
+    description = pkg.name
+    credits = pkg.credits
+  } else if (type === "premium") {
+    const pkg = PREMIUM_PACKAGES[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = Math.round(pkg.price * 100)
+    description = pkg.name
+  }
+  const appUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://richdatingnetwork.com")
+  const ref = `RDN-PDL-${req.userId}-${Date.now()}`
+  const isPaddleSandbox = apiKey.startsWith("pdl_test") || apiKey.includes("_test_")
+  const paddleBase = isPaddleSandbox ? "https://sandbox-api.paddle.com" : "https://api.paddle.com"
+  try {
+    const response = await fetch(`${paddleBase}/transactions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        items: [{
+          quantity: 1,
+          price: {
+            description,
+            product: { name: "Rich Dating Network", tax_category: "standard" },
+            unit_price: { amount: String(amount), currency_code: "USD" },
+            tax_mode: "inclusive",
+          }
+        }],
+        checkout: { url: `${appUrl}/${type === "premium" ? "premium" : "credits"}?success=1` },
+        custom_data: { ref, userId: String(req.userId), type, packageId: String(packageId) },
+      })
+    })
+    const data = await response.json() as any
+    if (!response.ok || data.error) {
+      const msg = data.error?.detail || data.error?.type || `Paddle error (${response.status})`
+      res.status(400).json({ error: msg }); return
+    }
+    await db.insert(ordersTable).values({
+      userId: req.userId!, amount: amount / 100, currency: "USD", type, description,
+      status: "pending", stripeSessionId: ref, credits, time: now(),
+    })
+    res.json({ url: data.data?.checkout?.url })
+  } catch (err: any) {
+    console.error("Paddle checkout error:", err)
+    res.status(500).json({ error: "Payment failed. Please try again." })
+  }
+})
+
+router.post("/paddle/webhook", async (req, res) => {
+  const { event_type, data } = req.body
+  if (event_type === "transaction.completed" && data?.custom_data) {
+    const { ref, userId, type, packageId } = data.custom_data || {}
+    if (ref && userId) {
+      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+      if (order && order.status === "pending") {
+        await db.update(ordersTable).set({ status: "completed" })
+          .where(and(eq(ordersTable.stripeSessionId, ref), eq(ordersTable.status, "pending")))
+        const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+        if (confirmed?.status === "completed") {
+          await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
+        }
+      }
+    }
+  }
+  res.json({ ok: true })
+})
+
+router.post("/paddle/test-credentials", requireAuth, async (req, res) => {
+  const apiKey = process.env.PADDLE_API_KEY || await getConfig("paddle_api_key")
+  if (!apiKey) {
+    res.status(400).json({ ok: false, error: "No Paddle API key saved yet. Enter it above and save first." })
+    return
+  }
+  const isPaddleSandbox = apiKey.startsWith("pdl_test") || apiKey.includes("_test_")
+  const paddleBase = isPaddleSandbox ? "https://sandbox-api.paddle.com" : "https://api.paddle.com"
+  try {
+    const response = await fetch(`${paddleBase}/products?per_page=1`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    const data = await response.json() as any
+    if (response.status === 401) {
+      res.status(400).json({ ok: false, error: "Invalid API key — check you copied the full key", detail: data?.error?.detail })
+      return
+    }
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from Paddle`, detail: data?.error?.detail || JSON.stringify(data) })
+      return
+    }
+    const mode = isPaddleSandbox ? "Sandbox" : "Live"
+    res.json({ ok: true, detail: `Paddle ${mode} API key is valid ✓` })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching Paddle", detail: err?.message })
+  }
+})
+
 /* ─── Admin: get/set payment config ─── */
 router.get("/config", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   if ((user?.admin ?? 0) < 2) { res.status(403).json({ error: "Forbidden" }); return }
 
-  const keys = ["stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate"]
+  const keys = ["stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate", "paddle_api_key", "paddle_webhook_secret"]
   const rows = await db.select().from(siteConfigTable)
   const config: Record<string, string> = {}
   for (const k of keys) {

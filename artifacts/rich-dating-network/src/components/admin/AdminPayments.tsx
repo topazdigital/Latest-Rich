@@ -3,6 +3,17 @@ import { authFetch } from '../../lib/auth'
 
 const PROVIDERS = [
   {
+    id: 'paddle',
+    name: 'Paddle (Cards)',
+    icon: '💳',
+    countries: 'All countries — Visa, Mastercard, Amex, Apple Pay, Google Pay (universal default)',
+    color: '#0d47a1',
+    fields: [
+      { key: 'paddle_api_key', label: 'API Key', placeholder: 'pdl_live_apikey_...', secret: true },
+      { key: 'paddle_webhook_secret', label: 'Webhook Secret (optional)', placeholder: 'pdl_ntfset_...', secret: true },
+    ],
+  },
+  {
     id: 'stripe',
     name: 'Stripe',
     icon: '💳',
@@ -75,7 +86,7 @@ export default function AdminPayments() {
   async function handleTest() {
     setTesting(true)
     setTestResult(null)
-    const names: Record<string, string> = { stripe: 'Stripe', payhero: 'PayHero', paystack: 'Paystack', paymongo: 'PayMongo' }
+    const names: Record<string, string> = { paddle: 'Paddle', stripe: 'Stripe', payhero: 'PayHero', paystack: 'Paystack', paymongo: 'PayMongo' }
     try {
       const res = await authFetch(`/api/payments/${activeProvider}/test-credentials`, { method: 'POST' })
       const data = await res.json()
@@ -118,14 +129,14 @@ export default function AdminPayments() {
     { flag: '🇬🇭', country: 'Ghana', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇿🇦', country: 'South Africa', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇵🇭', country: 'Philippines', provider: 'PayMongo (GCash)', color: '#7c3aed' },
-    { flag: '🇺🇸', country: 'USA', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇬🇧', country: 'UK', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇨🇦', country: 'Canada', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇦🇺', country: 'Australia', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇩🇪', country: 'Germany', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇦🇪', country: 'UAE', provider: 'Stripe', color: '#635bff' },
-    { flag: '🇸🇬', country: 'Singapore', provider: 'Stripe', color: '#635bff' },
-    { flag: '🌍', country: 'All others', provider: 'Stripe (default)', color: '#635bff' },
+    { flag: '🇺🇸', country: 'USA', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇬🇧', country: 'UK', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇨🇦', country: 'Canada', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇦🇺', country: 'Australia', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇩🇪', country: 'Germany', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇦🇪', country: 'UAE', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🇸🇬', country: 'Singapore', provider: 'Paddle (Card)', color: '#0d47a1' },
+    { flag: '🌍', country: 'All others', provider: 'Paddle (Card) — default', color: '#0d47a1' },
   ]
 
   return (
@@ -253,7 +264,7 @@ export default function AdminPayments() {
               <li>Kenya/East Africa → <strong style={{ color: '#00a651' }}>PayHero M-Pesa</strong></li>
               <li>Nigeria/Ghana/SA → <strong style={{ color: '#00c3f7' }}>Paystack</strong></li>
               <li>Philippines → <strong style={{ color: '#7c3aed' }}>PayMongo (GCash)</strong></li>
-              <li>USA/UK/Europe/UAE → <strong style={{ color: '#635bff' }}>Stripe</strong></li>
+              <li>Everyone else → <strong style={{ color: '#0d47a1' }}>Paddle (Card)</strong></li>
             </ul>
           </div>
         </div>

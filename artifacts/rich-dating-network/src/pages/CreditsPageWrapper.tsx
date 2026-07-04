@@ -17,6 +17,8 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string;
   paystack: { name: 'Card / Bank Transfer', icon: '🏦', color: '#00c3f7', instruction: 'You will be redirected to a secure Paystack payment page.' },
   paymongo: { name: 'GCash / Maya / Card', icon: '📲', color: '#7c3aed', instruction: 'You will be redirected to choose GCash, Maya, or Credit Card.' },
   stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
+  paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1', instruction: 'Secure payment via Visa, Mastercard, Amex, Apple Pay or Google Pay.' },
+  flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -25,7 +27,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
     NG: [1600, 'NGN'], GH: [12, 'GHS'], ZA: [19, 'ZAR'], PH: [56, 'PHP'],
   }
   const entry = rates[userCountry?.toUpperCase()]
-  if (!entry || provider === 'stripe') return `$${usdPrice}`
+  if (!entry || provider === 'stripe' || provider === 'paddle' || provider === 'flutterwave') return `$${usdPrice}`
   const [rate, currency] = entry
   return `${currency} ${Math.round(usdPrice * rate).toLocaleString()}`
 }
@@ -106,7 +108,7 @@ export default function CreditsPageWrapper() {
   async function initiatePayment(pkgId: number, phoneNum?: string) {
     setLoading(true)
     try {
-      let endpoint = '/api/payments/stripe/checkout'
+      let endpoint = '/api/payments/paddle/checkout'
       let body: any = { packageId: pkgId, type: paymentType }
 
       if (provider === 'payhero') {
@@ -118,6 +120,10 @@ export default function CreditsPageWrapper() {
       } else if (provider === 'paymongo') {
         endpoint = '/api/payments/paymongo/initiate'
         body.paymentMethod = 'gcash'
+      } else if (provider === 'stripe') {
+        endpoint = '/api/payments/stripe/checkout'
+      } else if (provider === 'paddle' || provider === 'flutterwave') {
+        endpoint = '/api/payments/paddle/checkout'
       }
 
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

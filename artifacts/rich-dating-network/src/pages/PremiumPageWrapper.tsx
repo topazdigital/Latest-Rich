@@ -17,6 +17,8 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string 
   paystack: { name: 'Card / Bank Transfer', icon: '🏦', color: '#00c3f7' },
   paymongo: { name: 'GCash / Maya / Card', icon: '📲', color: '#7c3aed' },
   stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff' },
+  paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1' },
+  flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -25,7 +27,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
     NG: [1600, 'NGN'], GH: [12, 'GHS'], ZA: [19, 'ZAR'], PH: [56, 'PHP'],
   }
   const entry = rates[userCountry?.toUpperCase()]
-  if (!entry || provider === 'stripe') return `$${usdPrice}`
+  if (!entry || provider === 'stripe' || provider === 'paddle' || provider === 'flutterwave') return `$${usdPrice}`
   const [rate, currency] = entry
   return `${currency} ${Math.round(usdPrice * rate).toLocaleString()}`
 }
@@ -97,11 +99,13 @@ export default function PremiumPageWrapper() {
   async function initiatePayment(pkg: any, phoneNum?: string) {
     setLoading(true)
     try {
-      let endpoint = '/api/payments/stripe/checkout'
+      let endpoint = '/api/payments/paddle/checkout'
       let body: any = { packageId: pkg.id, type: 'premium' }
       if (provider === 'payhero') { endpoint = '/api/payments/payhero/initiate'; body.phone = phoneNum || phone }
       else if (provider === 'paystack') { endpoint = '/api/payments/paystack/initiate'; body.email = user?.email }
       else if (provider === 'paymongo') { endpoint = '/api/payments/paymongo/initiate'; body.paymentMethod = 'gcash' }
+      else if (provider === 'stripe') { endpoint = '/api/payments/stripe/checkout' }
+      else if (provider === 'paddle' || provider === 'flutterwave') { endpoint = '/api/payments/paddle/checkout' }
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Payment failed'); setLoading(false); return }
