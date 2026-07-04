@@ -87,7 +87,7 @@ function getProviderForCountry(countryCode: string): string {
   if (PAYHERO_COUNTRIES.includes(cc)) return "payhero"
   if (PAYSTACK_COUNTRIES.includes(cc)) return "paystack"
   if (PAYMONGO_COUNTRIES.includes(cc)) return "paymongo"
-  return "stripe"
+  return "flutterwave"
 }
 
 /* ─── GET: Which payment method for this user ─── */
@@ -100,6 +100,7 @@ router.get("/method", requireAuth, async (req, res) => {
     paystack: { name: "Card / Bank", icon: "💳", description: "Pay via card or bank transfer", currencies: ["NGN", "GHS", "ZAR"] },
     paymongo: { name: "GCash / Maya", icon: "📲", description: "Pay via GCash or Maya", currencies: ["PHP"] },
     stripe: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP"] },
+    flutterwave: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP", "KES", "NGN"] },
   }
   res.json({ provider, country: resolvedCode, ...methods[provider] })
 })
