@@ -484,16 +484,22 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const userEmail = email || user?.email
   const cc = (user?.countryCode || "").toUpperCase()
-  const currency = cc === "GH" ? "GHS" : cc === "ZA" ? "ZAR" : "NGN"
-  const rateKey = `${currency.toLowerCase()}_rate`
-  const rate = Number(await getConfig(rateKey) || (currency === "NGN" ? "1600" : currency === "GHS" ? "12" : "19"))
+  // Paystack supported currencies: NGN (Nigeria), GHS (Ghana), ZAR (South Africa), USD (everyone else)
+  const currency = cc === "NG" ? "NGN" : cc === "GH" ? "GHS" : cc === "ZA" ? "ZAR" : "USD"
+  let rate: number
+  if (currency === "USD") {
+    rate = 1 // USD amounts are already in dollars; multiply by 100 for cents
+  } else {
+    const rateKey = `${currency.toLowerCase()}_rate`
+    rate = Number(await getConfig(rateKey) || (currency === "NGN" ? "1600" : currency === "GHS" ? "12" : "19"))
+  }
 
   const creditPkgsPaystack = await getCreditPackages()
   let amount = 0, description = "", credits = 0
   if (type === "credits") {
     const pkg = creditPkgsPaystack[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
-    amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents
+    amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents (USD: cents)
     description = pkg.name; credits = pkg.credits
   } else {
     const pkg = PREMIUM_PACKAGES[packageId]
