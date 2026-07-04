@@ -3,7 +3,7 @@
 # Rich Dating Network — Production Deploy Script
 #
 # USAGE (always the same command):
-#   bash /home/admin/domains/test.richdatingnetwork.com/public_html/scripts/deploy-server.sh
+#   bash /home/admin/domains/richdatingnetwork.com/public_html/scripts/deploy-server.sh
 #
 # What it does:
 #   1. Pulls latest code from GitHub (safe even with local changes)
@@ -13,7 +13,7 @@
 ##############################################################
 set -e
 
-SITE_DIR="/home/admin/domains/test.richdatingnetwork.com/public_html"
+SITE_DIR="/home/admin/domains/richdatingnetwork.com/public_html"
 
 echo ""
 echo "============================================"
@@ -76,7 +76,7 @@ fi
 echo ""
 echo "============================================"
 echo "  ✅ Deploy complete!"
-echo "  Site: https://test.richdatingnetwork.com"
+echo "  Site: https://richdatingnetwork.com"
 echo ""
 echo "  Useful commands:"
 echo "    pm2 status              — process health"

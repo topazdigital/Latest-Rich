@@ -4,7 +4,7 @@
 # 1. Fixes the API server uploads symlink
 # 2. Copies photo filenames from old DB to new DB
 #
-# Run from: /home/admin/domains/test.richdatingnetwork.com/public_html
+# Run from: /home/admin/domains/richdatingnetwork.com/public_html
 # ========================================================
 
 OLD_DB_USER="admin_richdatingnetwork"
@@ -16,7 +16,7 @@ NEW_DB_PASS='RdnDb2025secure'
 NEW_DB="admin_testdating"
 
 OLD_UPLOADS="/home/admin/domains/richdatingnetwork.com/public_html/assets/sources/uploads"
-API_UPLOADS="/home/admin/domains/test.richdatingnetwork.com/public_html/artifacts/api-server/uploads"
+API_UPLOADS="/home/admin/domains/richdatingnetwork.com/public_html/artifacts/api-server/uploads"
 
 echo "============================================="
 echo "  Rich Dating Network — Photo Import"
@@ -117,6 +117,6 @@ mysql -u "$NEW_DB_USER" -p"$NEW_DB_PASS" "$NEW_DB" -e \
 echo ""
 echo "============================================="
 echo "  Done!"
-echo "  → Visit https://test.richdatingnetwork.com"
+echo "  → Visit https://richdatingnetwork.com"
 echo "  → Photos should now appear on all profiles"
 echo "============================================="

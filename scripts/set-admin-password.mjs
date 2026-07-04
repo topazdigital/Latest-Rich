@@ -75,7 +75,7 @@ await db.execute(
 console.log(`Password updated successfully for user #${user.id} (${user.email})`)
 console.log(`New bcrypt hash: ${hash}`)
 console.log()
-console.log("You can now log in at test.richdatingnetwork.com with:")
+console.log("You can now log in at richdatingnetwork.com with:")
 console.log(`  Email   : ${email}`)
 console.log(`  Password: ${newPassword}`)
 
