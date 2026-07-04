@@ -19,6 +19,8 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string 
   stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff' },
   paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1' },
   flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623' },
+  intasend: { name: 'Credit / Debit Card', icon: '💳', color: '#1a56db' },
+  pesapal: { name: 'Credit / Debit Card', icon: '💳', color: '#e53e3e' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -105,6 +107,8 @@ export default function PremiumPageWrapper() {
       else if (provider === 'paystack') { endpoint = '/api/payments/paystack/initiate'; body.email = user?.email }
       else if (provider === 'paymongo') { endpoint = '/api/payments/paymongo/initiate'; body.paymentMethod = 'gcash' }
       else if (provider === 'stripe') { endpoint = '/api/payments/stripe/checkout' }
+      else if (provider === 'pesapal') { endpoint = '/api/payments/pesapal/checkout' }
+      else if (provider === 'intasend') { endpoint = '/api/payments/intasend/checkout' }
       else if (provider === 'paddle' || provider === 'flutterwave') { endpoint = '/api/payments/paddle/checkout' }
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()

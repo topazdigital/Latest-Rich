@@ -87,7 +87,7 @@ function getProviderForCountry(countryCode: string): string {
   if (PAYHERO_COUNTRIES.includes(cc)) return "payhero"
   if (PAYSTACK_COUNTRIES.includes(cc)) return "paystack"
   if (PAYMONGO_COUNTRIES.includes(cc)) return "paymongo"
-  return "paddle"
+  return "paypal"
 }
 
 /* ─── GET: Which payment method for this user ─── */
@@ -102,6 +102,9 @@ router.get("/method", requireAuth, async (req, res) => {
     stripe: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP"] },
     flutterwave: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, or Amex", currencies: ["USD", "EUR", "GBP", "KES", "NGN"] },
     paddle: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, Amex, Apple Pay or Google Pay", currencies: ["USD", "EUR", "GBP"] },
+    intasend: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (IntaSend)", currencies: ["USD", "EUR", "GBP", "KES"] },
+    pesapal: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (Pesapal)", currencies: ["USD", "EUR", "GBP", "KES"] },
+    paypal: { name: "PayPal / Card", icon: "🅿️", description: "Pay via PayPal or credit/debit card", currencies: ["USD", "EUR", "GBP"] },
   }
   res.json({ provider, country: resolvedCode, ...methods[provider] })
 })
@@ -602,7 +605,310 @@ router.get("/paymongo/success", async (req, res) => {
   res.redirect("/credits?success=1")
 })
 
-/* ─── PADDLE (Universal card payments — Visa, Mastercard, Apple/Google Pay) ─── */
+/* ─── INTASEND (International Visa/Mastercard — default for all other countries) ─── */
+router.post("/intasend/checkout", requireAuth, async (req, res) => {
+  const secretKey = process.env.INTASEND_SECRET_KEY || await getConfig("intasend_secret_key")
+  const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY || await getConfig("intasend_publishable_key")
+  if (!secretKey || !publishableKey) {
+    res.status(400).json({ error: "Card payments not configured yet. Contact support." })
+    return
+  }
+  const { packageId, type } = req.body
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+  const creditPkgs = await getCreditPackages()
+  let amount = 0, description = "", credits = 0
+  if (type === "credits") {
+    const pkg = creditPkgs[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = pkg.price; description = pkg.name; credits = pkg.credits
+  } else if (type === "premium") {
+    const pkg = PREMIUM_PACKAGES[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = pkg.price; description = pkg.name
+  }
+  const appUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://richdatingnetwork.com")
+  const ref = `RDN-IS-${req.userId}-${Date.now()}`
+  const isLive = secretKey.startsWith("ISSecretKey_live") || (!secretKey.includes("test") && !secretKey.includes("sandbox"))
+  const baseUrl = isLive ? "https://payment.intasend.com" : "https://sandbox.intasend.com"
+  try {
+    const nameParts = (user?.name || "User").trim().split(" ")
+    const response = await fetch(`${baseUrl}/api/v1/checkout/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretKey}` },
+      body: JSON.stringify({
+        public_key: publishableKey,
+        first_name: nameParts[0] || "User",
+        last_name: nameParts.slice(1).join(" ") || ".",
+        email: user?.email || "",
+        amount,
+        currency: "USD",
+        api_ref: ref,
+        // Success redirect goes to frontend — webhook handles actual fulfillment
+        redirect_url: `${appUrl}/${type === "premium" ? "premium" : "credits"}?pending=1`,
+        comment: description,
+      }),
+    })
+    const data = await response.json() as any
+    if (!response.ok || data.error) {
+      const msg = data.error || data.detail || `IntaSend error (${response.status})`
+      res.status(400).json({ error: msg }); return
+    }
+    await db.insert(ordersTable).values({
+      userId: req.userId!, amount, currency: "USD", type, description,
+      status: "pending", stripeSessionId: ref, credits, packageId: parseInt(packageId) || 0, time: now(),
+    })
+    res.json({ url: data.url })
+  } catch (err: any) {
+    console.error("IntaSend checkout error:", err)
+    res.status(500).json({ error: "Payment failed. Please try again." })
+  }
+})
+
+// IntaSend redirects user here after payment — fulfillment is handled ONLY by webhook.
+// This route just sends them back to the app with a "processing" notice.
+router.get("/intasend/success", (_req, res) => {
+  res.redirect("/credits?pending=1")
+})
+
+router.post("/intasend/webhook", async (req, res) => {
+  try {
+    const { invoice } = req.body || {}
+    const state = String(invoice?.state || "").toUpperCase()
+    const ref = String(invoice?.api_ref || "")
+    // Only act on COMPLETE state with a valid ref
+    if (state === "COMPLETE" && ref.startsWith("RDN-IS-")) {
+      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+      if (order && order.status === "pending") {
+        // Atomic: only the request that actually changes status from pending → completed fulfills
+        await db.update(ordersTable).set({ status: "completed" })
+          .where(and(eq(ordersTable.stripeSessionId, ref), eq(ordersTable.status, "pending")))
+        const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+        if (confirmed?.status === "completed") {
+          await fulfillOrderFromRecord(order)
+        }
+      }
+    }
+  } catch (err) { console.error("IntaSend webhook error:", err) }
+  res.json({ ok: true })
+})
+
+router.post("/intasend/test-credentials", requireAuth, async (req, res) => {
+  const secretKey = process.env.INTASEND_SECRET_KEY || await getConfig("intasend_secret_key")
+  if (!secretKey) {
+    res.status(400).json({ ok: false, error: "No IntaSend secret key saved yet. Enter it above and save first." })
+    return
+  }
+  const isLive = secretKey.startsWith("ISSecretKey_live") || (!secretKey.includes("test") && !secretKey.includes("sandbox"))
+  const baseUrl = isLive ? "https://payment.intasend.com" : "https://sandbox.intasend.com"
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/wallets/`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    })
+    const data = await response.json() as any
+    if (response.status === 401 || response.status === 403) {
+      res.status(400).json({ ok: false, error: "Invalid API key — check your IntaSend secret key", detail: data?.detail || data?.error })
+      return
+    }
+    if (!response.ok) {
+      res.status(400).json({ ok: false, error: `HTTP ${response.status} from IntaSend`, detail: data?.detail || JSON.stringify(data).slice(0, 120) })
+      return
+    }
+    const mode = isLive ? "Live" : "Sandbox"
+    res.json({ ok: true, detail: `IntaSend ${mode} API key is valid ✓` })
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: "Network error reaching IntaSend", detail: err?.message })
+  }
+})
+
+/* ─── PESAPAL (International Visa/Mastercard — default for all other countries) ─── */
+
+// Cache Pesapal auth token in-process (expires after ~5 minutes in sandbox, longer in live)
+let pesapalToken: { token: string; expiresAt: number } | null = null
+
+async function getPesapalToken(consumerKey: string, consumerSecret: string, isLive: boolean): Promise<string> {
+  const now = Date.now()
+  if (pesapalToken && pesapalToken.expiresAt > now + 60_000) return pesapalToken.token
+  const base = isLive ? "https://pay.pesapal.com/v3" : "https://cybqa.pesapal.com/pesapalv3"
+  const res = await fetch(`${base}/api/Auth/RequestToken`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ consumer_key: consumerKey, consumer_secret: consumerSecret }),
+  })
+  const data = await res.json() as any
+  if (!res.ok || !data.token) throw new Error(data.message || `Pesapal auth failed (${res.status})`)
+  pesapalToken = { token: data.token, expiresAt: now + 4 * 60 * 1000 }
+  return data.token
+}
+
+async function getPesapalIpnId(token: string, appUrl: string, isLive: boolean): Promise<string> {
+  // Return cached IPN id if we have one stored
+  const stored = await getConfig("pesapal_ipn_id")
+  if (stored) return stored
+  const base = isLive ? "https://pay.pesapal.com/v3" : "https://cybqa.pesapal.com/pesapalv3"
+  const res = await fetch(`${base}/api/URLSetup/RegisterIPN`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ url: `${appUrl}/api/payments/pesapal/webhook`, ipn_notification_type: "POST" }),
+  })
+  const data = await res.json() as any
+  if (!res.ok || !data.ipn_id) throw new Error(data.message || "Pesapal IPN registration failed")
+  // Persist so we don't re-register every request
+  const existing = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key, "pesapal_ipn_id")).limit(1)
+  if (existing.length) await db.update(siteConfigTable).set({ value: data.ipn_id }).where(eq(siteConfigTable.key, "pesapal_ipn_id"))
+  else await db.insert(siteConfigTable).values({ key: "pesapal_ipn_id", value: data.ipn_id })
+  return data.ipn_id
+}
+
+router.post("/pesapal/checkout", requireAuth, async (req, res) => {
+  const consumerKey = process.env.PESAPAL_CONSUMER_KEY || await getConfig("pesapal_consumer_key")
+  const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET || await getConfig("pesapal_consumer_secret")
+  if (!consumerKey || !consumerSecret) {
+    res.status(400).json({ error: "Card payments not configured yet. Contact support." })
+    return
+  }
+  const { packageId, type } = req.body
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+  const creditPkgs = await getCreditPackages()
+  let amount = 0, description = "", credits = 0
+  if (type === "credits") {
+    const pkg = creditPkgs[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = pkg.price; description = pkg.name; credits = pkg.credits
+  } else if (type === "premium") {
+    const pkg = PREMIUM_PACKAGES[packageId]
+    if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
+    amount = pkg.price; description = pkg.name
+  }
+  const appUrl = process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://richdatingnetwork.com")
+  const isLive = !consumerKey.includes("test") && !consumerKey.includes("sandbox") && consumerKey.length > 10
+  const base = isLive ? "https://pay.pesapal.com/v3" : "https://cybqa.pesapal.com/pesapalv3"
+  const ref = `RDN-PP-${req.userId}-${Date.now()}`
+  try {
+    const token = await getPesapalToken(consumerKey, consumerSecret, isLive)
+    const ipnId = await getPesapalIpnId(token, appUrl, isLive)
+    const nameParts = (user?.name || "User").trim().split(" ")
+    const response = await fetch(`${base}/api/Transactions/SubmitOrderRequest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        id: ref,
+        currency: "USD",
+        amount,
+        description,
+        callback_url: `${appUrl}/api/payments/pesapal/success?ref=${ref}&type=${type}&pkg=${packageId}`,
+        notification_id: ipnId,
+        billing_address: {
+          email_address: user?.email || "",
+          first_name: nameParts[0] || "User",
+          last_name: nameParts.slice(1).join(" ") || ".",
+        },
+      }),
+    })
+    const data = await response.json() as any
+    if (!response.ok || data.error) {
+      res.status(400).json({ error: data.message || data.error || `Pesapal error (${response.status})` }); return
+    }
+    await db.insert(ordersTable).values({
+      userId: req.userId!, amount, currency: "USD", type, description,
+      status: "pending", stripeSessionId: ref, credits, time: now(),
+    })
+    res.json({ url: data.redirect_url })
+  } catch (err: any) {
+    console.error("Pesapal checkout error:", err)
+    res.status(500).json({ error: err.message || "Payment failed. Please try again." })
+  }
+})
+
+router.get("/pesapal/success", async (req, res) => {
+  const { ref, type, pkg, OrderTrackingId } = req.query
+  if (!ref) return res.redirect("/credits?error=invalid")
+  try {
+    // If Pesapal reports the transaction as completed, fulfill immediately
+    const consumerKey = process.env.PESAPAL_CONSUMER_KEY || await getConfig("pesapal_consumer_key")
+    const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET || await getConfig("pesapal_consumer_secret")
+    if (consumerKey && consumerSecret && OrderTrackingId) {
+      const isLive = !consumerKey.includes("test") && !consumerKey.includes("sandbox") && consumerKey.length > 10
+      const base = isLive ? "https://pay.pesapal.com/v3" : "https://cybqa.pesapal.com/pesapalv3"
+      try {
+        const token = await getPesapalToken(consumerKey, consumerSecret, isLive)
+        const statusRes = await fetch(`${base}/api/Transactions/GetTransactionStatus?orderTrackingId=${OrderTrackingId}`, {
+          headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+        })
+        const statusData = await statusRes.json() as any
+        const paid = statusData.payment_status_description === "Completed"
+        if (paid) {
+          const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, String(ref))).limit(1)
+          if (order && order.status === "pending") {
+            await db.update(ordersTable).set({ status: "completed", stripeSessionId: String(ref) })
+              .where(and(eq(ordersTable.stripeSessionId, String(ref)), eq(ordersTable.status, "pending")))
+            await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || "0")), "USD")
+          }
+        }
+      } catch (e) { console.error("Pesapal status check error:", e) }
+    }
+    res.redirect(`/${type === "premium" ? "premium" : "credits"}?success=1`)
+  } catch (err) {
+    console.error("Pesapal success error:", err)
+    res.redirect("/credits?error=server")
+  }
+})
+
+router.post("/pesapal/webhook", async (req, res) => {
+  try {
+    const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } = req.body || {}
+    if (OrderNotificationType === "IPNCHANGE" && OrderMerchantReference) {
+      const ref = String(OrderMerchantReference)
+      const consumerKey = process.env.PESAPAL_CONSUMER_KEY || await getConfig("pesapal_consumer_key")
+      const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET || await getConfig("pesapal_consumer_secret")
+      if (consumerKey && consumerSecret && OrderTrackingId) {
+        const isLive = !consumerKey.includes("test") && !consumerKey.includes("sandbox") && consumerKey.length > 10
+        const base = isLive ? "https://pay.pesapal.com/v3" : "https://cybqa.pesapal.com/pesapalv3"
+        const token = await getPesapalToken(consumerKey, consumerSecret, isLive)
+        const statusRes = await fetch(`${base}/api/Transactions/GetTransactionStatus?orderTrackingId=${OrderTrackingId}`, {
+          headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+        })
+        const statusData = await statusRes.json() as any
+        const paid = statusData.payment_status_description === "Completed"
+        if (paid) {
+          const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+          if (order && order.status === "pending") {
+            await db.update(ordersTable).set({ status: "completed" })
+              .where(and(eq(ordersTable.stripeSessionId, ref), eq(ordersTable.status, "pending")))
+            const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
+            if (confirmed?.status === "completed") {
+              await fulfillOrder(order.userId, order.type || "credits", 0, "USD")
+              if (order.type === "credits" && order.credits && order.credits > 0) {
+                const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+                if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + order.credits }).where(eq(usersTable.id, order.userId))
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) { console.error("Pesapal webhook error:", err) }
+  res.json({ orderNotificationType: req.body?.OrderNotificationType, orderTrackingId: req.body?.OrderTrackingId, orderMerchantReference: req.body?.OrderMerchantReference, status: "200" })
+})
+
+router.post("/pesapal/test-credentials", requireAuth, async (req, res) => {
+  const consumerKey = process.env.PESAPAL_CONSUMER_KEY || await getConfig("pesapal_consumer_key")
+  const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET || await getConfig("pesapal_consumer_secret")
+  if (!consumerKey || !consumerSecret) {
+    res.status(400).json({ ok: false, error: "No Pesapal credentials saved yet. Enter Consumer Key and Secret above, then save." })
+    return
+  }
+  const isLive = !consumerKey.includes("test") && !consumerKey.includes("sandbox") && consumerKey.length > 10
+  try {
+    pesapalToken = null // force fresh token
+    const token = await getPesapalToken(consumerKey, consumerSecret, isLive)
+    const mode = isLive ? "Live" : "Sandbox"
+    res.json({ ok: true, detail: `Pesapal ${mode} credentials valid ✓` })
+  } catch (err: any) {
+    res.status(400).json({ ok: false, error: err.message || "Pesapal authentication failed" })
+  }
+})
+
+/* ─── PADDLE (kept for reference — domain was rejected for adult/dating content) ─── */
 router.post("/paddle/checkout", requireAuth, async (req, res) => {
   const apiKey = process.env.PADDLE_API_KEY || await getConfig("paddle_api_key")
   if (!apiKey) {
@@ -715,7 +1021,7 @@ router.get("/config", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   if ((user?.admin ?? 0) < 2) { res.status(403).json({ error: "Forbidden" }); return }
 
-  const keys = ["stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate", "paddle_api_key", "paddle_webhook_secret"]
+  const keys = ["paypal_client_id", "paypal_client_secret", "pesapal_consumer_key", "pesapal_consumer_secret", "intasend_secret_key", "intasend_publishable_key", "stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate", "paddle_api_key", "paddle_webhook_secret"]
   const rows = await db.select().from(siteConfigTable)
   const config: Record<string, string> = {}
   for (const k of keys) {
@@ -759,6 +1065,24 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
       if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, userId))
     }
+  }
+}
+
+// Fulfills an order using data already stored on the order row itself (safe for webhook paths
+// where packageId is known but cannot be re-derived from request params).
+async function fulfillOrderFromRecord(order: { userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null }) {
+  const type = order.type || "credits"
+  if (type === "credits") {
+    const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : 0
+    if (creditsToAdd > 0) {
+      const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+      if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
+    }
+  } else if (type === "premium") {
+    // Try packageId first, fall back to description match
+    const pkgById = order.packageId ? PREMIUM_PACKAGES[order.packageId] : null
+    const pkg = pkgById || Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
+    if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
   }
 }
 

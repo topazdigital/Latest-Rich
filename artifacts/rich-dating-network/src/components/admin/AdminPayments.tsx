@@ -3,14 +3,14 @@ import { authFetch } from '../../lib/auth'
 
 const PROVIDERS = [
   {
-    id: 'paddle',
-    name: 'Paddle (Cards)',
+    id: 'pesapal',
+    name: 'Pesapal (Cards)',
     icon: '💳',
-    countries: 'All countries — Visa, Mastercard, Amex, Apple Pay, Google Pay (universal default)',
-    color: '#0d47a1',
+    countries: 'All countries — Visa, Mastercard (universal default, Kenya-friendly)',
+    color: '#e53e3e',
     fields: [
-      { key: 'paddle_api_key', label: 'API Key', placeholder: 'pdl_live_apikey_...', secret: true },
-      { key: 'paddle_webhook_secret', label: 'Webhook Secret (optional)', placeholder: 'pdl_ntfset_...', secret: true },
+      { key: 'pesapal_consumer_key', label: 'Consumer Key', placeholder: 'qkio1BGGYAXTu2JOfm7XSXkXtN...', secret: false },
+      { key: 'pesapal_consumer_secret', label: 'Consumer Secret', placeholder: 'osGQ364R49cXKeOYSpaOnT+1...', secret: true },
     ],
   },
   {
@@ -71,7 +71,7 @@ export default function AdminPayments() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [activeProvider, setActiveProvider] = useState('stripe')
+  const [activeProvider, setActiveProvider] = useState('pesapal')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null)
 
@@ -129,14 +129,14 @@ export default function AdminPayments() {
     { flag: '🇬🇭', country: 'Ghana', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇿🇦', country: 'South Africa', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇵🇭', country: 'Philippines', provider: 'PayMongo (GCash)', color: '#7c3aed' },
-    { flag: '🇺🇸', country: 'USA', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇬🇧', country: 'UK', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇨🇦', country: 'Canada', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇦🇺', country: 'Australia', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇩🇪', country: 'Germany', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇦🇪', country: 'UAE', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🇸🇬', country: 'Singapore', provider: 'Paddle (Card)', color: '#0d47a1' },
-    { flag: '🌍', country: 'All others', provider: 'Paddle (Card) — default', color: '#0d47a1' },
+    { flag: '🇺🇸', country: 'USA', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇬🇧', country: 'UK', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇨🇦', country: 'Canada', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇦🇺', country: 'Australia', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇩🇪', country: 'Germany', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇦🇪', country: 'UAE', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🇸🇬', country: 'Singapore', provider: 'Pesapal (Card)', color: '#e53e3e' },
+    { flag: '🌍', country: 'All others', provider: 'Pesapal (Card) — default', color: '#e53e3e' },
   ]
 
   return (
@@ -180,7 +180,7 @@ export default function AdminPayments() {
                   <p style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{provider.name}</p>
                   <p style={{ color: '#6b7280', fontSize: '0.75rem' }}>🌍 {provider.countries}</p>
                 </div>
-                <a href={`https://${provider.id === 'stripe' ? 'dashboard.stripe.com' : provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
+                <a href={`https://${provider.id === 'pesapal' ? 'merchant.pesapal.com' : provider.id === 'stripe' ? 'dashboard.stripe.com' : provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
                   target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: provider.color, textDecoration: 'none', fontWeight: 700, flexShrink: 0 }}>
                   Dashboard →
                 </a>
@@ -264,7 +264,7 @@ export default function AdminPayments() {
               <li>Kenya/East Africa → <strong style={{ color: '#00a651' }}>PayHero M-Pesa</strong></li>
               <li>Nigeria/Ghana/SA → <strong style={{ color: '#00c3f7' }}>Paystack</strong></li>
               <li>Philippines → <strong style={{ color: '#7c3aed' }}>PayMongo (GCash)</strong></li>
-              <li>Everyone else → <strong style={{ color: '#0d47a1' }}>Paddle (Card)</strong></li>
+              <li>Everyone else → <strong style={{ color: '#e53e3e' }}>Pesapal (Card)</strong></li>
             </ul>
           </div>
         </div>

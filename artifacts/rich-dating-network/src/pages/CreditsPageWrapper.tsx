@@ -19,6 +19,8 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string;
   stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
   paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1', instruction: 'Secure payment via Visa, Mastercard, Amex, Apple Pay or Google Pay.' },
   flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
+  intasend: { name: 'Credit / Debit Card', icon: '💳', color: '#1a56db', instruction: 'Secure payment via Visa or Mastercard.' },
+  pesapal: { name: 'Credit / Debit Card', icon: '💳', color: '#e53e3e', instruction: 'Secure payment via Visa or Mastercard (Pesapal).' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -122,6 +124,10 @@ export default function CreditsPageWrapper() {
         body.paymentMethod = 'gcash'
       } else if (provider === 'stripe') {
         endpoint = '/api/payments/stripe/checkout'
+      } else if (provider === 'pesapal') {
+        endpoint = '/api/payments/pesapal/checkout'
+      } else if (provider === 'intasend') {
+        endpoint = '/api/payments/intasend/checkout'
       } else if (provider === 'paddle' || provider === 'flutterwave') {
         endpoint = '/api/payments/paddle/checkout'
       }

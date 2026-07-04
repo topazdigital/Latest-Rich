@@ -291,6 +291,10 @@ export default function ModeratorPage() {
       setMessages(msgs)
       setMsgUsers(d.users || {})
       setHasOlder(msgs.length === 100)
+      // Always scroll to bottom when opening a conversation
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      })
     } catch {}
     finally { setLoadingMsgs(false) }
   }
