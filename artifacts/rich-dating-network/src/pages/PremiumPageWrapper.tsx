@@ -16,11 +16,6 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string 
   payhero: { name: 'M-Pesa', icon: '📱', color: '#00a651' },
   paystack: { name: 'Card / Bank Transfer', icon: '🏦', color: '#00c3f7' },
   paymongo: { name: 'GCash / Maya / Card', icon: '📲', color: '#7c3aed' },
-  stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff' },
-  paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1' },
-  flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623' },
-  intasend: { name: 'Credit / Debit Card', icon: '💳', color: '#1a56db' },
-  pesapal: { name: 'Credit / Debit Card', icon: '💳', color: '#e53e3e' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -29,7 +24,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
     NG: [1600, 'NGN'], GH: [12, 'GHS'], ZA: [19, 'ZAR'], PH: [56, 'PHP'],
   }
   const entry = rates[userCountry?.toUpperCase()]
-  if (!entry || provider === 'stripe' || provider === 'paddle' || provider === 'flutterwave') return `$${usdPrice}`
+  if (!entry) return `${usdPrice}`
   const [rate, currency] = entry
   return `${currency} ${Math.round(usdPrice * rate).toLocaleString()}`
 }
@@ -65,12 +60,13 @@ export default function PremiumPageWrapper() {
 
     const params = new URLSearchParams(window.location.search)
     if (params.get('success')) { toast.success('Premium activated! Welcome to VIP. 👑'); refreshUser() }
+    if (params.get('pending')) toast.success('Payment received — your Premium will activate shortly.')
     if (params.get('error')) toast.error('Payment failed. Please try again.')
     if (params.get('cancelled')) toast.error('Payment cancelled.')
   }, [token])
 
-  const provider = paymentMethod?.provider || 'stripe'
-  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.stripe
+  const provider = paymentMethod?.provider || 'paystack'
+  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.paystack
   const hasManualGateways = customGateways.length > 0
 
   const stopPolling = useCallback(() => {
@@ -101,15 +97,11 @@ export default function PremiumPageWrapper() {
   async function initiatePayment(pkg: any, phoneNum?: string) {
     setLoading(true)
     try {
-      let endpoint = '/api/payments/paddle/checkout'
+      let endpoint = '/api/payments/paystack/initiate'
       let body: any = { packageId: pkg.id, type: 'premium' }
       if (provider === 'payhero') { endpoint = '/api/payments/payhero/initiate'; body.phone = phoneNum || phone }
-      else if (provider === 'paystack') { endpoint = '/api/payments/paystack/initiate'; body.email = user?.email }
       else if (provider === 'paymongo') { endpoint = '/api/payments/paymongo/initiate'; body.paymentMethod = 'gcash' }
-      else if (provider === 'stripe') { endpoint = '/api/payments/stripe/checkout' }
-      else if (provider === 'pesapal') { endpoint = '/api/payments/pesapal/checkout' }
-      else if (provider === 'intasend') { endpoint = '/api/payments/intasend/checkout' }
-      else if (provider === 'paddle' || provider === 'flutterwave') { endpoint = '/api/payments/paddle/checkout' }
+      else { endpoint = '/api/payments/paystack/initiate'; body.email = user?.email }
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Payment failed'); setLoading(false); return }

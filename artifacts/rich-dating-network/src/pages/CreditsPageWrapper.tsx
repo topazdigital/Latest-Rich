@@ -16,11 +16,6 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string;
   payhero: { name: 'M-Pesa', icon: '📱', color: '#00a651', instruction: 'Enter your M-Pesa phone number (07XXXXXXXX). You will receive an STK push to enter your PIN.' },
   paystack: { name: 'Card / Bank Transfer', icon: '🏦', color: '#00c3f7', instruction: 'You will be redirected to a secure Paystack payment page.' },
   paymongo: { name: 'GCash / Maya / Card', icon: '📲', color: '#7c3aed', instruction: 'You will be redirected to choose GCash, Maya, or Credit Card.' },
-  stripe: { name: 'Credit / Debit Card', icon: '💳', color: '#635bff', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
-  paddle: { name: 'Credit / Debit Card', icon: '💳', color: '#0d47a1', instruction: 'Secure payment via Visa, Mastercard, Amex, Apple Pay or Google Pay.' },
-  flutterwave: { name: 'Credit / Debit Card', icon: '💳', color: '#f5a623', instruction: 'Secure payment via Visa, Mastercard, or Amex.' },
-  intasend: { name: 'Credit / Debit Card', icon: '💳', color: '#1a56db', instruction: 'Secure payment via Visa or Mastercard.' },
-  pesapal: { name: 'Credit / Debit Card', icon: '💳', color: '#e53e3e', instruction: 'Secure payment via Visa or Mastercard (Pesapal).' },
 }
 
 function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
@@ -29,7 +24,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
     NG: [1600, 'NGN'], GH: [12, 'GHS'], ZA: [19, 'ZAR'], PH: [56, 'PHP'],
   }
   const entry = rates[userCountry?.toUpperCase()]
-  if (!entry || provider === 'stripe' || provider === 'paddle' || provider === 'flutterwave') return `$${usdPrice}`
+  if (!entry) return `${usdPrice}`
   const [rate, currency] = entry
   return `${currency} ${Math.round(usdPrice * rate).toLocaleString()}`
 }
@@ -87,6 +82,7 @@ export default function CreditsPageWrapper() {
       refreshUser()
       authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
     }
+    if (params.get('pending')) toast.success('Payment received — your credits will appear shortly.')
     if (params.get('error')) toast.error('Payment failed. Please try again.')
     if (params.get('cancelled')) toast.error('Payment cancelled.')
 
@@ -94,8 +90,8 @@ export default function CreditsPageWrapper() {
     return () => clearInterval(interval)
   }, [token])
 
-  const provider = paymentMethod?.provider || 'stripe'
-  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.stripe
+  const provider = paymentMethod?.provider || 'paystack'
+  const providerInfo = PROVIDER_INFO[provider] || PROVIDER_INFO.paystack
   const pkg = packages.find(p => p.id === selectedPkg)
 
   async function handleBuy(pkgId: number) {
@@ -110,26 +106,19 @@ export default function CreditsPageWrapper() {
   async function initiatePayment(pkgId: number, phoneNum?: string) {
     setLoading(true)
     try {
-      let endpoint = '/api/payments/paddle/checkout'
+      let endpoint = '/api/payments/paystack/initiate'
       let body: any = { packageId: pkgId, type: paymentType }
 
       if (provider === 'payhero') {
         endpoint = '/api/payments/payhero/initiate'
         body.phone = phoneNum || phone
-      } else if (provider === 'paystack') {
-        endpoint = '/api/payments/paystack/initiate'
-        body.email = user?.email
       } else if (provider === 'paymongo') {
         endpoint = '/api/payments/paymongo/initiate'
         body.paymentMethod = 'gcash'
-      } else if (provider === 'stripe') {
-        endpoint = '/api/payments/stripe/checkout'
-      } else if (provider === 'pesapal') {
-        endpoint = '/api/payments/pesapal/checkout'
-      } else if (provider === 'intasend') {
-        endpoint = '/api/payments/intasend/checkout'
-      } else if (provider === 'paddle' || provider === 'flutterwave') {
-        endpoint = '/api/payments/paddle/checkout'
+      } else {
+        // paystack (default) + any other providers
+        endpoint = '/api/payments/paystack/initiate'
+        body.email = user?.email
       }
 
       const res = await authFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -306,7 +295,7 @@ export default function CreditsPageWrapper() {
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: '0.75rem', fontWeight: 700 }}>
                   {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}
-                  {provider !== 'stripe' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
+                  {provider === 'payhero' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
                 </div>
                 <button style={{
                   width: '100%', padding: '0.55rem', borderRadius: '0.75rem', border: 'none',

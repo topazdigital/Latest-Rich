@@ -39,7 +39,7 @@ export default function PremiumPage({
   const isPremium = user?.premium === 1
   const premiumExpiry = user?.premiumExpiry ? new Date(user.premiumExpiry * 1000) : null
 
-  const provider = paymentMethod?.provider || 'stripe'
+  const provider = paymentMethod?.provider || 'paystack'
   const country = paymentMethod?.country || ''
 
   const features = [
@@ -55,11 +55,11 @@ export default function PremiumPage({
     { icon: <Shield size={16} />, t: 'Priority Support', d: 'Dedicated VIP customer support', premium: true },
   ]
 
-  // Fallback Stripe-only subscribe (when wrapper hasn't supplied handleBuy)
+  // Fallback subscribe via Paystack (when wrapper hasn't supplied handleBuy)
   async function fallbackSubscribe(pkg: any) {
     setLocalLoading(true)
     try {
-      const res = await fetch('/api/payments/stripe/checkout', {
+      const res = await fetch('/api/payments/paystack/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ packageId: pkg.id, type: 'premium' }),
@@ -191,7 +191,7 @@ export default function PremiumPage({
                   <div className="text-2xl font-black text-brand-500 my-2">
                     {formatLocalPrice ? formatLocalPrice(pkg.price, provider, country) : `$${pkg.price}`}
                   </div>
-                  {formatLocalPrice && provider !== 'stripe' && country && (
+                  {formatLocalPrice && country && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
                   )}
                   <div className="text-xs text-gray-400 mt-1">{pkg.description}</div>

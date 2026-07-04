@@ -15,14 +15,14 @@ export default function CreditsPage({ user, packages, orders }: Props) {
     if (!selected) { toast.error('Select a package first'); return }
     setLoading(true)
     try {
-      const res = await fetch('/api/payments/stripe/checkout', {
+      const res = await fetch('/api/payments/paystack/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ packageId: selected.id, type: 'credits' }),
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
-      else toast.error(data.error || 'Stripe not configured')
+      else toast.error(data.error || 'Payment gateway not configured. Please contact support.')
     } catch { toast.error('Payment failed') }
     finally { setLoading(false) }
   }

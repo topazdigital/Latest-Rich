@@ -87,7 +87,7 @@ function getProviderForCountry(countryCode: string): string {
   if (PAYHERO_COUNTRIES.includes(cc)) return "payhero"
   if (PAYSTACK_COUNTRIES.includes(cc)) return "paystack"
   if (PAYMONGO_COUNTRIES.includes(cc)) return "paymongo"
-  return "paypal"
+  return "paystack"
 }
 
 /* ─── GET: Which payment method for this user ─── */
@@ -104,7 +104,6 @@ router.get("/method", requireAuth, async (req, res) => {
     paddle: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa, Mastercard, Amex, Apple Pay or Google Pay", currencies: ["USD", "EUR", "GBP"] },
     intasend: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (IntaSend)", currencies: ["USD", "EUR", "GBP", "KES"] },
     pesapal: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (Pesapal)", currencies: ["USD", "EUR", "GBP", "KES"] },
-    paypal: { name: "PayPal / Card", icon: "🅿️", description: "Pay via PayPal or credit/debit card", currencies: ["USD", "EUR", "GBP"] },
   }
   res.json({ provider, country: resolvedCode, ...methods[provider] })
 })
@@ -1021,7 +1020,7 @@ router.get("/config", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   if ((user?.admin ?? 0) < 2) { res.status(403).json({ error: "Forbidden" }); return }
 
-  const keys = ["paypal_client_id", "paypal_client_secret", "pesapal_consumer_key", "pesapal_consumer_secret", "intasend_secret_key", "intasend_publishable_key", "stripe_secret_key", "stripe_publishable_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paystack_secret_key", "paystack_public_key", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate", "paddle_api_key", "paddle_webhook_secret"]
+  const keys = ["paystack_secret_key", "paystack_public_key", "payhero_api_username", "payhero_api_password", "payhero_channel_id", "paymongo_secret_key", "paymongo_public_key", "kes_rate", "ngn_rate", "ghs_rate", "zar_rate", "php_rate"]
   const rows = await db.select().from(siteConfigTable)
   const config: Record<string, string> = {}
   for (const k of keys) {

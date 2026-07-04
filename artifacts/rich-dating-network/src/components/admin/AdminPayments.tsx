@@ -3,25 +3,17 @@ import { authFetch } from '../../lib/auth'
 
 const PROVIDERS = [
   {
-    id: 'pesapal',
-    name: 'Pesapal (Cards)',
-    icon: '💳',
-    countries: 'All countries — Visa, Mastercard (universal default, Kenya-friendly)',
-    color: '#e53e3e',
+    id: 'paystack',
+    name: 'Paystack',
+    icon: '🏦',
+    countries: 'All countries — Visa, Mastercard from anywhere + NGN/GHS/ZAR/KES locally',
+    color: '#00c3f7',
     fields: [
-      { key: 'pesapal_consumer_key', label: 'Consumer Key', placeholder: 'qkio1BGGYAXTu2JOfm7XSXkXtN...', secret: false },
-      { key: 'pesapal_consumer_secret', label: 'Consumer Secret', placeholder: 'osGQ364R49cXKeOYSpaOnT+1...', secret: true },
-    ],
-  },
-  {
-    id: 'stripe',
-    name: 'Stripe',
-    icon: '💳',
-    countries: 'USA, UK, Canada, Australia, Europe, UAE, Singapore, Japan, and 40+ countries',
-    color: '#635bff',
-    fields: [
-      { key: 'stripe_secret_key', label: 'Secret Key', placeholder: 'sk_live_...', secret: true },
-      { key: 'stripe_publishable_key', label: 'Publishable Key', placeholder: 'pk_live_...', secret: false },
+      { key: 'paystack_secret_key', label: 'Secret Key', placeholder: 'sk_live_...', secret: true },
+      { key: 'paystack_public_key', label: 'Public Key', placeholder: 'pk_live_...', secret: false },
+      { key: 'ngn_rate', label: 'NGN per USD Rate', placeholder: 'e.g. 1600', secret: false },
+      { key: 'ghs_rate', label: 'GHS per USD Rate', placeholder: 'e.g. 12', secret: false },
+      { key: 'zar_rate', label: 'ZAR per USD Rate', placeholder: 'e.g. 19', secret: false },
     ],
   },
   {
@@ -35,20 +27,6 @@ const PROVIDERS = [
       { key: 'payhero_api_password', label: 'API Password', placeholder: 'Your PayHero password', secret: true },
       { key: 'payhero_channel_id', label: 'Channel ID', placeholder: 'e.g. 1234', secret: false },
       { key: 'kes_rate', label: 'KES per USD Rate', placeholder: 'e.g. 130', secret: false },
-    ],
-  },
-  {
-    id: 'paystack',
-    name: 'Paystack',
-    icon: '🏦',
-    countries: 'Nigeria, Ghana, South Africa, Egypt',
-    color: '#00c3f7',
-    fields: [
-      { key: 'paystack_secret_key', label: 'Secret Key', placeholder: 'sk_live_...', secret: true },
-      { key: 'paystack_public_key', label: 'Public Key', placeholder: 'pk_live_...', secret: false },
-      { key: 'ngn_rate', label: 'NGN per USD Rate', placeholder: 'e.g. 1600', secret: false },
-      { key: 'ghs_rate', label: 'GHS per USD Rate', placeholder: 'e.g. 12', secret: false },
-      { key: 'zar_rate', label: 'ZAR per USD Rate', placeholder: 'e.g. 19', secret: false },
     ],
   },
   {
@@ -71,7 +49,7 @@ export default function AdminPayments() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [activeProvider, setActiveProvider] = useState('pesapal')
+  const [activeProvider, setActiveProvider] = useState('paystack')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null)
 
@@ -86,7 +64,7 @@ export default function AdminPayments() {
   async function handleTest() {
     setTesting(true)
     setTestResult(null)
-    const names: Record<string, string> = { paddle: 'Paddle', stripe: 'Stripe', payhero: 'PayHero', paystack: 'Paystack', paymongo: 'PayMongo' }
+    const names: Record<string, string> = { payhero: 'PayHero', paystack: 'Paystack', paymongo: 'PayMongo' }
     try {
       const res = await authFetch(`/api/payments/${activeProvider}/test-credentials`, { method: 'POST' })
       const data = await res.json()
@@ -129,14 +107,14 @@ export default function AdminPayments() {
     { flag: '🇬🇭', country: 'Ghana', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇿🇦', country: 'South Africa', provider: 'Paystack', color: '#00c3f7' },
     { flag: '🇵🇭', country: 'Philippines', provider: 'PayMongo (GCash)', color: '#7c3aed' },
-    { flag: '🇺🇸', country: 'USA', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇬🇧', country: 'UK', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇨🇦', country: 'Canada', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇦🇺', country: 'Australia', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇩🇪', country: 'Germany', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇦🇪', country: 'UAE', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🇸🇬', country: 'Singapore', provider: 'Pesapal (Card)', color: '#e53e3e' },
-    { flag: '🌍', country: 'All others', provider: 'Pesapal (Card) — default', color: '#e53e3e' },
+    { flag: '🇺🇸', country: 'USA', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇬🇧', country: 'UK', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇨🇦', country: 'Canada', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇦🇺', country: 'Australia', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇩🇪', country: 'Germany', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇦🇪', country: 'UAE', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🇸🇬', country: 'Singapore', provider: 'Paystack (Card)', color: '#00c3f7' },
+    { flag: '🌍', country: 'All others', provider: 'Paystack (Card) — default', color: '#00c3f7' },
   ]
 
   return (
@@ -180,7 +158,7 @@ export default function AdminPayments() {
                   <p style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{provider.name}</p>
                   <p style={{ color: '#6b7280', fontSize: '0.75rem' }}>🌍 {provider.countries}</p>
                 </div>
-                <a href={`https://${provider.id === 'pesapal' ? 'merchant.pesapal.com' : provider.id === 'stripe' ? 'dashboard.stripe.com' : provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
+                <a href={`https://${provider.id === 'payhero' ? 'dashboard.payhero.co.ke' : provider.id === 'paystack' ? 'dashboard.paystack.com' : 'dashboard.paymongo.com'}`}
                   target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: provider.color, textDecoration: 'none', fontWeight: 700, flexShrink: 0 }}>
                   Dashboard →
                 </a>
@@ -264,7 +242,7 @@ export default function AdminPayments() {
               <li>Kenya/East Africa → <strong style={{ color: '#00a651' }}>PayHero M-Pesa</strong></li>
               <li>Nigeria/Ghana/SA → <strong style={{ color: '#00c3f7' }}>Paystack</strong></li>
               <li>Philippines → <strong style={{ color: '#7c3aed' }}>PayMongo (GCash)</strong></li>
-              <li>Everyone else → <strong style={{ color: '#e53e3e' }}>Pesapal (Card)</strong></li>
+              <li>Everyone else → <strong style={{ color: '#00c3f7' }}>Paystack (Card)</strong></li>
             </ul>
           </div>
         </div>
