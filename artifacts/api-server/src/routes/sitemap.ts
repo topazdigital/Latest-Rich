@@ -145,26 +145,24 @@ router.get("/sitemap-index.xml", async (_req, res) => {
   const mod = today()
   const children = ["sitemap-static.xml", ...CATEGORY_PREFIXES.map(p => `sitemap-${p}.xml`)]
 
-  // Count how many profile sitemap pages we need
+  // Count how many profile + image sitemap pages we need
   let profilePageCount = 1
+  let imagePageCount = 1
   try {
-    const rows = await db
-      .select({ id: usersTable.id })
+    const allPublic = await db
+      .select({ id: usersTable.id, photo: usersTable.photo, lastAccess: usersTable.lastAccess })
       .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.fake, 0),
-          eq(usersTable.banned, 0),
-          isNotNull(usersTable.photo),
-          ne(usersTable.photo, ""),
-          gt(usersTable.lastAccess, String(EIGHTEEN_MONTHS_AGO())),
-        )
-      )
-    profilePageCount = Math.max(1, Math.ceil(rows.length / PROFILE_PAGE_SIZE))
+      .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0), isNotNull(usersTable.photo), ne(usersTable.photo, "")))
+    const activeCount = allPublic.filter(u => Number(u.lastAccess) >= EIGHTEEN_MONTHS_AGO()).length
+    profilePageCount = Math.max(1, Math.ceil(activeCount / PROFILE_PAGE_SIZE))
+    imagePageCount = Math.max(1, Math.ceil(allPublic.length / IMAGE_PAGE_SIZE))
   } catch { /* DB unavailable — include at least page 1 */ }
 
   for (let i = 1; i <= profilePageCount; i++) {
     children.push(`sitemap-profiles-${i}.xml`)
+  }
+  for (let i = 1; i <= imagePageCount; i++) {
+    children.push(`sitemap-images-${i}.xml`)
   }
 
   const entries = children
@@ -217,6 +215,61 @@ for (const prefix of CATEGORY_PREFIXES) {
     sendXml(res, sitemapDoc(urls))
   })
 }
+
+// ── Photo URL resolver (mirrors frontend getPhotoUrl) ────────────────────────
+function resolvePhotoAbsUrl(photo: string | null | undefined): string | null {
+  if (!photo) return null
+  let p = photo
+  // Strip same-domain absolute URLs stored by legacy PHP
+  if (p.startsWith('http')) {
+    const sameOrigins = ['https://richdatingnetwork.com/', 'http://richdatingnetwork.com/',
+      'https://www.richdatingnetwork.com/', 'https://test.richdatingnetwork.com/']
+    let stripped = false
+    for (const o of sameOrigins) {
+      if (p.startsWith(o)) { p = p.slice(o.length); stripped = true; break }
+    }
+    if (!stripped) return p // genuinely external — return as-is
+  }
+  const prefixes = ['/assets/sources/uploads/', 'assets/sources/uploads/',
+    '/uploads/', 'uploads/', '/photos/', 'photos/']
+  for (const pfx of prefixes) {
+    if (p.startsWith(pfx)) { p = p.slice(pfx.length); break }
+  }
+  if (p.startsWith('/')) return `https://richdatingnetwork.com${p}`
+  return `https://richdatingnetwork.com/api/uploads/${p}`
+}
+
+// ── Image sitemap ─────────────────────────────────────────────────────────────
+// Lists profile photos for Google Images — extra discovery channel.
+// Paginated at 1000 images per file (Google's recommended max per sitemap).
+const IMAGE_PAGE_SIZE = 1000
+
+router.get("/sitemap-images-:page.xml", async (req, res) => {
+  const page = Math.max(1, parseInt(req.params.page as string) || 1)
+  try {
+    const rows = await db
+      .select({ id: usersTable.id, username: usersTable.username, name: usersTable.name, photo: usersTable.photo })
+      .from(usersTable)
+      .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0), isNotNull(usersTable.photo), ne(usersTable.photo, "")))
+      .limit(IMAGE_PAGE_SIZE)
+      .offset((page - 1) * IMAGE_PAGE_SIZE)
+
+    const urls = rows.map(u => {
+      const imgUrl = resolvePhotoAbsUrl(u.photo)
+      if (!imgUrl) return ''
+      const profileUrl = u.username
+        ? `${BASE}/@${u.username}`
+        : `${BASE}/profile/${u.id}`
+      const title = u.name ? `${u.name} — Rich Dating Network` : 'Rich Dating Network Member'
+      return `  <url>\n    <loc>${profileUrl}</loc>\n    <image:image>\n      <image:loc>${imgUrl}</image:loc>\n      <image:title>${title.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</image:title>\n    </image:image>\n  </url>`
+    }).filter(Boolean)
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>`
+    sendXml(res, xml)
+  } catch {
+    sendXml(res, `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`)
+  }
+})
 
 // ── Profile sitemap ───────────────────────────────────────────────────────────
 // Lists individual user profile pages so Google can discover and index them.

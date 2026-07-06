@@ -271,7 +271,7 @@ router.get("/meet", requireAuth, async (req, res) => {
 router.get("/public/members", async (req, res) => {
   try {
     const page = Math.max(1, parseInt((req.query.page as string) || "1"))
-    const limit = 24
+    const limit = Math.min(24, Math.max(1, parseInt((req.query.limit as string) || "24")))
     const offset = (page - 1) * limit
     const gender = (req.query.gender as string) || ""
     const country = (req.query.country as string) || ""

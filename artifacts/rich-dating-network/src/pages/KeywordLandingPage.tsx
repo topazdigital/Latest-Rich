@@ -4,6 +4,7 @@ import { Heart, Shield, Users, Check, ChevronRight, MapPin, Globe } from 'lucide
 import { getSeoLandingPage, SEO_LANDING_PAGES, PLACES_LIST, CATEGORY_PREFIXES, CATEGORY_LABELS } from '../data/seoLandingPages'
 import NotFound from './not-found'
 import PopularSearches from '../components/common/PopularSearches'
+import FeaturedMembers from '../components/seo/FeaturedMembers'
 
 function upsertMeta(name: string, content: string, property = false) {
   const attr = property ? 'property' : 'name'
@@ -230,6 +231,21 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
             Create Your Free Account <ChevronRight className="w-5 h-5" />
           </Link>
         </div>
+
+        {/* ── FEATURED MEMBERS: real profiles from this city/country ─────────── */}
+        {/* Shown on city pages (filter by city + country) and country pages (by country) */}
+        {(isCityPage || isCountryPage) && (
+          <FeaturedMembers
+            city={isCityPage ? page.city ?? undefined : undefined}
+            country={page.country ?? undefined}
+            heading={
+              isCityPage
+                ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.city}`
+                : `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.country}`
+            }
+            jsonLdId={page.slug}
+          />
+        )}
 
         {/* ── CITY PAGE: related links ──────────────────────────────────────── */}
         {isCityPage && (relatedByCity.length > 0 || otherCities.length > 0 || countryHubPage) && (
