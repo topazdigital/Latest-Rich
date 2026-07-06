@@ -18,8 +18,9 @@
 # ============================================================
 set -e
 
+GITHUB_TOKEN="${GITHUB_TOKEN:-$GITHUB_PERSONAL_ACCESS_TOKEN}"
 if [ -z "$GITHUB_TOKEN" ]; then
-  echo "ERROR: GITHUB_TOKEN secret is not set."
+  echo "ERROR: Neither GITHUB_TOKEN nor GITHUB_PERSONAL_ACCESS_TOKEN secret is set."
   exit 1
 fi
 
