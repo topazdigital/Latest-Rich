@@ -513,7 +513,7 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretKey}` },
-      body: JSON.stringify({ email: userEmail, amount, reference: ref, currency, callback_url: `${process.env.APP_URL || "https://" + process.env.REPLIT_DEV_DOMAIN}/api/payments/paystack/verify?ref=${ref}&type=${type}&pkg=${packageId}`, metadata: { userId: req.userId, type, packageId } }),
+      body: JSON.stringify({ email: userEmail, amount, reference: ref, currency, callback_url: `${process.env.APP_URL || (process.env.REPLIT_DEV_DOMAIN ? "https://" + process.env.REPLIT_DEV_DOMAIN : "https://richdatingnetwork.com")}/api/payments/paystack/verify?ref=${ref}&type=${type}&pkg=${packageId}`, metadata: { userId: req.userId, type, packageId } }),
     })
     const data = await response.json() as any
     if (!data.status) { res.status(400).json({ error: data.message || "Paystack error" }); return }
