@@ -1,4 +1,7 @@
 import { Router } from "express"
+import { db } from "@workspace/db"
+import { usersTable } from "@workspace/db/schema"
+import { eq, and, isNotNull, ne, gt } from "drizzle-orm"
 
 const router = Router()
 
@@ -137,10 +140,33 @@ function sendXml(res: any, xml: string) {
 }
 
 // ── Sitemap Index ─────────────────────────────────────────────────────────────
-// Lists: 1 static sitemap + 10 per-category sitemaps
-router.get("/sitemap-index.xml", (_req, res) => {
+// Lists: 1 static sitemap + 10 per-category sitemaps + profile sitemaps
+router.get("/sitemap-index.xml", async (_req, res) => {
   const mod = today()
   const children = ["sitemap-static.xml", ...CATEGORY_PREFIXES.map(p => `sitemap-${p}.xml`)]
+
+  // Count how many profile sitemap pages we need
+  let profilePageCount = 1
+  try {
+    const rows = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.fake, 0),
+          eq(usersTable.banned, 0),
+          isNotNull(usersTable.photo),
+          ne(usersTable.photo, ""),
+          gt(usersTable.lastAccess, String(EIGHTEEN_MONTHS_AGO())),
+        )
+      )
+    profilePageCount = Math.max(1, Math.ceil(rows.length / PROFILE_PAGE_SIZE))
+  } catch { /* DB unavailable — include at least page 1 */ }
+
+  for (let i = 1; i <= profilePageCount; i++) {
+    children.push(`sitemap-profiles-${i}.xml`)
+  }
+
   const entries = children
     .map(name => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${mod}</lastmod>\n  </sitemap>`)
     .join("\n")
@@ -191,6 +217,45 @@ for (const prefix of CATEGORY_PREFIXES) {
     sendXml(res, sitemapDoc(urls))
   })
 }
+
+// ── Profile sitemap ───────────────────────────────────────────────────────────
+// Lists individual user profile pages so Google can discover and index them.
+// Paginated at 5000 profiles per file. Only real (non-fake), non-banned users
+// with a profile photo and at least one login in the last 18 months.
+const PROFILE_PAGE_SIZE = 5000
+const EIGHTEEN_MONTHS_AGO = () => Math.floor(Date.now() / 1000) - 18 * 30 * 24 * 3600
+
+router.get("/sitemap-profiles-:page.xml", async (req, res) => {
+  const page = Math.max(1, parseInt(req.params.page as string) || 1)
+  const mod = today()
+  try {
+    const rows = await db
+      .select({ id: usersTable.id, username: usersTable.username, lastAccess: usersTable.lastAccess })
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.fake, 0),
+          eq(usersTable.banned, 0),
+          isNotNull(usersTable.photo),
+          ne(usersTable.photo, ""),
+          gt(usersTable.lastAccess, String(EIGHTEEN_MONTHS_AGO())),
+        )
+      )
+      .limit(PROFILE_PAGE_SIZE)
+      .offset((page - 1) * PROFILE_PAGE_SIZE)
+
+    const urls = rows.map(u => {
+      const loc = u.username
+        ? `${BASE}/@${u.username}`
+        : `${BASE}/profile/${u.id}`
+      return urlTag(loc, "0.6", "weekly", mod)
+    })
+    sendXml(res, sitemapDoc(urls))
+  } catch {
+    // DB unavailable — return empty sitemap rather than 500
+    sendXml(res, sitemapDoc([]))
+  }
+})
 
 // ── Legacy /sitemap.xml ───────────────────────────────────────────────────────
 // Kept for backwards compatibility — redirects crawlers to the index.

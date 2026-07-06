@@ -122,7 +122,12 @@ async function fetchProfileForOg(key: string, byUsername: boolean) {
   }
 }
 
-function buildProfileOgTags(profile: any): string {
+/** Build a complete, self-contained HTML page for social crawlers.
+ *  Serving a dedicated page (rather than injecting into index.html) guarantees
+ *  no duplicate <title> or og:* tags — crawlers always see exactly one of each.
+ *  Regular browsers never hit this path (isSocialCrawler gates it).
+ */
+function buildCrawlerHtml(profile: any): string {
   const name: string = profile.name || profile.username || "Profile";
   const age: string = profile.age ? String(profile.age) : "";
   const city: string = profile.city || "";
@@ -140,10 +145,8 @@ function buildProfileOgTags(profile: any): string {
     `Meet ${name}${age ? `, ${age}` : ""}${locationStr ? ` from ${locationStr}` : ""} on Rich Dating Network.`,
   ];
   if (occupation) descParts.push(`${occupation}.`);
-  if (bio) descParts.push(bio.slice(0, 100));
-  descParts.push(
-    "Connect with verified wealthy singles on the #1 luxury dating platform.",
-  );
+  if (bio) descParts.push(bio.slice(0, 120));
+  descParts.push("Connect with verified wealthy singles on the #1 luxury dating platform.");
   const description = descParts.join(" ").slice(0, 300);
 
   const canonical = profile.username
@@ -158,31 +161,52 @@ function buildProfileOgTags(profile: any): string {
     : "https://richdatingnetwork.com/opengraph.jpg";
 
   const e = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  return [
-    `<title>${e(title)}</title>`,
-    `<meta name="description" content="${e(description)}" />`,
-    `<meta property="og:title" content="${e(title)}" />`,
-    `<meta property="og:description" content="${e(description)}" />`,
-    `<meta property="og:type" content="profile" />`,
-    `<meta property="og:url" content="${e(canonical)}" />`,
-    `<meta property="og:site_name" content="Rich Dating Network" />`,
-    `<meta property="og:image" content="${e(photoUrl)}" />`,
-    `<meta property="og:image:width" content="800" />`,
-    `<meta property="og:image:height" content="800" />`,
-    `<meta property="og:image:alt" content="${e(name + " — Rich Dating Network")}" />`,
-    `<meta name="twitter:card" content="summary_large_image" />`,
-    `<meta name="twitter:title" content="${e(title)}" />`,
-    `<meta name="twitter:description" content="${e(description)}" />`,
-    `<meta name="twitter:image" content="${e(photoUrl)}" />`,
-    `<meta name="twitter:site" content="@richdatingnet" />`,
-    `<link rel="canonical" href="${e(canonical)}" />`,
-  ].join("\n    ");
+  const personSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name,
+    ...(age ? { age: parseInt(age) } : {}),
+    ...(locationStr ? { homeLocation: { "@type": "Place", name: locationStr } } : {}),
+    ...(bio ? { description: bio.slice(0, 300) } : {}),
+    ...(occupation ? { jobTitle: occupation } : {}),
+    ...(rawPhoto ? { image: photoUrl } : {}),
+    url: canonical,
+    memberOf: { "@type": "Organization", name: "Rich Dating Network", url: "https://richdatingnetwork.com" },
+  });
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${e(title)}</title>
+  <meta name="description" content="${e(description)}" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="${e(canonical)}" />
+  <meta property="og:type" content="profile" />
+  <meta property="og:url" content="${e(canonical)}" />
+  <meta property="og:site_name" content="Rich Dating Network" />
+  <meta property="og:title" content="${e(title)}" />
+  <meta property="og:description" content="${e(description)}" />
+  <meta property="og:image" content="${e(photoUrl)}" />
+  <meta property="og:image:width" content="800" />
+  <meta property="og:image:height" content="800" />
+  <meta property="og:image:alt" content="${e(name)} — Rich Dating Network" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@richdatingnet" />
+  <meta name="twitter:title" content="${e(title)}" />
+  <meta name="twitter:description" content="${e(description)}" />
+  <meta name="twitter:image" content="${e(photoUrl)}" />
+  <script type="application/ld+json">${personSchema}</script>
+</head>
+<body>
+  <h1>${e(name)}${age ? `, ${age}` : ""}${city ? ` — ${e(city)}` : ""}</h1>
+  ${bio ? `<p>${e(bio.slice(0, 200))}</p>` : ""}
+  <p><a href="${e(canonical)}">View full profile on Rich Dating Network</a></p>
+</body>
+</html>`;
 }
 
 // Serve built React frontend in production
@@ -197,26 +221,31 @@ const frontendDir = possibleFrontendDirs.find(d => fs.existsSync(d));
 if (frontendDir) {
   const indexPath = path.join(frontendDir, "index.html");
 
-  // Social crawler OG injection — runs before static file serving
-  // Only activates for known bots; regular browsers fall through to express.static
-  app.get(["/profile/:id", "/@:username"], async (req, res, next) => {
+  // Social crawler handler — intercepts /profile/:id and /@username for bots.
+  // Serves a complete, self-contained HTML page with profile-specific OG/Twitter
+  // tags so WhatsApp, Telegram, Facebook, Slack etc. show rich link previews.
+  // Regular browsers fall through to express.static → SPA as normal.
+  //
+  // Uses a regex route (/^\/@.+/ + /profile/:id) to avoid any path-to-regexp v8
+  // issues with the literal "@" character in Express 5 named segments.
+  const crawlerHandler = async (req: any, res: any, next: any) => {
     if (!isSocialCrawler(req.headers["user-agent"])) return next();
-    const byUsername = !!req.params.username;
-    const key = byUsername ? req.params.username : req.params.id;
-    const profile = await fetchProfileForOg(key, byUsername).catch(() => null);
-    if (!profile) return next();
-    try {
-      const html = fs.readFileSync(indexPath, "utf-8");
-      const tags = buildProfileOgTags(profile);
-      // Replace the placeholder we added to index.html; fall back to appending before </head>
-      const injected = html.includes("<!-- __OG_INJECT__ -->")
-        ? html.replace("<!-- __OG_INJECT__ -->", tags)
-        : html.replace("</head>", `    ${tags}\n  </head>`);
-      res.type("html").send(injected);
-    } catch {
-      next();
+    const rawPath: string = req.path;
+    let profile: any = null;
+    if (rawPath.startsWith("/@")) {
+      const username = rawPath.slice(2); // strip leading "/@"
+      profile = await fetchProfileForOg(username, true).catch(() => null);
+    } else if (req.params?.id) {
+      profile = await fetchProfileForOg(req.params.id, false).catch(() => null);
     }
-  });
+    if (!profile) return next();
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.type("html").send(buildCrawlerHtml(profile));
+  };
+
+  app.get("/profile/:id", crawlerHandler);
+  // Regex route safely matches /@anything without relying on named param "@" handling
+  app.get(/^\/@.+/, crawlerHandler);
 
   app.use(express.static(frontendDir));
   // SPA fallback — any non-API route serves index.html
