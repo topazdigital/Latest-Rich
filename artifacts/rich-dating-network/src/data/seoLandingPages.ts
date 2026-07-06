@@ -866,7 +866,17 @@ const CATEGORIES: CategoryDef[] = [
   },
 ]
 
-// ── Generate all city pages ────────────────────────────────────────────────
+// ── Generate country hub pages ────────────────────────────────────────────
+// One page per country × category (e.g. /sugar-daddy-kenya, /rich-men-nigeria).
+// These act as mid-level hubs that link down to all city pages.
+
+const uniqueCountries = Array.from(new Set(PLACES_LIST.map(p => p.country)))
+
+const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
+  const countrySlug = slugify(country)
+  // Remove redundant "City, Country" → "Country" duplication in copy
+  const dedup = (s: string) =>
+    s.replace(new RegExp(`, ${country.replace(/[.*+?^${}()|[\]\\]/g, '\\// ── Generate all city pages ────────────────────────────────────────────────
 
 const cityPages: SeoLandingPage[] = PLACES_LIST.flatMap(({ city, country }) => {
   const citySlug = slugify(city)
@@ -904,6 +914,51 @@ const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
     keywords: cat.keywords(country),
     intro: dedup(cat.intro(country, country)),
   }))
+})')}`, 'g'), '')
+  return CATEGORIES.map(cat => ({
+    slug: `${cat.prefix}-${countrySlug}`,
+    country,
+    category: cat.prefix,
+    h1: cat.h1(country),
+    title: dedup(cat.title(country, country)),
+    description: dedup(cat.description(country, country)),
+    keywords: cat.keywords(country),
+    intro: dedup(cat.intro(country, country)),
+  }))
+})
+
+// ── Generate all city pages (with collision-safe slugs) ────────────────────
+// Two cities can share the same slugify(city) value (e.g. Hamilton in Canada
+// AND New Zealand; Valencia in Spain AND Venezuela; Singapore city == country).
+// We detect any slug that would collide with another city page OR a country hub
+// page and append "-${slugify(country)}" to make it unique.
+
+const countryPageSlugSet = new Set(countryPages.map(p => p.slug))
+
+const cityPageRaw: SeoLandingPage[] = PLACES_LIST.flatMap(({ city, country }) => {
+  const citySlug = slugify(city)
+  return CATEGORIES.map(cat => ({
+    slug: `${cat.prefix}-${citySlug}`,
+    city,
+    country,
+    category: cat.prefix,          // ← always use prefix (was incorrectly cat.label)
+    h1: cat.h1(city),
+    title: cat.title(city, country),
+    description: cat.description(city, country),
+    keywords: cat.keywords(city),
+    intro: cat.intro(city, country),
+  }))
+})
+
+// Count how many city pages share the same raw slug
+const citySlugCount = new Map<string, number>()
+for (const p of cityPageRaw) citySlugCount.set(p.slug, (citySlugCount.get(p.slug) ?? 0) + 1)
+
+const cityPages: SeoLandingPage[] = cityPageRaw.map(p => {
+  const collision = (citySlugCount.get(p.slug) ?? 0) > 1 || countryPageSlugSet.has(p.slug)
+  if (!collision) return p
+  const disambig = `${p.slug}-${slugify(p.country!)}`
+  return { ...p, slug: disambig }
 })
 
 // ── Generic (non-city) pages ──────────────────────────────────────────────

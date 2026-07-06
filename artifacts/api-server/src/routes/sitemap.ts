@@ -107,12 +107,26 @@ const CATEGORY_PREFIXES = [
   "sugar-daddy","sugar-mummy","rich-men","rich-women",
   "wealthy-men","wealthy-women","millionaire-dating",
   "cougar-dating","older-men","luxury-dating",
+  // expanded
+  "dating-events","find-sponsor","sugar-baby","generous-men","rich-singles",
 ]
 
 const GENERIC_SLUGS = [
   "sugar-daddy","sugar-mummy","rich-men-dating","rich-women-dating",
   "millionaire-dating","cougar-dating","luxury-dating",
   "seeking-arrangement","wealthy-singles","rich-dating",
+  // expanded — app/site pages (high autocomplete volume)
+  "sugar-mummy-dating-sites","sugar-mummy-dating-app",
+  "sugar-daddy-dating-sites","sugar-daddy-dating-app",
+  "rich-men-dating-app","rich-women-dating-app",
+  // how-to / intent pages
+  "how-to-find-sugar-daddy","how-to-find-sugar-mummy",
+  // sponsor / arrangement / local terms
+  "sponsor-dating","blesser-dating","dating-events",
+  // find rich person
+  "find-rich-man","find-rich-woman",
+  // South Africa / Kenya terms
+  "runs-girls-dating","wealthier-dating",
 ]
 
 const STATIC_PAGES = ["/","/login","/register","/members","/locations","/terms","/privacy","/contact"]
