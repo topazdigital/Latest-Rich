@@ -33,6 +33,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// ── Google Search Console verification ───────────────────────────────────────
+app.get("/google76ed499fbdba9e86.html", (_req, res) => {
+  res.type("text/html").send("google-site-verification: google76ed499fbdba9e86.html")
+})
+
 // ── SEO: robots.txt ──────────────────────────────────────────────────────────
 app.get("/robots.txt", (_req, res) => {
   res.type("text/plain").send(
