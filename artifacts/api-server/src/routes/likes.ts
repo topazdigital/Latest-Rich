@@ -115,6 +115,12 @@ router.post("/", requireAuth, async (req, res) => {
     if (me && me.fake !== 1) {
       const fromUser = { id: me.id, name: me.name, photo: me.photoThumb || me.photo, age: me.age, city: me.city }
       send(targetId, { type: "liked", fromUser, isMatch, superlike: !!superlike })
+      // Push notification to the liked user
+      import("../lib/push").then(({ sendPushToUser }) => {
+        const title = superlike ? `⭐ ${me.name} super liked you!` : isMatch ? `💝 It's a match with ${me.name}!` : `💌 ${me.name} liked you`
+        const body = isMatch ? "You both liked each other — send a message!" : "View their profile on Rich Dating Network"
+        sendPushToUser(targetId, { title, body, url: `/profile/${myId}` })
+      }).catch(() => {})
     }
 
     if (isMatch) {

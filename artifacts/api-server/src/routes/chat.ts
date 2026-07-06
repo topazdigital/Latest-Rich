@@ -194,6 +194,17 @@ router.post("/", requireAuth, async (req, res) => {
       }).catch(() => {})
     }
 
+    // Push notify real recipient when a real sender messages them
+    if (sender.fake !== 1 && recipient?.fake !== 1) {
+      import("../lib/push").then(({ sendPushToUser }) => {
+        sendPushToUser(recipientId, {
+          title: `💬 New message from ${sender.name}`,
+          body: mediaType ? `Sent a ${mediaType}` : msgText.slice(0, 80),
+          url: `/chat/${sender.id}`,
+        })
+      }).catch(() => {})
+    }
+
     res.json({ ...msg, credits: updatedSender?.credits })
   } catch (err) {
     console.error(err)

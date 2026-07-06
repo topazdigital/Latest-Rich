@@ -4,6 +4,7 @@ import { getPhotoUrl, isOnline, truncate, profileUrl } from '../../lib/utils'
 import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import AdSenseAd from '../ui/AdSenseAd'
 import { useWSEvent } from '../../hooks/useWebSocket'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
 import { authFetch } from '../../lib/auth'
@@ -271,7 +272,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-            {filtered.map((u: any) => {
+            {filtered.map((u: any, idx: number) => {
               const isNearby = u.city === myCity || u.country === myCountry
               const isBoosted = !!u.isBoosted
               const compat = u._compat as number
@@ -338,6 +339,13 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                   </div>
                 </div>
               )
+            }).flatMap((card: any, idx: number) => {
+              const showAd = (idx + 1) % 10 === 0
+              return showAd
+                ? [card, <div key={`ad-${idx}`} className="col-span-2 sm:col-span-3 md:col-span-4 xl:col-span-5 my-1">
+                    <AdSenseAd slot="7892341056" format="auto" style={{ minHeight: 90 }} />
+                  </div>]
+                : [card]
             })}
           </div>
 

@@ -38,6 +38,11 @@ app.get("/google76ed499fbdba9e86.html", (_req, res) => {
   res.type("text/html").send("google-site-verification: google76ed499fbdba9e86.html")
 })
 
+// ── Google AdSense ads.txt ────────────────────────────────────────────────────
+app.get("/ads.txt", (_req, res) => {
+  res.type("text/plain").send("google.com, pub-6533927898054426, DIRECT, f08c47fec0942fa0")
+})
+
 // ── SEO: robots.txt ──────────────────────────────────────────────────────────
 app.get("/robots.txt", (_req, res) => {
   res.type("text/plain").send(

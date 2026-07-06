@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation, useSearch } from "w
 import { Toaster } from "react-hot-toast"
 import { useEffect, useState, useCallback } from "react"
 import { usePWAInstall } from "./hooks/usePWAInstall"
+import { usePushNotifications } from "./hooks/usePushNotifications"
 
 import { AuthContext, useAuth, useAuthState } from "./hooks/useAuth"
 import LandingPage from "./components/landing/LandingPage"
@@ -62,6 +63,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
   const search = useSearch()
   const { user, loading } = useAuth()
+  usePushNotifications(user?.id)
 
   useEffect(() => {
     if (loading) return

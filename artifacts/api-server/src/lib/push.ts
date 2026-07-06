@@ -57,6 +57,42 @@ export async function getVapidPublicKey(): Promise<string | null> {
   return keys?.publicKey ?? null
 }
 
+export async function sendPushToUser(userId: number, payload: {
+  title: string
+  body: string
+  url?: string
+  icon?: string
+}) {
+  try {
+    const subs = await db.select().from(pushSubscriptionsTable)
+      .where(eq(pushSubscriptionsTable.userId, userId))
+    if (subs.length === 0) return
+
+    const message = JSON.stringify({
+      title: payload.title,
+      body: payload.body,
+      url: payload.url || "/",
+      icon: payload.icon || "/icons/icon-192.svg",
+    })
+
+    await Promise.allSettled(
+      subs.map(sub =>
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          message,
+        ).catch(async (err: any) => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.endpoint, sub.endpoint)).catch(() => {})
+          }
+          throw err
+        })
+      )
+    )
+  } catch (err) {
+    logger.error({ err, userId }, "Failed to send push to user")
+  }
+}
+
 export async function sendPushToModerators(payload: {
   title: string
   body: string
