@@ -97,7 +97,7 @@ export default function CreditsPageWrapper() {
   const providerInfo = PROVIDER_INFO[effectiveProvider] || PROVIDER_INFO.paystack
   const pkg = packages.find(p => p.id === selectedPkg)
 
-  const mpesaGateway = customGateways.find((g: any) => g.name?.toLowerCase().includes('mpesa')) || null
+  const mpesaGateway = customGateways.find((g: any) => (g.name || '').toLowerCase().replace(/[^a-z]/g, '').includes('mpesa')) || null
   const otherGateways = customGateways.filter((g: any) => g.id !== mpesaGateway?.id)
 
   async function handleBuy(pkgId: number) {
