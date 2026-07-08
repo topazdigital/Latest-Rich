@@ -132,6 +132,7 @@ export const ordersTable = mysqlTable("orders", {
   id: serial("id").primaryKey(),
   userId: int("user_id").notNull(),
   amount: float("amount").default(0),
+  amountUsd: float("amount_usd").default(0),
   currency: text("currency").default("USD"),
   type: text("type").default("credits"),
   description: text("description").default(""),

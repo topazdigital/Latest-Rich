@@ -52,6 +52,8 @@ export default function AdminPayments() {
   const [activeProvider, setActiveProvider] = useState('paystack')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null)
+  const [fetchingRates, setFetchingRates] = useState(false)
+  const [ratesResult, setRatesResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   useEffect(() => {
     authFetch('/api/payments/config').then(r => r.json()).then(data => { setConfig(data); setLoading(false) }).catch(() => setLoading(false))
@@ -77,6 +79,29 @@ export default function AdminPayments() {
       setTestResult({ ok: false, message: `Network error — could not reach ${names[activeProvider]}` })
     }
     setTesting(false)
+  }
+
+  async function handleFetchRates() {
+    setFetchingRates(true)
+    setRatesResult(null)
+    try {
+      const res = await authFetch('/api/admin/exchange-rates/refresh', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        const rateLines = Object.entries(data.rates as Record<string, number>)
+          .map(([code, rate]) => `${code}: ${Math.round(rate as number)}`)
+          .join('  ·  ')
+        setRatesResult({ ok: true, message: `✓ Rates updated (${data.date}): ${rateLines}` })
+        // Reload config so input placeholders show new values
+        const refreshed = await authFetch('/api/payments/config').then(r => r.json())
+        setConfig(refreshed)
+      } else {
+        setRatesResult({ ok: false, message: data.error || 'Failed to fetch rates' })
+      }
+    } catch {
+      setRatesResult({ ok: false, message: 'Network error — could not reach exchange rate API' })
+    }
+    setFetchingRates(false)
   }
 
   async function handleSave() {
@@ -235,8 +260,44 @@ export default function AdminPayments() {
             </div>
           )}
 
-          {/* How it works note */}
+          {/* Auto-fetch exchange rates */}
           <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '0.75rem', padding: '0.875rem 1rem', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.78rem', margin: 0 }}>🔄 Exchange Rates (auto-convert)</p>
+              <button
+                onClick={handleFetchRates}
+                disabled={fetchingRates}
+                style={{
+                  padding: '0.35rem 0.875rem', borderRadius: '0.5rem', border: '1px solid #f59e0b',
+                  background: 'transparent', color: '#f59e0b', fontWeight: 700, fontSize: '0.75rem',
+                  fontFamily: 'inherit', cursor: fetchingRates ? 'not-allowed' : 'pointer',
+                  opacity: fetchingRates ? 0.6 : 1,
+                }}
+              >
+                {fetchingRates ? 'Fetching…' : '🌐 Fetch Live Rates'}
+              </button>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: '0.5rem' }}>
+              Fetches USD → KES, NGN, GHS, ZAR, PHP rates from <strong style={{ color: '#94a3b8' }}>frankfurter.app</strong> (free, ECB data) and saves them automatically. Use instead of updating rates manually.
+            </p>
+            {ratesResult && (
+              <p style={{
+                color: ratesResult.ok ? '#4ade80' : '#f87171',
+                fontSize: '0.72rem', fontWeight: 600, margin: '0.3rem 0 0',
+                background: ratesResult.ok ? '#052e16' : '#1c0a0a',
+                border: `1px solid ${ratesResult.ok ? '#166534' : '#7f1d1d'}`,
+                borderRadius: '0.4rem', padding: '0.4rem 0.6rem',
+              }}>{ratesResult.message}</p>
+            )}
+            {config.exchange_rates_updated && !ratesResult && (
+              <p style={{ color: '#475569', fontSize: '0.68rem', margin: '0.3rem 0 0' }}>
+                Last updated: {config.exchange_rates_updated}
+              </p>
+            )}
+          </div>
+
+          {/* How it works note */}
+          <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '0.75rem', padding: '0.875rem 1rem', marginTop: '0.75rem' }}>
             <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.78rem', marginBottom: '0.4rem' }}>💡 How routing works</p>
             <ul style={{ color: '#94a3b8', fontSize: '0.78rem', lineHeight: '1.7', paddingLeft: '1rem', margin: 0 }}>
               <li>Kenya/East Africa → <strong style={{ color: '#00a651' }}>PayHero M-Pesa</strong></li>

@@ -33,6 +33,11 @@ ALTER TABLE `users`
 -- If your old site has admin=1 for admins, run:
 -- UPDATE `users` SET `admin` = 2 WHERE `admin` = 1;
 
+-- ─── NEW COLUMNS ON `orders` TABLE ──────────────────────────
+
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `amount_usd` FLOAT DEFAULT 0 COMMENT 'USD equivalent at time of payment (for revenue reporting)';
+
 -- ─── NEW TABLES ──────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS `user_extended` (

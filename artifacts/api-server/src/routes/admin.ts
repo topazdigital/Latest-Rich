@@ -71,8 +71,10 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
     const [newToday] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.created, today))
     const [premiumUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.premium, 1))
     const [onlineUsers] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.lastAccess as any, String(now() - 300)))
-    const totalRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(amount), 0)` }).from(ordersTable).where(eq(ordersTable.status, "completed"))
-    const todayRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(amount), 0)` }).from(ordersTable).where(and(eq(ordersTable.status, "completed"), gte(ordersTable.time, today)))
+    // Sum USD-equivalent amounts. New orders have amount_usd set; old USD orders fall back to amount;
+    // old non-USD orders (KES/NGN etc.) without amount_usd are excluded to avoid inflating the number.
+    const totalRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(CASE WHEN amount_usd > 0 THEN amount_usd WHEN currency = 'USD' THEN amount ELSE 0 END), 0)` }).from(ordersTable).where(eq(ordersTable.status, "completed"))
+    const todayRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(CASE WHEN amount_usd > 0 THEN amount_usd WHEN currency = 'USD' THEN amount ELSE 0 END), 0)` }).from(ordersTable).where(and(eq(ordersTable.status, "completed"), gte(ordersTable.time, today)))
     const [totalMessages] = await db.select({ count: count() }).from(messagesTable)
     const [totalLikes] = await db.select({ count: count() }).from(likesTable)
     const [bannedUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.banned, 1))
@@ -1423,6 +1425,43 @@ router.post("/orders/:id/reverse-credits", requireAuth, requireAdmin, async (req
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
+  }
+})
+
+// GET /api/admin/exchange-rates/refresh — fetch live rates from frankfurter.app and save to site_config
+router.post("/exchange-rates/refresh", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const response = await fetch("https://api.frankfurter.app/latest?from=USD&to=KES,NGN,GHS,ZAR,PHP,TZS,UGX,RWF,EGP")
+    if (!response.ok) { res.status(502).json({ error: "Exchange rate API unavailable" }); return }
+    const data = await response.json() as { rates: Record<string, number>; date: string }
+    const rates = data.rates
+    const mapping: Record<string, string> = {
+      KES: "kes_rate", NGN: "ngn_rate", GHS: "ghs_rate",
+      ZAR: "zar_rate", PHP: "php_rate", TZS: "tzs_rate",
+      UGX: "ugx_rate", RWF: "rwf_rate", EGP: "egp_rate",
+    }
+    const updated: Record<string, number> = {}
+    for (const [code, key] of Object.entries(mapping)) {
+      if (rates[code]) {
+        const rateVal = String(Math.round(rates[code]))
+        const existing = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key as any, key)).limit(1)
+        if (existing.length) {
+          await db.update(siteConfigTable).set({ value: rateVal } as any).where(eq(siteConfigTable.key as any, key))
+        } else {
+          await db.insert(siteConfigTable).values({ key, value: rateVal } as any)
+        }
+        updated[code] = rates[code]
+      }
+    }
+    // Also save timestamp
+    const tsKey = "exchange_rates_updated"
+    const existingTs = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key as any, tsKey)).limit(1)
+    const tsVal = data.date
+    if (existingTs.length) await db.update(siteConfigTable).set({ value: tsVal } as any).where(eq(siteConfigTable.key as any, tsKey))
+    else await db.insert(siteConfigTable).values({ key: tsKey, value: tsVal } as any)
+    res.json({ success: true, rates: updated, date: data.date })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch exchange rates" })
   }
 })
 

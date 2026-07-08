@@ -131,6 +131,7 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   amount: real("amount").default(0),
+  amountUsd: real("amount_usd").default(0),
   currency: text("currency").default("USD"),
   type: text("type").default("credits"),
   description: text("description").default(""),

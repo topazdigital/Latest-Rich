@@ -139,7 +139,7 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
       cancel_url: `${baseUrl}/${type}?cancelled=1`,
       metadata: { userId: String(req.userId), type, packageId: String(packageId) },
     })
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: lineItem.amount / 100, currency: "USD", type, description: lineItem.name, status: "pending", stripeSessionId: session.id, time: now() })
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: lineItem.amount / 100, amountUsd: lineItem.amount / 100, currency: "USD", type, description: lineItem.name, status: "pending", stripeSessionId: session.id, time: now() })
     res.json({ url: session.url })
   } catch (err: any) {
     console.error("Stripe checkout error:", err)
@@ -234,8 +234,10 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
       res.status(400).json({ error: errMsg, payhero_status: response.status, payhero_body: data })
       return
     }
+    const kesRateNum = Number(await getConfig("kes_rate") || "130")
     await db.insert(ordersTable).values({
-      userId: req.userId!, amount, currency: "KES", type, description,
+      userId: req.userId!, amount, amountUsd: parseFloat((amount / kesRateNum).toFixed(2)),
+      currency: "KES", type, description,
       status: "pending", stripeSessionId: ref, credits: creditsToAward, time: now(),
     })
     res.json({ success: true, reference: ref, checkoutRequestId: data.CheckoutRequestID, message: "STK push sent to your phone. Enter your M-Pesa PIN to complete." })
@@ -517,7 +519,8 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     })
     const data = await response.json() as any
     if (!data.status) { res.status(400).json({ error: data.message || "Paystack error" }); return }
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, currency, type, description, status: "pending", stripeSessionId: ref, credits, time: now() })
+    const amountUsdPaystack = currency === "USD" ? parseFloat((amount / 100).toFixed(2)) : parseFloat((amount / 100 / rate).toFixed(2))
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, time: now() })
     res.json({ url: data.data.authorization_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Paystack error" })
@@ -593,7 +596,7 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     })
     const data = await response.json() as any
     if (data.errors) { res.status(400).json({ error: data.errors[0]?.detail || "PayMongo error" }); return }
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, time: now() })
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: parseFloat((amount / 100 / phpRate).toFixed(2)), currency: "PHP", type, description, status: "pending", stripeSessionId: ref, time: now() })
     res.json({ url: data.data?.attributes?.checkout_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "PayMongo error" })
@@ -659,7 +662,7 @@ router.post("/intasend/checkout", requireAuth, async (req, res) => {
       res.status(400).json({ error: msg }); return
     }
     await db.insert(ordersTable).values({
-      userId: req.userId!, amount, currency: "USD", type, description,
+      userId: req.userId!, amount, amountUsd: amount, currency: "USD", type, description,
       status: "pending", stripeSessionId: ref, credits, packageId: parseInt(packageId) || 0, time: now(),
     })
     res.json({ url: data.url })
@@ -814,7 +817,7 @@ router.post("/pesapal/checkout", requireAuth, async (req, res) => {
       res.status(400).json({ error: data.message || data.error || `Pesapal error (${response.status})` }); return
     }
     await db.insert(ordersTable).values({
-      userId: req.userId!, amount, currency: "USD", type, description,
+      userId: req.userId!, amount, amountUsd: amount, currency: "USD", type, description,
       status: "pending", stripeSessionId: ref, credits, time: now(),
     })
     res.json({ url: data.redirect_url })
@@ -964,7 +967,7 @@ router.post("/paddle/checkout", requireAuth, async (req, res) => {
       res.status(400).json({ error: msg }); return
     }
     await db.insert(ordersTable).values({
-      userId: req.userId!, amount: amount / 100, currency: "USD", type, description,
+      userId: req.userId!, amount: amount / 100, amountUsd: amount / 100, currency: "USD", type, description,
       status: "pending", stripeSessionId: ref, credits, time: now(),
     })
     res.json({ url: data.data?.checkout?.url })
