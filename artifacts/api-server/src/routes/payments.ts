@@ -235,8 +235,9 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
       return
     }
     const kesRateNum = Number(await getConfig("kes_rate") || "130")
+    const kesAmountUsd = (Number.isFinite(kesRateNum) && kesRateNum > 0) ? parseFloat((amount / kesRateNum).toFixed(2)) : 0
     await db.insert(ordersTable).values({
-      userId: req.userId!, amount, amountUsd: parseFloat((amount / kesRateNum).toFixed(2)),
+      userId: req.userId!, amount, amountUsd: kesAmountUsd,
       currency: "KES", type, description,
       status: "pending", stripeSessionId: ref, credits: creditsToAward, time: now(),
     })
@@ -519,7 +520,9 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     })
     const data = await response.json() as any
     if (!data.status) { res.status(400).json({ error: data.message || "Paystack error" }); return }
-    const amountUsdPaystack = currency === "USD" ? parseFloat((amount / 100).toFixed(2)) : parseFloat((amount / 100 / rate).toFixed(2))
+    const amountUsdPaystack = currency === "USD"
+      ? parseFloat((amount / 100).toFixed(2))
+      : (Number.isFinite(rate) && rate > 0) ? parseFloat((amount / 100 / rate).toFixed(2)) : 0
     await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, time: now() })
     res.json({ url: data.data.authorization_url, reference: ref })
   } catch (err: any) {
@@ -596,7 +599,8 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     })
     const data = await response.json() as any
     if (data.errors) { res.status(400).json({ error: data.errors[0]?.detail || "PayMongo error" }); return }
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: parseFloat((amount / 100 / phpRate).toFixed(2)), currency: "PHP", type, description, status: "pending", stripeSessionId: ref, time: now() })
+    const phpAmountUsd = (Number.isFinite(phpRate) && phpRate > 0) ? parseFloat((amount / 100 / phpRate).toFixed(2)) : 0
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: phpAmountUsd, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, time: now() })
     res.json({ url: data.data?.attributes?.checkout_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "PayMongo error" })

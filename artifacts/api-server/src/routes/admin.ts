@@ -648,10 +648,11 @@ router.post("/orders/grant-credits", requireAuth, requireAdmin, async (req, res)
     const newCredits = (user.credits || 0) + creditsNum
     await db.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, user.id))
 
-    // Create an order record for bookkeeping
+    // Create an order record for bookkeeping (amount_usd = 0 for manual grants)
     await db.insert(ordersTable).values({
       userId: user.id,
       amount: 0,
+      amountUsd: 0,
       currency: "MANUAL",
       type: "credits",
       description: note || `Manual credit grant by admin`,
@@ -1443,7 +1444,7 @@ router.post("/exchange-rates/refresh", requireAuth, requireAdmin, async (req, re
     const updated: Record<string, number> = {}
     for (const [code, key] of Object.entries(mapping)) {
       if (rates[code]) {
-        const rateVal = String(Math.round(rates[code]))
+        const rateVal = rates[code].toFixed(4) // preserve decimal precision for accurate conversions
         const existing = await db.select().from(siteConfigTable).where(eq(siteConfigTable.key as any, key)).limit(1)
         if (existing.length) {
           await db.update(siteConfigTable).set({ value: rateVal } as any).where(eq(siteConfigTable.key as any, key))
