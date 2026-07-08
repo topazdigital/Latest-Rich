@@ -41,7 +41,7 @@ export default function CreditsPageWrapper() {
   const [mpesaRef, setMpesaRef] = useState('')
   const [countdown, setCountdown] = useState(90)
   const [pollOutcome, setPollOutcome] = useState<'waiting' | 'success' | 'cancelled' | 'failed' | 'timeout'>('waiting')
-  const [step, setStep] = useState<'packages' | 'confirm' | 'polling' | 'custom'>('packages')
+  const [step, setStep] = useState<'packages' | 'confirm' | 'polling'>('packages')
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [paymentType] = useState<'credits'>('credits')
@@ -50,8 +50,8 @@ export default function CreditsPageWrapper() {
   const [proof, setProof] = useState('')
   const [customOrders, setCustomOrders] = useState<any[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'auto' | 'manual'>('auto')
   const [useCard, setUseCard] = useState(false)
+  const [showManual, setShowManual] = useState(false)
 
   useEffect(() => {
     fetch('/api/credits/packages').then(r => r.json()).then((d: any[]) => {
@@ -97,9 +97,14 @@ export default function CreditsPageWrapper() {
   const providerInfo = PROVIDER_INFO[effectiveProvider] || PROVIDER_INFO.paystack
   const pkg = packages.find(p => p.id === selectedPkg)
 
+  const mpesaGateway = customGateways.find((g: any) => g.name?.toLowerCase().includes('mpesa')) || null
+  const otherGateways = customGateways.filter((g: any) => g.id !== mpesaGateway?.id)
+
   async function handleBuy(pkgId: number) {
     setSelectedPkg(pkgId)
     if (effectiveProvider === 'payhero') {
+      setShowManual(false)
+      setProof('')
       setStep('confirm')
     } else {
       await initiatePayment(pkgId)
@@ -191,8 +196,9 @@ export default function CreditsPageWrapper() {
     }, 4000)
   }, [stopPolling, refreshUser])
 
-  async function handleCustomSubmit() {
-    if (!selectedGateway || !selectedPkg || !proof.trim()) {
+  async function handleCustomSubmit(gatewayOverride?: any) {
+    const gateway = gatewayOverride || selectedGateway
+    if (!gateway || !selectedPkg || !proof.trim()) {
       toast.error('Please select a package and enter your payment proof')
       return
     }
@@ -202,7 +208,7 @@ export default function CreditsPageWrapper() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          gatewayId: selectedGateway.id,
+          gatewayId: gateway.id,
           type: 'credits',
           packageId: selectedPkg,
           proof,
@@ -212,6 +218,7 @@ export default function CreditsPageWrapper() {
       if (!res.ok) { toast.error(data.error || 'Submission failed'); setSubmitting(false); return }
       toast.success(`Payment submitted! It will be reviewed within ${data.reviewTime} hour(s).`)
       setStep('packages')
+      setShowManual(false)
       setProof('')
       setSelectedGateway(null)
       setSelectedPkg(null)
@@ -219,8 +226,6 @@ export default function CreditsPageWrapper() {
     } catch { toast.error('Something went wrong') }
     setSubmitting(false)
   }
-
-  const hasManualGateways = customGateways.length > 0
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '1.5rem 1rem' }}>
@@ -243,34 +248,8 @@ export default function CreditsPageWrapper() {
         <div style={{ fontSize: '2rem' }}>💰</div>
       </div>
 
-      {/* Payment method tabs (if manual gateways available) */}
-      {hasManualGateways && step === 'packages' && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', background: '#f9fafb', borderRadius: '0.875rem', padding: '0.3rem' }}>
-          <button onClick={() => setActiveTab('auto')} style={{
-            flex: 1, padding: '0.6rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            background: activeTab === 'auto' ? '#fff' : 'transparent',
-            color: activeTab === 'auto' ? '#111827' : '#6b7280',
-            fontWeight: 700, fontSize: '0.82rem',
-            boxShadow: activeTab === 'auto' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-            transition: 'all 0.15s',
-          }}>
-            {providerInfo.icon} {providerInfo.name}
-          </button>
-          <button onClick={() => setActiveTab('manual')} style={{
-            flex: 1, padding: '0.6rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            background: activeTab === 'manual' ? '#fff' : 'transparent',
-            color: activeTab === 'manual' ? '#111827' : '#6b7280',
-            fontWeight: 700, fontSize: '0.82rem',
-            boxShadow: activeTab === 'manual' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-            transition: 'all 0.15s',
-          }}>
-            🏦 Manual Transfer
-          </button>
-        </div>
-      )}
-
-      {/* Auto payment tab */}
-      {(activeTab === 'auto' || !hasManualGateways) && step === 'packages' && (
+      {/* Payment options */}
+      {step === 'packages' && (
         <>
           {/* Payment method switcher (M-Pesa / GCash users can switch to Card) */}
           {hasLocalMethod && (
@@ -334,86 +313,79 @@ export default function CreditsPageWrapper() {
               </div>
             ))}
           </div>
-        </>
-      )}
 
-      {/* Manual transfer tab */}
-      {activeTab === 'manual' && hasManualGateways && step === 'packages' && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          {/* Gateway selector */}
-          <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Select Payment Method:</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            {customGateways.map((g: any) => (
-              <div key={g.id} onClick={() => setSelectedGateway(g)} style={{
-                padding: '1rem', borderRadius: '0.875rem', cursor: 'pointer',
-                border: `2px solid ${selectedGateway?.id === g.id ? '#FF192C' : '#e5e7eb'}`,
-                background: selectedGateway?.id === g.id ? '#fff0f1' : '#fff',
-                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '1rem',
-              }}>
-                <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.625rem', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>
-                  {g.logo || '💳'}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>{g.name}</p>
-                  {g.description && <p style={{ color: '#4b5563', fontSize: '0.78rem', marginTop: '0.15rem' }}>{g.description}</p>}
-                  <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.2rem' }}>⏱ Up to {g.reviewTime}h review</p>
-                </div>
-                {selectedGateway?.id === g.id && <span style={{ color: '#FF192C', fontWeight: 800, fontSize: '1.1rem' }}>✓</span>}
-              </div>
-            ))}
-          </div>
-
-          {/* Package selector */}
-          {selectedGateway && (
-            <>
-              <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Select Package:</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.625rem', marginBottom: '1.25rem' }}>
-                {packages.map(pkg => (
-                  <div key={pkg.id} onClick={() => setSelectedPkg(pkg.id)} style={{
-                    padding: '0.875rem', borderRadius: '0.875rem', cursor: 'pointer',
-                    border: `2px solid ${selectedPkg === pkg.id ? pkg.color : '#e5e7eb'}`,
-                    background: selectedPkg === pkg.id ? `${pkg.color}08` : '#fff',
+          {/* Other manual payment methods (e.g. bank transfer for countries without M-Pesa) */}
+          {otherGateways.length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Other payment methods:</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {otherGateways.map((g: any) => (
+                  <div key={g.id} onClick={() => setSelectedGateway(selectedGateway?.id === g.id ? null : g)} style={{
+                    padding: '1rem', borderRadius: '0.875rem', cursor: 'pointer',
+                    border: `2px solid ${selectedGateway?.id === g.id ? '#FF192C' : '#e5e7eb'}`,
+                    background: selectedGateway?.id === g.id ? '#fff0f1' : '#fff',
                     transition: 'all 0.15s',
                   }}>
-                    <p style={{ fontWeight: 800, color: '#111827', fontSize: '1rem' }}>{pkg.credits} <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#6b7280' }}>credits</span></p>
-                    <p style={{ color: pkg.color, fontWeight: 700, fontSize: '0.82rem' }}>
-                      {formatLocalPrice(pkg.usdPrice, 'payhero', paymentMethod?.country || 'KE')}
-                      <span style={{ color: '#6b7280', fontWeight: 600 }}> (${pkg.usdPrice})</span>
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.625rem', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>
+                        {g.logo || '💳'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>{g.name}</p>
+                        {g.description && <p style={{ color: '#4b5563', fontSize: '0.78rem', marginTop: '0.15rem' }}>{g.description}</p>}
+                        <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '0.2rem' }}>⏱ Up to {g.reviewTime}h review</p>
+                      </div>
+                      {selectedGateway?.id === g.id && <span style={{ color: '#FF192C', fontWeight: 800, fontSize: '1.1rem' }}>✓</span>}
+                    </div>
+
+                    {selectedGateway?.id === g.id && (
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f3d7d8' }} onClick={e => e.stopPropagation()}>
+                        <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.8rem', marginBottom: '0.5rem' }}>Select package:</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.9rem' }}>
+                          {packages.map(p => (
+                            <div key={p.id} onClick={() => setSelectedPkg(p.id)} style={{
+                              padding: '0.65rem', borderRadius: '0.625rem', cursor: 'pointer', textAlign: 'center',
+                              border: `2px solid ${selectedPkg === p.id ? p.color : '#e5e7eb'}`,
+                              background: selectedPkg === p.id ? `${p.color}08` : '#fff',
+                            }}>
+                              <p style={{ fontWeight: 800, color: '#111827', fontSize: '0.85rem' }}>{p.credits} credits</p>
+                              <p style={{ color: '#6b7280', fontSize: '0.72rem' }}>${p.usdPrice}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedPkg && (
+                          <>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>
+                              {g.proofLabel || 'Payment Proof'}
+                            </label>
+                            <textarea
+                              value={proof}
+                              onChange={e => setProof(e.target.value)}
+                              placeholder="Enter your transaction ID, reference number, or describe your payment..."
+                              rows={2}
+                              style={{ width: '100%', padding: '0.7rem 0.9rem', border: '1.5px solid #e5e7eb', borderRadius: '0.75rem', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
+                            />
+                            <button
+                              onClick={() => handleCustomSubmit(g)}
+                              disabled={!proof.trim() || submitting}
+                              style={{
+                                marginTop: '0.7rem', width: '100%', padding: '0.7rem', borderRadius: '0.75rem', border: 'none',
+                                background: !proof.trim() || submitting ? '#e5e7eb' : '#FF192C',
+                                color: '#fff', fontWeight: 800, fontSize: '0.82rem', cursor: proof.trim() && !submitting ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                              }}>
+                              {submitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Submitting...</> : <><Upload size={16} /> Submit Payment Proof</>}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </>
-          )}
-
-          {/* Proof input */}
-          {selectedGateway && selectedPkg && (
-            <div style={{ background: '#f9fafb', borderRadius: '0.875rem', padding: '1.25rem', marginBottom: '1rem' }}>
-              <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                {selectedGateway.proofLabel || 'Payment Proof'}
-              </p>
-              <textarea
-                value={proof}
-                onChange={e => setProof(e.target.value)}
-                placeholder="Enter your transaction ID, reference number, or describe your payment..."
-                rows={3}
-                style={{ width: '100%', padding: '0.75rem 1rem', border: '1.5px solid #e5e7eb', borderRadius: '0.75rem', fontSize: '0.875rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
-              />
-              <p style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: '0.35rem' }}>After submitting, your payment will be reviewed and credits added within {selectedGateway.reviewTime} hour(s).</p>
-              <button
-                onClick={handleCustomSubmit}
-                disabled={!proof.trim() || submitting}
-                style={{
-                  marginTop: '0.875rem', width: '100%', padding: '0.8rem', borderRadius: '0.875rem', border: 'none',
-                  background: !proof.trim() || submitting ? '#e5e7eb' : '#FF192C',
-                  color: '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: proof.trim() && !submitting ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                }}>
-                {submitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Submitting...</> : <><Upload size={16} /> Submit Payment Proof</>}
-              </button>
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Step: M-Pesa phone confirm */}
@@ -444,6 +416,47 @@ export default function CreditsPageWrapper() {
               {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Sending...</> : '📱 Send M-Pesa Request'}
             </button>
           </div>
+
+          {/* Manual fallback — pay via Till and submit proof, in case STK push fails */}
+          {mpesaGateway && (
+            <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed #e5e7eb' }}>
+              {!showManual ? (
+                <button onClick={() => setShowManual(true)} style={{
+                  width: '100%', padding: '0.6rem', borderRadius: '0.75rem', border: '1.5px dashed #d1d5db',
+                  background: 'transparent', color: '#374151', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  Trouble with the STK push? Pay manually instead
+                </button>
+              ) : (
+                <div style={{ background: '#f9fafb', borderRadius: '0.875rem', padding: '1.1rem' }}>
+                  <p style={{ fontWeight: 800, color: '#111827', fontSize: '0.9rem', marginBottom: '0.5rem' }}>📱 Pay Manually via M-Pesa Till</p>
+                  <p style={{ color: '#4b5563', fontSize: '0.8rem', lineHeight: 1.6, marginBottom: '0.9rem' }}>{mpesaGateway.description}</p>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>
+                    {mpesaGateway.proofLabel || 'Payment Proof'}
+                  </label>
+                  <textarea
+                    value={proof}
+                    onChange={e => setProof(e.target.value)}
+                    placeholder="Enter your M-Pesa transaction code, e.g. QFT1XXXXXX"
+                    rows={2}
+                    style={{ width: '100%', padding: '0.7rem 0.9rem', border: '1.5px solid #e5e7eb', borderRadius: '0.75rem', fontSize: '0.85rem', outline: 'none', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff' }}
+                  />
+                  <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.35rem' }}>After submitting, an admin will review it and credits will be added within {mpesaGateway.reviewTime} hour(s).</p>
+                  <button
+                    onClick={() => handleCustomSubmit(mpesaGateway)}
+                    disabled={!proof.trim() || submitting}
+                    style={{
+                      marginTop: '0.8rem', width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: 'none',
+                      background: !proof.trim() || submitting ? '#e5e7eb' : '#111827',
+                      color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: proof.trim() && !submitting ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    }}>
+                    {submitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Submitting...</> : <><Upload size={16} /> Submit Payment Proof</>}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
