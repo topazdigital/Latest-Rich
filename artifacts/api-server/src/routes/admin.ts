@@ -71,13 +71,27 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
     const [newToday] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.created, today))
     const [premiumUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.premium, 1))
     const [onlineUsers] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.lastAccess as any, String(now() - 300)))
-    // Sum USD-equivalent amounts. New orders have amount_usd set; old USD orders fall back to amount;
-    // old non-USD orders (KES/NGN etc.) without amount_usd are excluded to avoid inflating the number.
-    const totalRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(CASE WHEN amount_usd > 0 THEN amount_usd WHEN currency = 'USD' THEN amount ELSE 0 END), 0)` }).from(ordersTable).where(eq(ordersTable.status, "completed"))
-    const todayRevenue = await db.select({ sum: sql<number>`COALESCE(SUM(CASE WHEN amount_usd > 0 THEN amount_usd WHEN currency = 'USD' THEN amount ELSE 0 END), 0)` }).from(ordersTable).where(and(eq(ordersTable.status, "completed"), gte(ordersTable.time, today)))
     const [totalMessages] = await db.select({ count: count() }).from(messagesTable)
     const [totalLikes] = await db.select({ count: count() }).from(likesTable)
     const [bannedUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.banned, 1))
+
+    // Revenue: wrapped separately so a schema/column issue never breaks all stats
+    let totalRevenue = 0
+    let todayRevenue = 0
+    try {
+      // Use SUM with CASE — amount_usd stores the USD equivalent for new orders;
+      // old USD-currency orders fall back to raw amount; non-USD old orders excluded.
+      const [tr] = await db.select({
+        sum: sql<string>`COALESCE(SUM(CASE WHEN ${ordersTable.amountUsd} > 0 THEN ${ordersTable.amountUsd} WHEN ${ordersTable.currency} = 'USD' THEN ${ordersTable.amount} ELSE 0 END), 0)`
+      }).from(ordersTable).where(eq(ordersTable.status, "completed"))
+      const [dr] = await db.select({
+        sum: sql<string>`COALESCE(SUM(CASE WHEN ${ordersTable.amountUsd} > 0 THEN ${ordersTable.amountUsd} WHEN ${ordersTable.currency} = 'USD' THEN ${ordersTable.amount} ELSE 0 END), 0)`
+      }).from(ordersTable).where(and(eq(ordersTable.status, "completed"), gte(ordersTable.time, today)))
+      totalRevenue = parseFloat(String(tr?.sum ?? "0")) || 0
+      todayRevenue = parseFloat(String(dr?.sum ?? "0")) || 0
+    } catch (revErr) {
+      console.warn("[stats] Revenue query failed (schema may need migration):", revErr)
+    }
 
     res.json({
       totalUsers: totalUsers.count,
@@ -87,8 +101,8 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
       premiumUsers: premiumUsers.count,
       onlineUsers: onlineUsers.count,
       bannedUsers: bannedUsers.count,
-      totalRevenue: parseFloat(String(totalRevenue[0]?.sum ?? 0)) || 0,
-      todayRevenue: parseFloat(String(todayRevenue[0]?.sum ?? 0)) || 0,
+      totalRevenue,
+      todayRevenue,
       totalMessages: totalMessages.count,
       totalLikes: totalLikes.count,
     })
