@@ -57,6 +57,19 @@ export default function AdminUsers() {
     load()
   }
 
+  const toggleFake = async (u: AdminUser) => {
+    const newFake = u.fake === 1 ? 0 : 1
+    const label = newFake === 1 ? "fake" : "real"
+    if (!confirm(`Mark ${u.name} as a ${label} user?`)) return
+    await authFetch(`/api/admin/users/${u.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...u, fake: newFake }),
+    })
+    toast.success(`${u.name} marked as ${label}`)
+    load()
+  }
+
   const FILTERS = ["all", "real", "fake", "premium", "banned", "admin"]
 
   return (
@@ -172,6 +185,9 @@ export default function AdminUsers() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => setDetailUserId(u.id)} className="px-2 py-1 rounded text-xs bg-brand-600 hover:bg-brand-700 text-white transition-colors">View</button>
+                        <button onClick={() => toggleFake(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.fake === 1 ? "bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white" : "bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white"}`}>
+                          {u.fake === 1 ? "→Real" : "→Fake"}
+                        </button>
                         <button onClick={() => banUser(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white"}`}>
                           {u.banned ? "Unban" : "Ban"}
                         </button>
