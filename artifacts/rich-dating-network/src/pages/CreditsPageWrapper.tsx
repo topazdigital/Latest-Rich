@@ -321,7 +321,7 @@ export default function CreditsPageWrapper() {
                   <span style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 700 }}> credits</span>
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: '0.75rem', fontWeight: 700 }}>
-                  {useCard ? `${pkg.usdPrice}` : formatLocalPrice(pkg.usdPrice, effectiveProvider, paymentMethod?.country || '')}
+                  {useCard ? `$${pkg.usdPrice}` : formatLocalPrice(pkg.usdPrice, effectiveProvider, paymentMethod?.country || '')}
                   {effectiveProvider === 'payhero' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
                 </div>
                 <button style={{
@@ -376,7 +376,10 @@ export default function CreditsPageWrapper() {
                     transition: 'all 0.15s',
                   }}>
                     <p style={{ fontWeight: 800, color: '#111827', fontSize: '1rem' }}>{pkg.credits} <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#6b7280' }}>credits</span></p>
-                    <p style={{ color: pkg.color, fontWeight: 700, fontSize: '0.82rem' }}>${pkg.usdPrice}</p>
+                    <p style={{ color: pkg.color, fontWeight: 700, fontSize: '0.82rem' }}>
+                      {formatLocalPrice(pkg.usdPrice, 'payhero', paymentMethod?.country || 'KE')}
+                      <span style={{ color: '#6b7280', fontWeight: 600 }}> (${pkg.usdPrice})</span>
+                    </p>
                   </div>
                 ))}
               </div>

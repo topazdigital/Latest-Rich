@@ -256,7 +256,7 @@ export const fakeVideoCallsTable = pgTable("fake_video_calls", {
 
 export const customPaymentsTable = pgTable("custom_payments", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  name: text("name").notNull().unique(),
   logo: text("logo").default(""),
   description: text("description").default(""),
   status: integer("status").default(1),

@@ -1,11 +1,48 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { customPaymentsTable, customPaymentOrdersTable, usersTable, siteConfigTable } from "@workspace/db/schema"
-import { eq, desc, and } from "drizzle-orm"
+import { eq, desc, and, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+
+// Seed a default M-Pesa Till manual-payment fallback if it doesn't exist yet.
+// This gives users a way to pay when the automated M-Pesa STK push has trouble.
+const DEFAULT_MPESA_TILL_GATEWAY_NAME = "M-Pesa Till (Manual)"
+async function seedDefaultGateways() {
+  const values = {
+    name: DEFAULT_MPESA_TILL_GATEWAY_NAME,
+    logo: "📱",
+    description: "Having trouble with the STK push? Go to M-Pesa > Lipa na M-Pesa > Buy Goods and Services, enter Till Number 9867233, then pay the exact amount shown. Submit the M-Pesa confirmation message or transaction code below as proof.",
+    status: 1,
+    reviewTime: 24,
+    externalUrl: "",
+    country: "",
+    type: 3,
+    proofLabel: "M-Pesa Transaction Code (e.g. QFT1XXXXXX)",
+    createdAt: now(),
+  }
+  try {
+    if (isMysql) {
+      // MySQL/MariaDB: rely on the unique index on `name` (see migrate-from-legacy.sql)
+      // and INSERT IGNORE so concurrent autoscale instances can't create duplicates.
+      await db.execute(sql`
+        INSERT IGNORE INTO custom_payments
+          (name, logo, description, status, review_time, external_url, country, type, proof_label, created_at)
+        VALUES (${values.name}, ${values.logo}, ${values.description}, ${values.status}, ${values.reviewTime},
+                ${values.externalUrl}, ${values.country}, ${values.type}, ${values.proofLabel}, ${values.createdAt})
+      `)
+    } else {
+      await db.insert(customPaymentsTable).values(values).onConflictDoNothing({ target: customPaymentsTable.name })
+    }
+  } catch (err) {
+    // Non-fatal: worst case the fallback gateway doesn't exist yet and can be added via the admin panel.
+    console.error("seedDefaultGateways failed:", err)
+  }
+}
+
+seedDefaultGateways().catch(console.error)
 
 async function requireAdmin(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
@@ -53,6 +90,12 @@ router.post("/submit", requireAuth, async (req, res) => {
 
     const [gw] = await db.select().from(customPaymentsTable).where(eq(customPaymentsTable.id, parseInt(gatewayId))).limit(1)
     if (!gw || gw.status !== 1) { res.status(400).json({ error: "Invalid gateway" }); return }
+
+    // type: 1 = Credits Only, 2 = Premium Only, 3 = Credits & Premium
+    const gwType = gw.type ?? 1
+    if ((type === "credits" && gwType === 2) || (type === "premium" && gwType === 1)) {
+      res.status(400).json({ error: "This payment method does not support that purchase type" }); return
+    }
 
     let pkg: { name: string; price: number } | undefined
     let credits = 0

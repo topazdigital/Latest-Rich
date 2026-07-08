@@ -490,6 +490,11 @@ ALTER TABLE `custom_payments`
   ADD COLUMN IF NOT EXISTS `proof_label` text DEFAULT 'Transaction ID / Screenshot',
   ADD COLUMN IF NOT EXISTS `created_at` int(11) DEFAULT 0;
 
+-- Unique index on gateway name so the app can safely upsert the default
+-- M-Pesa Till manual-payment fallback without creating duplicates on restart.
+ALTER TABLE `custom_payments`
+  ADD UNIQUE INDEX IF NOT EXISTS `ux_custom_payments_name` (`name`(191));
+
 CREATE TABLE IF NOT EXISTS `custom_payment_orders` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,

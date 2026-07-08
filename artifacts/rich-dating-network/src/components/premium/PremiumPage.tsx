@@ -214,7 +214,7 @@ export default function PremiumPage({
                   )}
                   <div className="font-bold text-gray-900 text-sm mb-1 mt-1">{pkg.name}</div>
                   <div className="text-2xl font-black text-brand-500 my-2">
-                    {useCard ? `${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `${pkg.price}`}
+                    {useCard ? `$${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `$${pkg.price}`}
                   </div>
                   {formatLocalPrice && country && !useCard && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
@@ -236,7 +236,7 @@ export default function PremiumPage({
             className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-3 transition-all disabled:opacity-50 shadow-xl shadow-brand-500/20 mb-3"
             style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
             {displayLoading ? <Loader2 size={20} className="animate-spin" /> : <Crown size={20} />}
-            {displaySelected ? `Get ${displaySelected.name} — ${useCard ? `${displaySelected.price}` : formatLocalPrice ? formatLocalPrice(displaySelected.price, effectiveProvider || provider, country) : `${displaySelected.price}`}` : 'Select a plan'}
+            {displaySelected ? `Get ${displaySelected.name} — ${useCard ? `$${displaySelected.price}` : formatLocalPrice ? formatLocalPrice(displaySelected.price, effectiveProvider || provider, country) : `$${displaySelected.price}`}` : 'Select a plan'}
           </button>
           <p className="text-center text-xs text-gray-400 mb-8">Secure payment · Instant activation</p>
         </>
