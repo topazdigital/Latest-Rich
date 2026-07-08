@@ -86,6 +86,27 @@ export default function AdminOrders() {
   const [grantNote, setGrantNote] = useState("")
   const [granting, setGranting] = useState(false)
 
+  // Backfill historical amount_usd
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillResult, setBackfillResult] = useState<{ updated: number; total: number } | null>(null)
+
+  const backfillUsd = async () => {
+    if (!confirm("This will calculate USD equivalents for all historical orders using the current exchange rates saved in Payment Providers. Continue?")) return
+    setBackfilling(true)
+    setBackfillResult(null)
+    try {
+      const r = await authFetch("/api/admin/orders/backfill-usd", { method: "POST" })
+      const d = await r.json()
+      if (r.ok && d.success) {
+        setBackfillResult({ updated: d.updated, total: d.total })
+        toast.success(`✅ Backfilled ${d.updated} of ${d.total} orders with USD values`)
+      } else {
+        toast.error(d.error || "Backfill failed")
+      }
+    } catch { toast.error("Network error") }
+    setBackfilling(false)
+  }
+
   // Credit audit panel
   const [auditOpen, setAuditOpen] = useState(false)
   const [auditOrders, setAuditOrders] = useState<AuditOrder[]>([])
@@ -476,6 +497,21 @@ export default function AdminOrders() {
             }}
           >
             💰 Grant Credits
+          </button>
+          <button
+            onClick={backfillUsd}
+            disabled={backfilling}
+            title="Calculate USD value for historical orders using current exchange rates"
+            style={{
+              background: backfilling ? "#334155" : "linear-gradient(135deg,#0ea5e9,#0284c7)",
+              color: "#fff", border: "none", borderRadius: "0.5rem",
+              padding: "0.4rem 0.875rem", fontSize: "0.78rem",
+              fontWeight: 700, cursor: backfilling ? "not-allowed" : "pointer",
+              fontFamily: "inherit", display: "flex", alignItems: "center", gap: "0.35rem",
+              opacity: backfilling ? 0.7 : 1,
+            }}
+          >
+            {backfilling ? "⏳ Backfilling…" : backfillResult ? `✅ ${backfillResult.updated} fixed` : "💱 Fix Revenue"}
           </button>
           {stats.pending > 0 && (
             <button

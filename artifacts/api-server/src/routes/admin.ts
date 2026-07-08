@@ -648,6 +648,54 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
   }
 })
 
+// Backfill amount_usd on historical orders that have amount_usd = 0
+router.post("/orders/backfill-usd", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // Read current rates from config (fallbacks match the system defaults)
+    const kesRate  = parseFloat(await getConfig("kes_rate")  || "130")
+    const ngnRate  = parseFloat(await getConfig("ngn_rate")  || "1600")
+    const ghsRate  = parseFloat(await getConfig("ghs_rate")  || "16")
+    const zarRate  = parseFloat(await getConfig("zar_rate")  || "18")
+    const phpRate  = parseFloat(await getConfig("php_rate")  || "56")
+    const tzRate   = parseFloat(await getConfig("tzs_rate")  || "2700")
+    const ugRate   = parseFloat(await getConfig("ugx_rate")  || "3700")
+    const rwfRate  = parseFloat(await getConfig("rwf_rate")  || "1400")
+
+    const rateMap: Record<string, number> = {
+      KES: kesRate, NGN: ngnRate, GHS: ghsRate,
+      ZAR: zarRate, PHP: phpRate, TZS: tzRate,
+      UGX: ugRate,  RWF: rwfRate, USD: 1,
+    }
+
+    // Fetch all completed orders that still have amount_usd = 0
+    const staleOrders = await db.select({
+      id: ordersTable.id,
+      amount: ordersTable.amount,
+      currency: ordersTable.currency,
+    }).from(ordersTable).where(
+      and(
+        eq(ordersTable.status, "completed"),
+        sql`${ordersTable.amountUsd} = 0 OR ${ordersTable.amountUsd} IS NULL`
+      )
+    )
+
+    let updated = 0
+    for (const order of staleOrders) {
+      const currency = (order.currency || "USD").toUpperCase()
+      const rate = rateMap[currency]
+      if (!rate || !Number.isFinite(rate) || rate <= 0) continue
+      const amountUsd = parseFloat((Number(order.amount) / rate).toFixed(2))
+      if (!Number.isFinite(amountUsd) || amountUsd <= 0) continue
+      await db.update(ordersTable).set({ amountUsd } as any).where(eq(ordersTable.id, order.id))
+      updated++
+    }
+
+    res.json({ success: true, updated, total: staleOrders.length, rates: rateMap })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Backfill failed" })
+  }
+})
+
 // Manually grant credits to a user by email (for off-system payments like direct Mpesa transfers)
 router.post("/orders/grant-credits", requireAuth, requireAdmin, async (req, res) => {
   try {
