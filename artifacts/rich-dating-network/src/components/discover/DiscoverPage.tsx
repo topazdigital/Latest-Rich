@@ -4,7 +4,7 @@ import { getPhotoUrl, isOnline, truncate, profileUrl } from '../../lib/utils'
 import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
-import AdSenseAd from '../ui/AdSenseAd'
+import AdsterraNativeBanner from '../ui/AdsterraNativeBanner'
 import { useWSEvent } from '../../hooks/useWebSocket'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
 import { authFetch } from '../../lib/auth'
@@ -340,10 +340,12 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                 </div>
               )
             }).flatMap((card: any, idx: number) => {
-              const showAd = (idx + 1) % 10 === 0
+              // Adsterra's script only wires up one container per page load (SPA),
+              // so only insert the ad once — after the first row of results.
+              const showAd = idx === 7
               return showAd
                 ? [card, <div key={`ad-${idx}`} className="col-span-2 sm:col-span-3 md:col-span-4 xl:col-span-5 my-1">
-                    <AdSenseAd slot="7892341056" format="auto" style={{ minHeight: 90 }} />
+                    <AdsterraNativeBanner />
                   </div>]
                 : [card]
             })}
