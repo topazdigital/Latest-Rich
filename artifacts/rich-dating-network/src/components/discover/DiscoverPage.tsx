@@ -339,10 +339,12 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                   </div>
                 </div>
               )
-            }).flatMap((card: any, idx: number) => {
+            }).flatMap((card: any, idx: number, arr: any[]) => {
               // Adsterra's script only wires up one container per page load (SPA),
-              // so only insert the ad once — after the first row of results.
-              const showAd = idx === 7
+              // so only insert the ad once — after the first row, or after the
+              // last card if there are fewer results than a full row.
+              const adSlot = Math.min(4, arr.length - 1)
+              const showAd = idx === adSlot
               return showAd
                 ? [card, <div key={`ad-${idx}`} className="col-span-2 sm:col-span-3 md:col-span-4 xl:col-span-5 my-1">
                     <AdsterraNativeBanner />
