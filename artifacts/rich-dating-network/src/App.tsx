@@ -1,39 +1,45 @@
 import { Switch, Route, Router as WouterRouter, useLocation, useSearch } from "wouter"
 import { Toaster } from "react-hot-toast"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, lazy, Suspense } from "react"
 import { usePWAInstall } from "./hooks/usePWAInstall"
 import { usePushNotifications } from "./hooks/usePushNotifications"
 
 import { AuthContext, useAuth, useAuthState } from "./hooks/useAuth"
+// Public / SEO-crawlable pages load eagerly so search engines and first-time
+// visitors get fast, flash-free renders straight from the initial bundle.
 import LandingPage from "./components/landing/LandingPage"
 import LoginPage from "./pages/LoginPage"
 import RegisterPage from "./pages/RegisterPage"
 import ForgotPasswordPage from "./pages/ForgotPasswordPage"
 import ResetPasswordPage from "./pages/ResetPasswordPage"
 import VerifyEmailPage from "./pages/VerifyEmailPage"
-import HomePage from "./pages/HomePage"
-import DiscoverPage from "./pages/DiscoverPage"
-import MeetPageWrapper from "./pages/MeetPageWrapper"
-import ChatListPage from "./pages/ChatListPage"
-import ChatPage from "./pages/ChatPage"
 import ProfilePage from "./pages/ProfilePage"
-import NotificationsPage from "./pages/NotificationsPage"
-import SettingsPageWrapper from "./pages/SettingsPageWrapper"
-import PremiumPageWrapper from "./pages/PremiumPageWrapper"
-import CreditsPageWrapper from "./pages/CreditsPageWrapper"
 import TermsPage from "./pages/TermsPage"
 import PrivacyPage from "./pages/PrivacyPage"
-import AdminPage from "./pages/AdminPage"
-import ModeratorPage from "./pages/ModeratorPage"
-import GiftsPage from "./pages/GiftsPage"
-import VisitorsPage from "./pages/VisitorsPage"
-import LikesPage from "./pages/LikesPage"
-import BoostPage from "./pages/BoostPage"
-import ReferralsPage from "./pages/ReferralsPage"
 import ContactPage from "./pages/ContactPage"
-import MembersPage from "./pages/MembersPage"
 import KeywordLandingPage from "./pages/KeywordLandingPage"
 import LocationsPage from "./pages/LocationsPage"
+
+// Authenticated-only pages are code-split out of the main bundle — they're
+// never needed for anonymous/SEO traffic, so keeping them lazy shrinks the
+// initial JS payload considerably (helps Core Web Vitals / mobile ranking).
+const HomePage = lazy(() => import("./pages/HomePage"))
+const DiscoverPage = lazy(() => import("./pages/DiscoverPage"))
+const MeetPageWrapper = lazy(() => import("./pages/MeetPageWrapper"))
+const ChatListPage = lazy(() => import("./pages/ChatListPage"))
+const ChatPage = lazy(() => import("./pages/ChatPage"))
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"))
+const SettingsPageWrapper = lazy(() => import("./pages/SettingsPageWrapper"))
+const PremiumPageWrapper = lazy(() => import("./pages/PremiumPageWrapper"))
+const CreditsPageWrapper = lazy(() => import("./pages/CreditsPageWrapper"))
+const AdminPage = lazy(() => import("./pages/AdminPage"))
+const ModeratorPage = lazy(() => import("./pages/ModeratorPage"))
+const GiftsPage = lazy(() => import("./pages/GiftsPage"))
+const VisitorsPage = lazy(() => import("./pages/VisitorsPage"))
+const LikesPage = lazy(() => import("./pages/LikesPage"))
+const BoostPage = lazy(() => import("./pages/BoostPage"))
+const ReferralsPage = lazy(() => import("./pages/ReferralsPage"))
+const MembersPage = lazy(() => import("./pages/MembersPage"))
 import { getSeoLandingPage } from "./data/seoLandingPages"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
@@ -486,6 +492,11 @@ function Router() {
       <PWAInstallBanner />
       <IOSInstallBanner />
       <AppLayout>
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+          </div>
+        }>
         <Switch>
           <Route path="/" component={LandingPage} />
           <Route path="/login" component={LoginPage} />
@@ -536,6 +547,7 @@ function Router() {
           </Route>
           <Route component={NotFound} />
         </Switch>
+        </Suspense>
       </AppLayout>
     </AuthGuard>
   )
