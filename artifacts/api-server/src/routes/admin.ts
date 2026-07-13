@@ -629,9 +629,14 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
       await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, id))
       res.json({ success: true, message: `Order #${id} fulfilled — ${creditsToAdd} credits added to ${user.email}` })
     } else if (order.type === "premium") {
-      const days = order.description?.match(/(\d+)\s*(year|month|week)/i)
-        ? (order.description.includes("year") ? 365 : order.description.includes("3 month") ? 90 : order.description.includes("6 month") ? 180 : 30)
-        : 30
+      // Case-insensitive: match "1 Year", "3 Months", "6 Months", "1 Month", etc.
+      const desc = (order.description || "").toLowerCase()
+      const days =
+        desc.includes("year") ? 365 :
+        desc.includes("6 month") ? 180 :
+        desc.includes("3 month") ? 90 :
+        desc.includes("month") || desc.includes("week") ? 30 :
+        30
       await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400 }).where(eq(usersTable.id, order.userId))
       await db.insert(notificationsTable).values({
         userId: order.userId, type: "premium", message: `Premium membership activated for ${days} days.`, time: now(), read: 0,
