@@ -190,11 +190,13 @@ export default function AdminOrders() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [autoRefresh, load])
 
-  const fulfillOrder = async (orderId: number, orderCredits: number) => {
+  const fulfillOrder = async (orderId: number, orderCredits: number, orderType?: string) => {
     const creditsInput = overrideCredits[orderId]
     const creditsOverride = creditsInput ? parseInt(creditsInput) : null
 
-    if (!orderCredits && !creditsOverride) {
+    // Only credit-type orders need a credits amount — premium orders derive their
+    // duration from the order description on the server, not from a credits field.
+    if (orderType === "credits" && !orderCredits && !creditsOverride) {
       toast.error("Enter the credits amount to add before fulfilling")
       return
     }
@@ -727,7 +729,7 @@ export default function AdminOrders() {
                               />
                             )}
                             <button
-                              onClick={() => fulfillOrder(o.id, effectiveCredits)}
+                              onClick={() => fulfillOrder(o.id, effectiveCredits, o?.type)}
                               disabled={fulfilling === o.id || (needsCreditsInput && !creditsInputVal)}
                               style={{
                                 background: (fulfilling === o.id || (needsCreditsInput && !creditsInputVal)) ? "#334155" : "rgba(34,197,94,0.15)",
