@@ -17,6 +17,7 @@ import AdminVerifications from "../components/admin/AdminVerifications"
 import AdminReports from "../components/admin/AdminReports"
 import AdminEmailCampaigns from "../components/admin/AdminEmailCampaigns"
 import AdminChat from "../components/admin/AdminChat"
+import AdminContactMessages from "../components/admin/AdminContactMessages"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -27,6 +28,7 @@ const MENU = [
   { key: "fake-chat", label: "Fake User Chat", icon: "🗨️" },
   { key: "photos", label: "Photo Moderation", icon: "🖼️" },
   { key: "reports", label: "User Reports", icon: "🚩" },
+  { key: "contact-messages", label: "Contact Messages", icon: "📥" },
   { key: "boost", label: "Boost Config", icon: "⚡" },
   { key: "payments", label: "Payment Providers", icon: "💳" },
   { key: "custom-payments", label: "Manual Gateways", icon: "🏦" },
@@ -42,7 +44,9 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const [, setLocation] = useLocation()
   const [chatUnread, setChatUnread] = useState(0)
+  const [contactPending, setContactPending] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const contactPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -64,6 +68,22 @@ export default function AdminPage() {
     fetchUnread()
     pollRef.current = setInterval(fetchUnread, 30000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [user])
+
+  useEffect(() => {
+    if (!user || (user.admin ?? 0) < 1) return
+    const fetchPending = async () => {
+      try {
+        const r = await authFetch("/api/admin/contact-messages")
+        if (r.ok) {
+          const d = await r.json()
+          setContactPending(Array.isArray(d) ? d.filter((m: any) => !m.replied).length : 0)
+        }
+      } catch {}
+    }
+    fetchPending()
+    contactPollRef.current = setInterval(fetchPending, 30000)
+    return () => { if (contactPollRef.current) clearInterval(contactPollRef.current) }
   }, [user])
 
   if (loading) return (
@@ -135,6 +155,18 @@ export default function AdminPage() {
                     {chatUnread > 99 ? '99+' : chatUnread}
                   </span>
                 )}
+                {m.key === 'contact-messages' && contactPending > 0 && (
+                  <span style={{
+                    background: tab === m.key ? 'rgba(255,255,255,0.9)' : '#FF192C',
+                    color: tab === m.key ? '#FF192C' : '#fff',
+                    fontSize: '0.6rem', fontWeight: 800,
+                    borderRadius: '999px', padding: '1px 5px',
+                    minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4',
+                    flexShrink: 0,
+                  }}>
+                    {contactPending > 99 ? '99+' : contactPending}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -179,6 +211,7 @@ export default function AdminPage() {
           {tab === "fake-chat" && <AdminChat />}
           {tab === "photos" && <AdminPhotos />}
           {tab === "reports" && <AdminReports />}
+          {tab === "contact-messages" && <AdminContactMessages />}
           {tab === "boost" && <AdminBoost />}
           {tab === "payments" && <AdminPayments />}
           {tab === "custom-payments" && <AdminCustomPayments />}

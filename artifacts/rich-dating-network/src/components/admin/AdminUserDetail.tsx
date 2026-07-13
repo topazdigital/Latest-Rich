@@ -3,7 +3,7 @@ import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import { formatDate, timeAgo } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { X, Shield, Crown, Ban, Trash2, Key, MessageSquare, CreditCard, User, Image, Activity, ChevronRight, AlertTriangle, LogIn } from "lucide-react"
+import { X, Shield, Crown, Ban, Trash2, Key, MessageSquare, CreditCard, User, Image, Activity, ChevronRight, AlertTriangle, LogIn, Send, Mail } from "lucide-react"
 
 interface DetailUser {
   id: number; name: string; email: string; username?: string; phone?: string
@@ -19,7 +19,7 @@ interface DetailUser {
 
 interface Order { id: number; amount: number; currency: string; type: string; description: string; status: string; time: number }
 
-const TABS = ["Profile", "Media", "Chats", "Credits", "Admin"] as const
+const TABS = ["Profile", "Media", "Chats", "Credits", "Email", "Admin"] as const
 type Tab = typeof TABS[number]
 
 export default function AdminUserDetail({ userId, onClose, onUpdate }: {
@@ -39,6 +39,10 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
   const [editBio, setEditBio] = useState("")
   const [editName, setEditName] = useState("")
   const [editCity, setEditCity] = useState("")
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailBody, setEmailBody] = useState("")
+  const [emailPreview, setEmailPreview] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -89,6 +93,24 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
     await authFetch(`/api/admin/users/${userId}`, { method: "DELETE" })
     toast.success("User deleted")
     onClose(); onUpdate?.()
+  }
+
+  async function sendUserEmail() {
+    if (!emailSubject.trim() || !emailBody.trim()) { toast.error("Subject and message are required"); return }
+    setSendingEmail(true)
+    try {
+      const r = await authFetch(`/api/admin/users/${userId}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: emailSubject, html: emailBody }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || "Failed to send")
+      toast.success(`Email sent to ${user?.email}`)
+      setEmailSubject(""); setEmailBody("")
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send email")
+    } finally { setSendingEmail(false) }
   }
 
   async function addCredits() {
@@ -367,6 +389,37 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* EMAIL TAB */}
+          {tab === "Email" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#9ca3af", fontSize: 13 }}>
+                <Mail size={15} /> Send a branded email directly to <strong style={{ color: "#e5e7eb" }}>{user.email}</strong>
+              </div>
+              <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Subject"
+                style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "10px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setEmailPreview(!emailPreview)} style={{ fontSize: 12, color: "#FF192C", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
+                  {emailPreview ? "Edit HTML" : "Preview"}
+                </button>
+              </div>
+              {emailPreview ? (
+                <div style={{ border: "1px solid #374151", borderRadius: 10, overflow: "hidden" }}>
+                  <iframe title="preview" srcDoc={`<div style="font-family:Arial,sans-serif;padding:16px;font-size:14px;color:#374151;background:#fff">${emailBody}</div>`}
+                    style={{ width: "100%", height: 220, border: "none", background: "#fff" }} />
+                </div>
+              ) : (
+                <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={9} placeholder="Write your message (HTML allowed)…"
+                  style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: 12, color: "white", fontSize: 13.5, fontFamily: "monospace", resize: "vertical", boxSizing: "border-box" }} />
+              )}
+              <div>
+                <button onClick={sendUserEmail} disabled={sendingEmail}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "#FF192C", color: "white", border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 700, cursor: "pointer", opacity: sendingEmail ? 0.6 : 1 }}>
+                  <Send size={14} /> {sendingEmail ? "Sending…" : "Send Email"}
+                </button>
+              </div>
             </div>
           )}
 

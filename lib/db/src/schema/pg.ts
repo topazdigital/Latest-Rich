@@ -350,6 +350,9 @@ export const contactSubmissionsTable = pgTable("contact_submissions", {
   subject: text("subject").default(""),
   message: text("message").notNull(),
   emailSent: integer("email_sent").default(0),
+  replied: integer("replied").default(0),
+  repliedAt: integer("replied_at").default(0),
+  replyMessage: text("reply_message").default(""),
   createdAt: integer("created_at").notNull(),
 })
 

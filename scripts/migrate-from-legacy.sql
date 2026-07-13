@@ -726,6 +726,12 @@ CREATE TABLE IF NOT EXISTS `contact_submissions` (
   `created_at` int NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- contact_submissions: admin reply support
+ALTER TABLE `contact_submissions`
+  ADD COLUMN IF NOT EXISTS `replied` tinyint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `replied_at` int NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `reply_message` text NOT NULL;
+
 -- Chat media columns (images, video, audio in messages)
 ALTER TABLE `messages`
   ADD COLUMN IF NOT EXISTS `media_url` varchar(500) NOT NULL DEFAULT '',

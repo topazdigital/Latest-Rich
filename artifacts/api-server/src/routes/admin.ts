@@ -286,6 +286,41 @@ router.post("/users/:id/notify", requireAuth, requireAdmin, async (req, res) => 
   }
 })
 
+// Send a direct, branded HTML email to a specific user
+router.post("/users/:id/send-email", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const { subject, html } = req.body
+    if (!subject?.trim() || !html?.trim()) { res.status(400).json({ error: "Subject and message body are required" }); return }
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!user) { res.status(404).json({ error: "User not found" }); return }
+    if (!user.email?.trim()) { res.status(400).json({ error: "This user has no email address on file" }); return }
+
+    const { sendEmail, wrapBrandedHtml } = await import("../lib/mailer")
+    const wrapped = wrapBrandedHtml({
+      title: subject.trim(),
+      emoji: "📩",
+      bodyHtml: `<p style="margin:0 0 16px">Hi ${(user.name || "there").replace(/</g, "&lt;")},</p>${html}`,
+      footerNote: "This message was sent to you by the Rich Dating Network team.",
+    })
+
+    const sent = await sendEmail({ to: user.email, subject: subject.trim(), html: wrapped })
+    if (!sent) { res.status(502).json({ error: "SMTP is not configured or the send failed. Check Settings → Email." }); return }
+
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId, title: "Email sent to user",
+      message: `${user.name} (id:${id}) — "${subject.trim()}"`, time: now(),
+    }).catch(() => {})
+
+    res.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 // Create fake user
 router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {

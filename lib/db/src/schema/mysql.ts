@@ -351,6 +351,9 @@ export const contactSubmissionsTable = mysqlTable("contact_submissions", {
   subject: varchar("subject", { length: 500 }).default(""),
   message: text("message").notNull(),
   emailSent: int("email_sent").default(0),
+  replied: int("replied").default(0),
+  repliedAt: int("replied_at").default(0),
+  replyMessage: text("reply_message").default(""),
   createdAt: int("created_at").notNull(),
 })
 

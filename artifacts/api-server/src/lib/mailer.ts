@@ -87,6 +87,36 @@ export async function sendEmail(opts: MailOptions): Promise<boolean> {
   }
 }
 
+// Wraps arbitrary body HTML in the site's branded email shell (gradient header + footer).
+// Used for admin-composed emails: contact-form replies and direct messages to a specific user.
+export function wrapBrandedHtml(opts: { title: string; emoji?: string; bodyHtml: string; siteName?: string; footerNote?: string }): string {
+  const siteName = opts.siteName || "Rich Dating Network"
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 16px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:600px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+<tr><td style="background:linear-gradient(135deg,#FF192C,#ff5f6b);padding:32px 40px;text-align:center">
+  ${opts.emoji ? `<div style="font-size:36px;margin-bottom:6px">${opts.emoji}</div>` : ""}
+  <h1 style="color:#ffffff;font-size:21px;margin:0;font-weight:800">${opts.title}</h1>
+  <p style="color:rgba(255,255,255,0.8);font-size:13px;margin:6px 0 0">${siteName}</p>
+</td></tr>
+<tr><td style="padding:36px 40px;color:#374151;font-size:15px;line-height:1.7">
+  ${opts.bodyHtml}
+</td></tr>
+<tr><td style="background:#f9fafb;padding:18px 40px;text-align:center;border-top:1px solid #f3f4f6">
+  <p style="color:#9ca3af;font-size:11px;margin:0">${opts.footerNote || `© ${new Date().getFullYear()} ${siteName}. All rights reserved.`}</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+}
+
 export async function sendPasswordResetEmail(to: string, name: string, token: string, siteUrl: string): Promise<boolean> {
   const siteName = await getConfig("site_name") || "Rich Dating Network"
   const resetUrl = `${siteUrl}/reset-password?token=${token}`
