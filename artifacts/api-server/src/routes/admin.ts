@@ -321,6 +321,55 @@ router.post("/users/:id/send-email", requireAuth, requireAdmin, async (req, res)
   }
 })
 
+// Fix interests/passions on all existing fake users with real site values
+router.post("/fake-users/fix-interests", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const maleInterestPool = [
+      "travel", "fitness", "business", "investing", "technology", "running",
+      "golf", "tennis", "football", "basketball", "cars", "hiking",
+      "cooking", "music", "movies", "gaming", "camping", "wine_dining",
+      "crossfit", "cycling", "nature", "luxury_travel", "reading", "concerts"
+    ]
+    const femaleInterestPool = [
+      "travel", "photography", "yoga", "dancing", "fashion", "art",
+      "cooking", "wine_dining", "interior_design", "pilates", "reading",
+      "astrology", "brunch", "wine_tasting", "fitness", "music",
+      "coffee", "hiking", "swimming", "luxury_travel", "nature", "meditation"
+    ]
+    const malePassionPool = ["Travel", "Fitness", "Music", "Cooking", "Gaming", "Reading"]
+    const femalePassionPool = ["Travel", "Photography", "Fitness", "Art & Culture", "Cooking", "Coffee & Cafés", "Hiking & Nature", "Music", "Reading"]
+
+    const fakeUsers = await db.select({ id: usersTable.id, gender: usersTable.gender })
+      .from(usersTable).where(eq(usersTable.fake, 1))
+
+    let updated = 0
+    for (const user of fakeUsers) {
+      const gender = user.gender || 2
+      const pool = gender === 1 ? maleInterestPool : femaleInterestPool
+      const passionPool = gender === 1 ? malePassionPool : femalePassionPool
+      const interests = JSON.stringify([...pool].sort(() => Math.random() - 0.5).slice(0, 6))
+      const passions = [...passionPool].sort(() => Math.random() - 0.5).slice(0, 3).join(",")
+
+      const [existing] = await db.select({ userId: userExtendedTable.userId })
+        .from(userExtendedTable).where(eq(userExtendedTable.userId, user.id)).limit(1)
+
+      if (existing) {
+        await db.update(userExtendedTable)
+          .set({ interests, passions } as any)
+          .where(eq(userExtendedTable.userId, user.id))
+      } else {
+        await db.insert(userExtendedTable).values({ userId: user.id, interests, passions } as any).catch(() => {})
+      }
+      updated++
+    }
+
+    res.json({ updated })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 // Create fake user
 router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {

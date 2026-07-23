@@ -36,6 +36,7 @@ export default function AdminFakeUsers() {
   const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
   const [usernameError, setUsernameError] = useState("")
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
+  const [fixingInterests, setFixingInterests] = useState(false)
 
   const [total, setTotal] = useState(0)
   const load = async () => {
@@ -186,6 +187,22 @@ export default function AdminFakeUsers() {
             cursor: 'pointer', fontFamily: 'inherit'
           }}>
             🔑 Reset All Passwords
+          </button>
+          <button onClick={async () => {
+            if (!confirm(`Update interests & passions on ALL ${total} fake users with real site values?`)) return
+            setFixingInterests(true)
+            try {
+              const r = await authFetch("/api/admin/fake-users/fix-interests", { method: "POST" })
+              const d = await r.json()
+              if (!r.ok) throw new Error(d.error)
+              toast.success(`Updated interests on ${d.updated} fake users ✓`)
+            } catch (e: any) { toast.error(e.message || "Failed") } finally { setFixingInterests(false) }
+          }} disabled={fixingInterests} style={{
+            padding: '0.5rem 1rem', background: fixingInterests ? '#9ca3af' : '#10b981',
+            color: '#fff', border: 'none', borderRadius: '0.5rem', fontSize: '0.875rem',
+            cursor: fixingInterests ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+          }}>
+            {fixingInterests ? "Fixing..." : "🎯 Fix All Interests"}
           </button>
           <button onClick={() => setShowCreate(!showCreate)} style={{
             padding: '0.5rem 1rem', background: '#FF192C',
