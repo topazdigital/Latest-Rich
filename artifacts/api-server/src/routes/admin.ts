@@ -336,9 +336,6 @@ router.post("/fake-users/fix-interests", requireAuth, requireAdmin, async (req, 
       "astrology", "brunch", "wine_tasting", "fitness", "music",
       "coffee", "hiking", "swimming", "luxury_travel", "nature", "meditation"
     ]
-    const malePassionPool = ["Travel", "Fitness", "Music", "Cooking", "Gaming", "Reading"]
-    const femalePassionPool = ["Travel", "Photography", "Fitness", "Art & Culture", "Cooking", "Coffee & Cafés", "Hiking & Nature", "Music", "Reading"]
-
     const fakeUsers = await db.select({ id: usersTable.id, gender: usersTable.gender })
       .from(usersTable).where(eq(usersTable.fake, 1))
 
@@ -346,19 +343,17 @@ router.post("/fake-users/fix-interests", requireAuth, requireAdmin, async (req, 
     for (const user of fakeUsers) {
       const gender = user.gender || 2
       const pool = gender === 1 ? maleInterestPool : femaleInterestPool
-      const passionPool = gender === 1 ? malePassionPool : femalePassionPool
       const interests = JSON.stringify([...pool].sort(() => Math.random() - 0.5).slice(0, 6))
-      const passions = [...passionPool].sort(() => Math.random() - 0.5).slice(0, 3).join(",")
 
       const [existing] = await db.select({ userId: userExtendedTable.userId })
         .from(userExtendedTable).where(eq(userExtendedTable.userId, user.id)).limit(1)
 
       if (existing) {
         await db.update(userExtendedTable)
-          .set({ interests, passions } as any)
+          .set({ interests } as any)
           .where(eq(userExtendedTable.userId, user.id))
       } else {
-        await db.insert(userExtendedTable).values({ userId: user.id, interests, passions } as any).catch(() => {})
+        await db.insert(userExtendedTable).values({ userId: user.id, interests } as any).catch(() => {})
       }
       updated++
     }
@@ -398,9 +393,7 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       ? bio.trim()
       : `Hi, I'm ${name}, a ${resolvedAge} year old ${genderLabel} from ${resolvedCity}, ${resolvedCountry}. I'm looking for a genuine connection with someone special.`
 
-    // Auto-fill interests and passions using real site values
-    // Interests stored as JSON array of IDs (matching SettingsPage INTERESTS)
-    // Passions stored as comma-separated labels (matching ProfileQuestionsModal PASSIONS)
+    // Auto-fill interests using real site values (JSON array of IDs matching SettingsPage INTERESTS)
     const maleInterestPool = [
       "travel", "fitness", "business", "investing", "technology", "running",
       "golf", "tennis", "football", "basketball", "cars", "hiking",
@@ -414,14 +407,7 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       "coffee", "hiking", "swimming", "luxury_travel", "nature", "meditation"
     ]
     const pool = resolvedGender === 1 ? maleInterestPool : femaleInterestPool
-    const shuffled = pool.sort(() => Math.random() - 0.5)
-    const autoInterests = JSON.stringify(shuffled.slice(0, 6))
-
-    const malePassionPool = ["Travel", "Fitness", "Music", "Cooking", "Gaming", "Reading"]
-    const femalePassionPool = ["Travel", "Photography", "Fitness", "Art & Culture", "Cooking", "Coffee & Cafés", "Hiking & Nature", "Music", "Reading"]
-    const passionPool = resolvedGender === 1 ? malePassionPool : femalePassionPool
-    const shuffledPassions = passionPool.sort(() => Math.random() - 0.5)
-    const autoPassions = shuffledPassions.slice(0, 3).join(",")
+    const autoInterests = JSON.stringify([...pool].sort(() => Math.random() - 0.5).slice(0, 6))
 
     await db.insert(usersTable).values({
       name,
@@ -447,7 +433,6 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
     await db.insert(userExtendedTable).values({
       userId: user.id,
       interests: autoInterests,
-      passions: autoPassions,
     } as any).catch(() => {})
 
     // Insert main photo into photos table if provided
