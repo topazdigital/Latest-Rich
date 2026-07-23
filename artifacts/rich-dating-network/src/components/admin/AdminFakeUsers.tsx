@@ -35,6 +35,7 @@ export default function AdminFakeUsers() {
   })
   const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
   const [usernameError, setUsernameError] = useState("")
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
 
   const [total, setTotal] = useState(0)
   const load = async () => {
@@ -49,9 +50,27 @@ export default function AdminFakeUsers() {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    const val = form.username.trim()
+    if (!val) { setUsernameStatus("idle"); return }
+    setUsernameStatus("checking")
+    const timer = setTimeout(async () => {
+      try {
+        const r = await authFetch(`/api/auth/check-availability?field=username&value=${encodeURIComponent(val)}`)
+        const d = await r.json()
+        setUsernameStatus(d.available ? "available" : "taken")
+        if (!d.available) setUsernameError("Username is already taken")
+        else setUsernameError("")
+      } catch { setUsernameStatus("idle") }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [form.username])
+
   const createFake = async () => {
     if (!form.name) { toast.error("Name required"); return }
     if (!form.username.trim()) { setUsernameError("Username is required"); return }
+    if (usernameStatus === "taken") { setUsernameError("Username is already taken"); return }
+    if (usernameStatus === "checking") { toast.error("Please wait — checking username availability"); return }
     setUsernameError("")
     try {
       const validExtras = extraPhotos.map(u => u.trim()).filter(Boolean)
@@ -301,13 +320,29 @@ export default function AdminFakeUsers() {
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>
                 Username <span style={{ color: '#FF192C' }}>*</span>
               </label>
-              <input
-                style={{ width: '100%', background: '#f9fafb', border: `1px solid ${usernameError ? '#FF192C' : '#d1d5db'}`, color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
-                value={form.username}
-                onChange={e => { setUsernameError(""); setForm(f => ({ ...f, username: e.target.value })) }}
-                placeholder="e.g. jessica_m"
-              />
-              {usernameError && <p style={{ fontSize: '0.7rem', color: '#FF192C', marginTop: '0.25rem', marginBottom: 0 }}>{usernameError}</p>}
+              <div style={{ position: 'relative' }}>
+                <input
+                  style={{ width: '100%', background: '#f9fafb', border: `1px solid ${usernameStatus === 'taken' || usernameError ? '#FF192C' : usernameStatus === 'available' ? '#22c55e' : '#d1d5db'}`, color: '#111827', padding: '0.4rem 2.25rem 0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+                  value={form.username}
+                  onChange={e => { setUsernameError(""); setUsernameStatus("idle"); setForm(f => ({ ...f, username: e.target.value })) }}
+                  placeholder="e.g. jessica_m"
+                />
+                {usernameStatus === 'checking' && (
+                  <span style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#94a3b8' }}>…</span>
+                )}
+                {usernameStatus === 'available' && (
+                  <span style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: '#22c55e' }}>✓</span>
+                )}
+                {usernameStatus === 'taken' && (
+                  <span style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: '#FF192C' }}>✕</span>
+                )}
+              </div>
+              {usernameStatus === 'available' && !usernameError && (
+                <p style={{ fontSize: '0.7rem', color: '#22c55e', marginTop: '0.2rem', marginBottom: 0 }}>Username is available</p>
+              )}
+              {(usernameStatus === 'taken' || usernameError) && (
+                <p style={{ fontSize: '0.7rem', color: '#FF192C', marginTop: '0.2rem', marginBottom: 0 }}>{usernameError || 'Username is already taken'}</p>
+              )}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Age</label>

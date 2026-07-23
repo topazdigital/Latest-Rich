@@ -29,9 +29,8 @@ if [[ "$1" != "--skip-pull" ]]; then
   echo "  Rich Dating Network Deploy"
   echo "==============================="
   echo "[0/7] Pulling latest code from GitHub..."
-  git stash --quiet 2>/dev/null || true
-  git pull origin main
-  git stash pop --quiet 2>/dev/null || true
+  git fetch origin
+  git reset --hard origin/main
   echo "      Code updated ✓"
   echo "      Re-launching with updated script..."
   exec bash "$0" --skip-pull
