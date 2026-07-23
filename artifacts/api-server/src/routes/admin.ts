@@ -349,13 +349,30 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       ? bio.trim()
       : `Hi, I'm ${name}, a ${resolvedAge} year old ${genderLabel} from ${resolvedCity}, ${resolvedCountry}. I'm looking for a genuine connection with someone special.`
 
-    // Auto-fill interests based on gender
-    const autoInterests = resolvedGender === 1
-      ? "Travel, Fine Dining, Business, Fitness, Sports, Investing, Music"
-      : "Travel, Fashion, Wellness, Art, Yoga, Fine Dining, Photography"
-    const autoPassions = resolvedGender === 1
-      ? "Adventure, Entrepreneurship, Luxury Lifestyle"
-      : "Creativity, Personal Growth, Luxury Lifestyle"
+    // Auto-fill interests and passions using real site values
+    // Interests stored as JSON array of IDs (matching SettingsPage INTERESTS)
+    // Passions stored as comma-separated labels (matching ProfileQuestionsModal PASSIONS)
+    const maleInterestPool = [
+      "travel", "fitness", "business", "investing", "technology", "running",
+      "golf", "tennis", "football", "basketball", "cars", "hiking",
+      "cooking", "music", "movies", "gaming", "camping", "wine_dining",
+      "crossfit", "cycling", "nature", "luxury_travel", "reading", "concerts"
+    ]
+    const femaleInterestPool = [
+      "travel", "photography", "yoga", "dancing", "fashion", "art",
+      "cooking", "wine_dining", "interior_design", "pilates", "reading",
+      "astrology", "brunch", "wine_tasting", "fitness", "music",
+      "coffee", "hiking", "swimming", "luxury_travel", "nature", "meditation"
+    ]
+    const pool = resolvedGender === 1 ? maleInterestPool : femaleInterestPool
+    const shuffled = pool.sort(() => Math.random() - 0.5)
+    const autoInterests = JSON.stringify(shuffled.slice(0, 6))
+
+    const malePassionPool = ["Travel", "Fitness", "Music", "Cooking", "Gaming", "Reading"]
+    const femalePassionPool = ["Travel", "Photography", "Fitness", "Art & Culture", "Cooking", "Coffee & Cafés", "Hiking & Nature", "Music", "Reading"]
+    const passionPool = resolvedGender === 1 ? malePassionPool : femalePassionPool
+    const shuffledPassions = passionPool.sort(() => Math.random() - 0.5)
+    const autoPassions = shuffledPassions.slice(0, 3).join(",")
 
     await db.insert(usersTable).values({
       name,
