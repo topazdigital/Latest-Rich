@@ -326,21 +326,43 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, username, gender, looking, city, country, countryCode, age, bio, photo, photoThumb, extraPhotos, profileVideo } = req.body as any
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
+
+    // Username is mandatory
+    const resolvedUsername = username && String(username).trim()
+    if (!resolvedUsername) { res.status(400).json({ error: "Username is required" }); return }
+
+    // Check username uniqueness
+    const [existingUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, resolvedUsername)).limit(1)
+    if (existingUser) { res.status(409).json({ error: "Username is already taken" }); return }
+
+    const resolvedGender = parseInt(gender) || 2 // 1=Man, 2=Woman
     const fakeEmail = `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`
     const { hashPassword: hashPw } = await import("../lib/password")
     const testPassword = await hashPw("testuser")
     const resolvedCity = city || "New York"
     const resolvedCountry = country || "United States"
     const resolvedAge = parseInt(age) || 28
+
+    // Auto-generate bio from name/age/gender/city if not provided
+    const genderLabel = resolvedGender === 1 ? "man" : "woman"
     const resolvedBio = (bio && bio.trim())
       ? bio.trim()
-      : `Hi, I'm ${name}, ${resolvedAge} years old and I'm from ${resolvedCity}, ${resolvedCountry}`
+      : `Hi, I'm ${name}, a ${resolvedAge} year old ${genderLabel} from ${resolvedCity}, ${resolvedCountry}. I'm looking for a genuine connection with someone special.`
+
+    // Auto-fill interests based on gender
+    const autoInterests = resolvedGender === 1
+      ? "Travel, Fine Dining, Business, Fitness, Sports, Investing, Music"
+      : "Travel, Fashion, Wellness, Art, Yoga, Fine Dining, Photography"
+    const autoPassions = resolvedGender === 1
+      ? "Adventure, Entrepreneurship, Luxury Lifestyle"
+      : "Creativity, Personal Growth, Luxury Lifestyle"
+
     await db.insert(usersTable).values({
       name,
-      username: username && username.trim() ? username.trim() : undefined,
+      username: resolvedUsername,
       email: fakeEmail,
       password: testPassword,
-      gender: parseInt(gender) || 2,
+      gender: resolvedGender,
       looking: parseInt(looking) || 1,
       city: resolvedCity,
       country: resolvedCountry,
@@ -354,7 +376,14 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       created: now(), lastAccess: String(now()),
     } as any)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, fakeEmail)).limit(1)
-    await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
+
+    // Insert extended profile with auto-filled interests
+    await db.insert(userExtendedTable).values({
+      userId: user.id,
+      interests: autoInterests,
+      passions: autoPassions,
+    } as any).catch(() => {})
+
     // Insert main photo into photos table if provided
     if (photo) {
       await db.insert(photosTable).values({

@@ -34,6 +34,7 @@ export default function AdminFakeUsers() {
     age: "28", bio: "", photo: "", photoThumb: "", profileVideo: ""
   })
   const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
+  const [usernameError, setUsernameError] = useState("")
 
   const [total, setTotal] = useState(0)
   const load = async () => {
@@ -50,14 +51,26 @@ export default function AdminFakeUsers() {
 
   const createFake = async () => {
     if (!form.name) { toast.error("Name required"); return }
+    if (!form.username.trim()) { setUsernameError("Username is required"); return }
+    setUsernameError("")
     try {
       const validExtras = extraPhotos.map(u => u.trim()).filter(Boolean)
-      await authFetch("/api/admin/fake-users", {
+      const r = await authFetch("/api/admin/fake-users", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, extraPhotos: validExtras })
       })
+      const d = await r.json()
+      if (!r.ok) {
+        if (d.error?.toLowerCase().includes("username")) {
+          setUsernameError(d.error)
+        } else {
+          toast.error(d.error || "Failed to create")
+        }
+        return
+      }
       toast.success("Fake user created")
       setShowCreate(false)
+      setUsernameError("")
       setForm({ name: "", username: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
       setExtraPhotos([""])
       load()
@@ -285,8 +298,16 @@ export default function AdminFakeUsers() {
               <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Username</label>
-              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="e.g. jessica_m (optional)" />
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                Username <span style={{ color: '#FF192C' }}>*</span>
+              </label>
+              <input
+                style={{ width: '100%', background: '#f9fafb', border: `1px solid ${usernameError ? '#FF192C' : '#d1d5db'}`, color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+                value={form.username}
+                onChange={e => { setUsernameError(""); setForm(f => ({ ...f, username: e.target.value })) }}
+                placeholder="e.g. jessica_m"
+              />
+              {usernameError && <p style={{ fontSize: '0.7rem', color: '#FF192C', marginTop: '0.25rem', marginBottom: 0 }}>{usernameError}</p>}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Age</label>
