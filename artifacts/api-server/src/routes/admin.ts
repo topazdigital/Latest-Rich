@@ -324,22 +324,29 @@ router.post("/users/:id/send-email", requireAuth, requireAdmin, async (req, res)
 // Create fake user
 router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb, extraPhotos, profileVideo } = req.body as any
+    const { name, username, gender, looking, city, country, countryCode, age, bio, photo, photoThumb, extraPhotos, profileVideo } = req.body as any
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
     const fakeEmail = `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`
     const { hashPassword: hashPw } = await import("../lib/password")
     const testPassword = await hashPw("testuser")
+    const resolvedCity = city || "New York"
+    const resolvedCountry = country || "United States"
+    const resolvedAge = parseInt(age) || 28
+    const resolvedBio = (bio && bio.trim())
+      ? bio.trim()
+      : `Hi, I'm ${name}, ${resolvedAge} years old and I'm from ${resolvedCity}, ${resolvedCountry}`
     await db.insert(usersTable).values({
       name,
+      username: username && username.trim() ? username.trim() : undefined,
       email: fakeEmail,
       password: testPassword,
       gender: parseInt(gender) || 2,
       looking: parseInt(looking) || 1,
-      city: city || "New York",
-      country: country || "United States",
+      city: resolvedCity,
+      country: resolvedCountry,
       countryCode: countryCode || "US",
-      age: parseInt(age) || 28,
-      bio: bio || "",
+      age: resolvedAge,
+      bio: resolvedBio,
       photo: photo || "",
       photoThumb: photoThumb || "",
       profileVideo: profileVideo || "",

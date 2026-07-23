@@ -30,7 +30,7 @@ export default function AdminFakeUsers() {
   const [selectedProfiles, setSelectedProfiles] = useState<Set<number>>(new Set())
   const [importingGenerated, setImportingGenerated] = useState(false)
   const [form, setForm] = useState({
-    name: "", gender: "2", looking: "1", city: "", country: "",
+    name: "", username: "", gender: "2", looking: "1", city: "", country: "",
     age: "28", bio: "", photo: "", photoThumb: "", profileVideo: ""
   })
   const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
@@ -58,7 +58,7 @@ export default function AdminFakeUsers() {
       })
       toast.success("Fake user created")
       setShowCreate(false)
-      setForm({ name: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
+      setForm({ name: "", username: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
       setExtraPhotos([""])
       load()
     } catch { toast.error("Failed to create") }
@@ -283,6 +283,10 @@ export default function AdminFakeUsers() {
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Name</label>
               <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Username</label>
+              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="e.g. jessica_m (optional)" />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Age</label>
