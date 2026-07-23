@@ -8,6 +8,8 @@ export interface SeoLandingPage {
   country?: string
   city?: string
   category?: string
+  /** 1 = show men only, 2 = show women only, undefined = show any */
+  gender?: number
 }
 
 interface CityDef {
@@ -720,6 +722,8 @@ function slugify(s: string) {
 interface CategoryDef {
   prefix: string
   label: string
+  /** 1 = men only, 2 = women only, undefined = any gender */
+  gender?: number
   h1: (city: string) => string
   title: (city: string, country: string) => string
   description: (city: string, country: string) => string
@@ -731,6 +735,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'sugar-daddy',
     label: 'Sugar Daddy',
+    gender: 1,
     h1: c => `Find a Sugar Daddy in ${c}`,
     title: (c, co) => `Sugar Daddy ${c} | Meet Rich Sugar Daddies in ${c} — Rich Dating Network`,
     description: (c, co) => `Looking for a sugar daddy in ${c}? Join Rich Dating Network free and meet verified, wealthy sugar daddies in ${c}, ${co} today.`,
@@ -740,6 +745,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'sugar-mummy',
     label: 'Sugar Mummy',
+    gender: 2,
     h1: c => `Find a Sugar Mummy in ${c}`,
     title: (c, co) => `Sugar Mummy ${c} | Meet Rich Sugar Mummies in ${c} — Rich Dating Network`,
     description: (c, co) => `Looking for a sugar mummy in ${c}? Join Rich Dating Network free and meet verified, wealthy sugar mummies in ${c}, ${co} today.`,
@@ -749,6 +755,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'rich-men',
     label: 'Rich Men',
+    gender: 1,
     h1: c => `Meet Rich Men in ${c}`,
     title: (c, co) => `Rich Men in ${c} | Meet Wealthy Men in ${c} — Rich Dating Network`,
     description: (c, co) => `Looking to meet rich men in ${c}? Join Rich Dating Network free and connect with verified, wealthy men in ${c}, ${co}. Real profiles, real success stories.`,
@@ -758,6 +765,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'rich-women',
     label: 'Rich Women',
+    gender: 2,
     h1: c => `Meet Rich Women in ${c}`,
     title: (c, co) => `Rich Women in ${c} | Meet Wealthy Women in ${c} — Rich Dating Network`,
     description: (c, co) => `Looking to meet rich women in ${c}? Join Rich Dating Network free and connect with verified, wealthy women in ${c}, ${co}. Real profiles, real connections.`,
@@ -767,6 +775,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'wealthy-men',
     label: 'Wealthy Men Dating',
+    gender: 1,
     h1: c => `Wealthy Men Dating in ${c}`,
     title: (c, co) => `Wealthy Men Dating ${c} | Meet Affluent Men in ${c} — Rich Dating Network`,
     description: (c, co) => `Find wealthy men in ${c} for dating and relationships. Rich Dating Network connects you with verified, affluent men in ${c}, ${co}. Free to join.`,
@@ -776,6 +785,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'wealthy-women',
     label: 'Wealthy Women Dating',
+    gender: 2,
     h1: c => `Wealthy Women Dating in ${c}`,
     title: (c, co) => `Wealthy Women Dating ${c} | Meet Affluent Women in ${c} — Rich Dating Network`,
     description: (c, co) => `Find wealthy women in ${c} for dating and relationships. Rich Dating Network connects you with verified, affluent women in ${c}, ${co}. Free to join.`,
@@ -794,6 +804,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'cougar-dating',
     label: 'Cougar Dating',
+    gender: 2,
     h1: c => `Cougar Dating in ${c}`,
     title: (c, co) => `Cougar Dating ${c} | Meet Older Women in ${c} — Rich Dating Network`,
     description: (c, co) => `Find cougars in ${c} for dating. Meet confident, successful older women in ${c}, ${co} on Rich Dating Network. Free to join, verified profiles.`,
@@ -803,6 +814,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'older-men',
     label: 'Older Men Dating',
+    gender: 1,
     h1: c => `Meet Older Men in ${c}`,
     title: (c, co) => `Older Men Dating ${c} | Meet Mature Men in ${c} — Rich Dating Network`,
     description: (c, co) => `Meet older, mature, successful men in ${c} on Rich Dating Network. Genuine connections, verified profiles in ${c}, ${co}. Join free.`,
@@ -849,6 +861,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     prefix: 'generous-men',
     label: 'Generous Men',
+    gender: 1,
     h1: c => `Meet Generous Men in ${c}`,
     title: (c, co) => `Generous Men in ${c} | Meet Wealthy Generous Men in ${c} — Rich Dating Network`,
     description: (c, co) => `Looking for generous men in ${c}? Meet verified, financially generous, wealthy men in ${c}, ${co} on Rich Dating Network. Free to join.`,
@@ -881,6 +894,7 @@ const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
     slug: `${cat.prefix}-${countrySlug}`,
     country,
     category: cat.prefix,
+    gender: cat.gender,
     h1: cat.h1(country),
     title: dedup(cat.title(country, country)),
     description: dedup(cat.description(country, country)),
@@ -905,6 +919,7 @@ const cityPageRaw: SeoLandingPage[] = PLACES_LIST.flatMap(({ city, country }) =>
     city,
     country,
     category: cat.prefix,          // ← always use prefix (was incorrectly cat.label)
+    gender: cat.gender,
     h1: cat.h1(city),
     title: cat.title(city, country),
     description: cat.description(city, country),

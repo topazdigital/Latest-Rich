@@ -31,8 +31,9 @@ export default function AdminFakeUsers() {
   const [importingGenerated, setImportingGenerated] = useState(false)
   const [form, setForm] = useState({
     name: "", gender: "2", looking: "1", city: "", country: "",
-    age: "28", bio: "", photo: "", photoThumb: ""
+    age: "28", bio: "", photo: "", photoThumb: "", profileVideo: ""
   })
+  const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
 
   const [total, setTotal] = useState(0)
   const load = async () => {
@@ -50,13 +51,15 @@ export default function AdminFakeUsers() {
   const createFake = async () => {
     if (!form.name) { toast.error("Name required"); return }
     try {
+      const validExtras = extraPhotos.map(u => u.trim()).filter(Boolean)
       await authFetch("/api/admin/fake-users", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, extraPhotos: validExtras })
       })
       toast.success("Fake user created")
       setShowCreate(false)
-      setForm({ name: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "" })
+      setForm({ name: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
+      setExtraPhotos([""])
       load()
     } catch { toast.error("Failed to create") }
   }
@@ -306,8 +309,44 @@ export default function AdminFakeUsers() {
               <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Photo URL</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Main Photo URL</label>
               <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://..." />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                Additional Photos (URLs) — add multiple for a richer profile
+              </label>
+              {extraPhotos.map((url, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <input
+                    style={{ flex: 1, background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+                    value={url}
+                    onChange={e => {
+                      const next = [...extraPhotos]; next[i] = e.target.value; setExtraPhotos(next)
+                    }}
+                    placeholder="https://..."
+                  />
+                  {extraPhotos.length > 1 && (
+                    <button type="button" onClick={() => setExtraPhotos(extraPhotos.filter((_, j) => j !== i))}
+                      style={{ padding: '0.4rem 0.6rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={() => setExtraPhotos([...extraPhotos, ""])}
+                style={{ fontSize: '0.75rem', color: '#0ea5e9', background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0', fontFamily: 'inherit' }}>
+                + Add another photo URL
+              </button>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Profile Video URL (optional)</label>
+              <input
+                style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+                value={form.profileVideo}
+                onChange={e => setForm(f => ({ ...f, profileVideo: e.target.value }))}
+                placeholder="https://... (mp4 or YouTube embed)"
+              />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Bio</label>

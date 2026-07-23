@@ -324,7 +324,7 @@ router.post("/users/:id/send-email", requireAuth, requireAdmin, async (req, res)
 // Create fake user
 router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb } = req.body
+    const { name, gender, looking, city, country, countryCode, age, bio, photo, photoThumb, extraPhotos, profileVideo } = req.body as any
     if (!name) { res.status(400).json({ error: "Name is required" }); return }
     const fakeEmail = `fake_${Date.now()}_${Math.random().toString(36).slice(2)}@rdn.local`
     const { hashPassword: hashPw } = await import("../lib/password")
@@ -342,11 +342,30 @@ router.post("/fake-users", requireAuth, requireAdmin, async (req, res) => {
       bio: bio || "",
       photo: photo || "",
       photoThumb: photoThumb || "",
+      profileVideo: profileVideo || "",
       fake: 1, verified: 1, credits: 2000,
       created: now(), lastAccess: String(now()),
-    })
+    } as any)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, fakeEmail)).limit(1)
     await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
+    // Insert main photo into photos table if provided
+    if (photo) {
+      await db.insert(photosTable).values({
+        userId: user.id, photo, thumb: photoThumb || photo,
+        approved: 1, main: 1, created: now(),
+      }).catch(() => {})
+    }
+    // Insert extra photos into photos table
+    if (Array.isArray(extraPhotos)) {
+      for (const url of extraPhotos) {
+        const u = String(url).trim()
+        if (!u) continue
+        await db.insert(photosTable).values({
+          userId: user.id, photo: u, thumb: u,
+          approved: 1, main: 0, created: now(),
+        }).catch(() => {})
+      }
+    }
     await db.insert(activityTable).values({
       type: "admin", userId: req.userId,
       title: "Fake user created", message: `${name} (id: ${user.id})`, time: now()

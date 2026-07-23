@@ -42,6 +42,7 @@ export const usersTable = pgTable("users", {
   verificationNote: text("verification_note").default(""),
   referralCode: text("referral_code").default(""),
   referredBy: integer("referred_by").default(0),
+  profileVideo: text("profile_video").default(""),
 })
 
 export const userExtendedTable = pgTable("user_extended", {

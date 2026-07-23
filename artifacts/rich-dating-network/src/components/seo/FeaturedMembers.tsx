@@ -17,23 +17,27 @@ interface Props {
   city?: string
   country?: string
   heading?: string
+  /** 1 = men only, 2 = women only, undefined = any */
+  gender?: number
   /** Unique ID used to scope the ItemList JSON-LD tag — pass the page slug */
   jsonLdId?: string
 }
 
-export default function FeaturedMembers({ city, country, heading, jsonLdId }: Props) {
+export default function FeaturedMembers({ city, country, heading, gender, jsonLdId }: Props) {
   const [members, setMembers] = useState<Member[]>([])
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (city) params.set('city', city)
     if (country) params.set('country', country)
+    if (gender) params.set('gender', String(gender))
+    params.set('fakeOnly', '1')
     params.set('limit', '6')
     fetch(`/api/users/public/members?${params}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => setMembers(Array.isArray(data) ? data.slice(0, 6) : []))
       .catch(() => {})
-  }, [city, country])
+  }, [city, country, gender])
 
   // ItemList JSON-LD — tells Google exactly which profiles appear on this page
   useEffect(() => {

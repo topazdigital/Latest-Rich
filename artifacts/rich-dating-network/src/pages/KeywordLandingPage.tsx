@@ -90,6 +90,9 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
     ? page.category
     : CATEGORY_PREFIXES.find(p => page.slug.startsWith(p + '-')) ?? ''
 
+  // Gender filter for FeaturedMembers — comes from the page's category definition
+  const pageGender = page.gender
+
   // Country hub slug for city pages (breadcrumb + related link)
   const countryHubSlug = isCityPage && page.country ? `${catPrefix}-${slugify(page.country)}` : ''
   const countryHubPage = countryHubSlug ? getSeoLandingPage(countryHubSlug) : null
@@ -238,6 +241,7 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
           <FeaturedMembers
             city={isCityPage ? page.city ?? undefined : undefined}
             country={page.country ?? undefined}
+            gender={pageGender}
             heading={
               isCityPage
                 ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.city}`

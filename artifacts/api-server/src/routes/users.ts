@@ -277,11 +277,14 @@ router.get("/public/members", async (req, res) => {
     const country = (req.query.country as string) || ""
     const city = (req.query.city as string) || ""
 
+    const fakeOnly = req.query.fakeOnly === '1'
+
     const conditions: any[] = [
       or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
       or(isNull(usersTable.admin), eq(usersTable.admin, 0)),
     ]
-    if (gender) conditions.push(eq(usersTable.gender, gender))
+    if (fakeOnly) conditions.push(eq(usersTable.fake, 1))
+    if (gender) conditions.push(eq(usersTable.gender, parseInt(gender)))
     if (country) conditions.push(sql`lower(${usersTable.country}) = ${country.toLowerCase()}`)
     if (city) conditions.push(sql`lower(${usersTable.city}) LIKE ${city.toLowerCase() + "%"}`)
 

@@ -4,6 +4,7 @@ import { logger } from "./lib/logger"
 import { setupWebSocket } from "./lib/websocket"
 import { startPaymentReconciler } from "./lib/payment-reconciler"
 import { startFakeOnlineSimulator } from "./lib/fake-message-scheduler"
+import { runMigrations } from "./lib/db-migrate"
 
 const rawPort = process.env["PORT"]
 
@@ -22,10 +23,13 @@ const server = http.createServer(app)
 // Attach WebSocket server
 setupWebSocket(server)
 
-server.listen(port, () => {
-  logger.info({ port }, "Server listening with WebSocket support")
-  startPaymentReconciler()
-  startFakeOnlineSimulator()
+// Run DB migrations before listening
+runMigrations().then(() => {
+  server.listen(port, () => {
+    logger.info({ port }, "Server listening with WebSocket support")
+    startPaymentReconciler()
+    startFakeOnlineSimulator()
+  })
 })
 
 server.on("error", (err) => {
