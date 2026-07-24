@@ -44,6 +44,12 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
   const [emailBody, setEmailBody] = useState("")
   const [emailPreview, setEmailPreview] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
+  // Chat state
+  const [activeChatPartner, setActiveChatPartner] = useState<{ id: number; name: string; photo: string; fake: number } | null>(null)
+  const [chatMessages, setChatMessages] = useState<any[]>([])
+  const [chatInput, setChatInput] = useState("")
+  const [chatSending, setChatSending] = useState(false)
+  const [chatLoading, setChatLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -64,9 +70,47 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
       authFetch(`/api/admin/users/${userId}/orders`).then(r => r.json()).then(setOrders).catch(() => {})
     }
     if (tab === "Chats") {
+      setActiveChatPartner(null)
+      setChatMessages([])
       authFetch(`/api/admin/users/${userId}/chats`).then(r => r.json()).then(setChats).catch(() => {})
     }
   }, [tab, userId])
+
+  async function openChat(partner: { id: number; name: string; photo: string; fake: number }) {
+    setActiveChatPartner(partner)
+    setChatMessages([])
+    setChatLoading(true)
+    try {
+      const r = await authFetch(`/api/admin/users/${userId}/chats/${partner.id}`)
+      const msgs = await r.json()
+      setChatMessages(Array.isArray(msgs) ? msgs : [])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!chatInput.trim() || !activeChatPartner) return
+    setChatSending(true)
+    try {
+      const r = await authFetch(`/api/admin/users/${userId}/chats/${activeChatPartner.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: chatInput.trim() }),
+      })
+      if (!r.ok) { const d = await r.json(); throw new Error(d.error || "Failed"); }
+      setChatInput("")
+      // Reload messages
+      const r2 = await authFetch(`/api/admin/users/${userId}/chats/${activeChatPartner.id}`)
+      const msgs = await r2.json()
+      setChatMessages(Array.isArray(msgs) ? msgs : [])
+      toast.success("Message sent")
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send")
+    } finally {
+      setChatSending(false)
+    }
+  }
 
   async function saveProfile() {
     setSaving(true)
@@ -350,23 +394,105 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
 
           {/* CHATS TAB */}
           {tab === "Chats" && (
-            <div>
-              <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>Recent conversations</div>
-              {chats.length === 0 ? (
-                <div style={{ color: "#6b7280", fontSize: 13 }}>No conversations found</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {chats.map((c, i) => (
-                    <div key={i} style={{ background: "#1f2937", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                      <img src={getPhotoUrl(c.other?.photo)} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-                        onError={e => { (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.svg" }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: "white", fontWeight: 600, fontSize: 14 }}>{c.other?.name || "Unknown"} (#{c.other?.id})</div>
-                        <div style={{ color: "#d1d5db", fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMsg}</div>
-                      </div>
-                      <div style={{ color: "#6b7280", fontSize: 11, flexShrink: 0 }}>{timeAgo(c.lastTime)}</div>
+            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+              {activeChatPartner ? (
+                /* ── Open conversation view ── */
+                <div style={{ display: "flex", flexDirection: "column", gap: 0, height: "100%" }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <button onClick={() => { setActiveChatPartner(null); setChatMessages([]) }}
+                      style={{ background: "#1f2937", border: "none", borderRadius: 8, color: "#9ca3af", cursor: "pointer", padding: "6px 12px", fontSize: 12, fontWeight: 600 }}>
+                      ← Back
+                    </button>
+                    <img src={getPhotoUrl(activeChatPartner.photo)} alt=""
+                      style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }}
+                      onError={e => { (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.svg" }} />
+                    <div>
+                      <span style={{ color: "white", fontWeight: 700, fontSize: 14 }}>{activeChatPartner.name}</span>
+                      {activeChatPartner.fake === 1 && <span style={{ marginLeft: 6, color: "#a78bfa", fontSize: 11, background: "#7c3aed22", padding: "1px 6px", borderRadius: 99 }}>Fake</span>}
+                      <div style={{ color: "#6b7280", fontSize: 11 }}>Conversation with {user?.name}</div>
                     </div>
-                  ))}
+                    <div style={{ marginLeft: "auto", color: "#4b5563", fontSize: 11 }}>Sending as <strong style={{ color: "#e5e7eb" }}>{user?.name}</strong></div>
+                  </div>
+
+                  {/* Messages */}
+                  <div style={{ flex: 1, overflowY: "auto", background: "#0f172a", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 8, minHeight: 200, maxHeight: 360, border: "1px solid #1f2937" }}>
+                    {chatLoading ? (
+                      <div style={{ color: "#6b7280", fontSize: 13, textAlign: "center", padding: "20px 0" }}>Loading messages…</div>
+                    ) : chatMessages.length === 0 ? (
+                      <div style={{ color: "#6b7280", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No messages yet</div>
+                    ) : chatMessages.map((m, i) => {
+                      const isFromUser = m.u1 === userId
+                      return (
+                        <div key={i} style={{ display: "flex", flexDirection: isFromUser ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
+                          <div style={{
+                            maxWidth: "72%", padding: "8px 12px", borderRadius: isFromUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                            background: isFromUser ? "#FF192C" : "#1f2937",
+                            color: "white", fontSize: 13, lineHeight: 1.4,
+                          }}>
+                            {m.message}
+                            <div style={{ fontSize: 10, color: isFromUser ? "rgba(255,255,255,0.6)" : "#6b7280", marginTop: 3, textAlign: isFromUser ? "right" : "left" }}>
+                              {timeAgo(m.time)}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Reply input */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <textarea
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                      placeholder={`Reply as ${user?.name}… (Enter to send)`}
+                      rows={2}
+                      style={{ flex: 1, background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 13, resize: "none", outline: "none" }}
+                    />
+                    <button onClick={sendChatMessage} disabled={chatSending || !chatInput.trim()}
+                      style={{ background: chatSending || !chatInput.trim() ? "#374151" : "#FF192C", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: chatSending || !chatInput.trim() ? "not-allowed" : "pointer", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Send size={14} /> {chatSending ? "…" : "Send"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Conversation list ── */
+                <div>
+                  <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 14, fontWeight: 500 }}>
+                    {chats.length} recent conversation{chats.length !== 1 ? "s" : ""} — click to open &amp; reply
+                  </div>
+                  {chats.length === 0 ? (
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>No conversations found</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {chats.map((c, i) => (
+                        <div key={i}
+                          onClick={() => openChat({ id: c.other?.id, name: c.other?.name || "Unknown", photo: c.other?.photo || "", fake: c.other?.fake ?? 0 })}
+                          style={{ background: "#1f2937", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: `1px solid ${c.unread ? "#FF192C44" : "transparent"}`, transition: "border-color 0.15s" }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#273549"}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "#1f2937"}
+                        >
+                          <div style={{ position: "relative", flexShrink: 0 }}>
+                            <img src={getPhotoUrl(c.other?.photo)} alt=""
+                              style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }}
+                              onError={e => { (e.currentTarget as HTMLImageElement).src = "/images/default-avatar.svg" }} />
+                            {c.other?.fake === 1 && <div style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, background: "#7c3aed", borderRadius: "50%", border: "2px solid #1f2937", fontSize: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>🤖</div>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ color: "white", fontWeight: 600, fontSize: 14 }}>{c.other?.name || "Unknown"}</span>
+                              <span style={{ color: "#6b7280", fontSize: 11 }}>#{c.other?.id}</span>
+                              {c.unread ? <span style={{ width: 7, height: 7, background: "#FF192C", borderRadius: "50%", flexShrink: 0 }} /> : null}
+                            </div>
+                            <div style={{ color: "#9ca3af", fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{c.lastMsg}</div>
+                          </div>
+                          <div style={{ color: "#6b7280", fontSize: 11, flexShrink: 0 }}>{timeAgo(c.lastTime)}</div>
+                          <ChevronRight size={14} style={{ color: "#374151", flexShrink: 0 }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

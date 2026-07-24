@@ -445,27 +445,67 @@ export default function AdminEmailCampaigns() {
         )}
 
         {/* Tab: Settings */}
-        {composerTab === "settings" && (
-          <div style={CARD}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <div>
-                <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>BATCH SIZE</label>
-                <input type="number" value={form.batchSize} onChange={e => setForm(f => ({ ...f, batchSize: e.target.value }))} min="1" max="500" style={INPUT} />
-                <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Emails sent per batch before cooling time</p>
+        {composerTab === "settings" && (() => {
+          const batchNum = Math.max(1, parseInt(form.batchSize) || 50)
+          const coolNum = Math.max(1, parseInt(form.coolingSeconds) || 60)
+          const perHour = Math.round((batchNum / coolNum) * 3600)
+
+          function applyHourlyRate(rateStr: string) {
+            const rate = Math.max(1, parseInt(rateStr) || 100)
+            // Fix batch size at current value; adjust cooling to match hourly rate
+            const newCooling = Math.max(10, Math.round((batchNum / rate) * 3600))
+            setForm(f => ({ ...f, coolingSeconds: String(newCooling) }))
+          }
+
+          return (
+            <div style={CARD}>
+              {/* Per-hour control — primary */}
+              <div style={{ marginBottom: "1.25rem", background: "#1e293b", borderRadius: "0.625rem", padding: "1rem 1.125rem", border: "1px solid #334155" }}>
+                <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.5rem" }}>
+                  📬 MAX EMAILS PER HOUR
+                </label>
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                  <input
+                    type="number"
+                    defaultValue={perHour}
+                    key={`ph-${batchNum}`}
+                    onBlur={e => applyHourlyRate(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") applyHourlyRate((e.target as HTMLInputElement).value) }}
+                    min="1" max="100000"
+                    style={{ ...INPUT, width: "8rem" }}
+                  />
+                  <span style={{ color: "#64748b", fontSize: "0.8rem" }}>emails / hour</span>
+                  <span style={{ marginLeft: "auto", background: perHour > 5000 ? "#7f1d1d44" : perHour > 1000 ? "#78350f44" : "#14532d44", color: perHour > 5000 ? "#fca5a5" : perHour > 1000 ? "#fde68a" : "#86efac", padding: "0.2rem 0.75rem", borderRadius: "50px", fontSize: "0.72rem", fontWeight: 700 }}>
+                    {perHour > 5000 ? "⚠️ Very aggressive" : perHour > 1000 ? "⚡ Moderate" : "✅ Safe"}
+                  </span>
+                </div>
+                <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.5rem", margin: "0.5rem 0 0" }}>
+                  Set how many emails to send per hour. The cooling time adjusts automatically. Keep under 500/hour to stay out of spam.
+                </p>
               </div>
-              <div>
-                <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>COOLING TIME (seconds)</label>
-                <input type="number" value={form.coolingSeconds} onChange={e => setForm(f => ({ ...f, coolingSeconds: e.target.value }))} min="10" max="86400" style={INPUT} />
-                <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Wait this many seconds between batches</p>
+
+              {/* Advanced: batch + cooling */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div>
+                  <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>BATCH SIZE</label>
+                  <input type="number" value={form.batchSize} onChange={e => setForm(f => ({ ...f, batchSize: e.target.value }))} min="1" max="500" style={INPUT} />
+                  <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Emails per batch</p>
+                </div>
+                <div>
+                  <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>COOLING TIME (seconds)</label>
+                  <input type="number" value={form.coolingSeconds} onChange={e => setForm(f => ({ ...f, coolingSeconds: e.target.value }))} min="10" max="86400" style={INPUT} />
+                  <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Seconds between batches</p>
+                </div>
+              </div>
+
+              <div style={{ background: "#1e293b", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
+                <p style={{ color: "#94a3b8", fontSize: "0.78rem", margin: 0, lineHeight: 1.6 }}>
+                  Current rate: <strong style={{ color: "#e2e8f0" }}>{batchNum} emails</strong> every <strong style={{ color: "#e2e8f0" }}>{coolNum}s</strong> = <strong style={{ color: perHour > 1000 ? "#fde68a" : "#86efac" }}>{perHour.toLocaleString()} emails/hour</strong>
+                </p>
               </div>
             </div>
-            <div style={{ marginTop: "1rem", background: "#1e293b", borderRadius: "0.5rem", padding: "0.875rem 1rem" }}>
-              <p style={{ color: "#94a3b8", fontSize: "0.8rem", margin: 0, lineHeight: 1.6 }}>
-                💡 <strong style={{ color: "#e2e8f0" }}>Anti-spam tip:</strong> A batch of 50 emails every 60 seconds is recommended. Avoid sending more than 200 per minute to prevent your domain from being flagged as spam.
-              </p>
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Save button */}
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem", justifyContent: "flex-end" }}>
@@ -537,6 +577,7 @@ export default function AdminEmailCampaigns() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
             {[
               { label: "Subject", value: selected.subject },
+              { label: "Send Rate", value: `~${Math.round((selected.batchSize / Math.max(1, selected.coolingSeconds)) * 3600).toLocaleString()} emails/hour` },
               { label: "Batch Size", value: `${selected.batchSize} emails / batch` },
               { label: "Cooling Time", value: `${selected.coolingSeconds}s between batches` },
               { label: "Gender Filter", value: selected.filterGender === 1 ? "Male" : selected.filterGender === 2 ? "Female" : "All" },

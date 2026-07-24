@@ -717,22 +717,116 @@ router.post("/users/:id/premium", requireAuth, requireAdmin, async (req, res) =>
   }
 })
 
-// Get user chats summary (admin)
+// Get user chats summary (admin) — returns one entry per conversation partner
 router.get("/users/:id/chats", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return }
-    const conversations = await db.select({
-      other: { id: usersTable.id, name: usersTable.name, photo: usersTable.photo },
+
+    // Fetch recent messages, deduplicate by partner in JS
+    const msgs = await db.select({
+      u1: messagesTable.u1,
+      u2: messagesTable.u2,
       lastMsg: messagesTable.message,
       lastTime: messagesTable.time,
+      read: messagesTable.read,
     })
       .from(messagesTable)
-      .innerJoin(usersTable, sql`(${messagesTable.u1} = ${id} AND ${usersTable.id} = ${messagesTable.u2}) OR (${messagesTable.u2} = ${id} AND ${usersTable.id} = ${messagesTable.u1})`)
       .where(sql`${messagesTable.u1} = ${id} OR ${messagesTable.u2} = ${id}`)
       .orderBy(desc(messagesTable.time))
-      .limit(20)
-    res.json(conversations)
+      .limit(500)
+
+    // Deduplicate by partner id — first occurrence is most recent
+    const seen = new Set<number>()
+    const convos: { otherId: number; lastMsg: string; lastTime: number; unread: number }[] = []
+    for (const m of msgs) {
+      const partnerId = m.u1 === id ? m.u2 : m.u1
+      if (!seen.has(partnerId)) {
+        seen.add(partnerId)
+        // unread = message was sent TO this user and not read
+        const unread = (m.u2 === id && m.read === 0) ? 1 : 0
+        convos.push({ otherId: partnerId, lastMsg: m.lastMsg, lastTime: m.lastTime ?? 0, unread })
+      }
+    }
+
+    // Fetch partner details
+    const partnerIds = convos.map(c => c.otherId)
+    if (partnerIds.length === 0) { res.json([]); return }
+    const partners = await db.select({ id: usersTable.id, name: usersTable.name, photo: usersTable.photo, fake: usersTable.fake })
+      .from(usersTable)
+      .where(inArray(usersTable.id, partnerIds))
+    const partnerMap = new Map(partners.map(p => [p.id, p]))
+
+    const result = convos.map(c => ({
+      other: partnerMap.get(c.otherId) || { id: c.otherId, name: "Unknown", photo: "", fake: 0 },
+      lastMsg: c.lastMsg,
+      lastTime: c.lastTime,
+      unread: c.unread,
+    }))
+
+    res.json(result)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Get messages between two users (admin)
+router.get("/users/:id/chats/:otherId", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const otherId = parseInt(req.params.otherId as string)
+    if (isNaN(id) || isNaN(otherId)) { res.status(400).json({ error: "Invalid user ID" }); return }
+
+    const msgs = await db.select()
+      .from(messagesTable)
+      .where(sql`(${messagesTable.u1} = ${id} AND ${messagesTable.u2} = ${otherId}) OR (${messagesTable.u1} = ${otherId} AND ${messagesTable.u2} = ${id})`)
+      .orderBy(messagesTable.time)
+      .limit(200)
+
+    res.json(msgs)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Send a message as a user (admin — reply on behalf of user)
+router.post("/users/:id/chats/:otherId/send", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string)
+    const otherId = parseInt(req.params.otherId as string)
+    if (isNaN(id) || isNaN(otherId)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const { message } = req.body
+    if (!message?.trim()) { res.status(400).json({ error: "Message is required" }); return }
+
+    await db.insert(messagesTable).values({
+      u1: id,
+      u2: otherId,
+      message: message.trim(),
+      time: now(),
+      read: 0,
+    } as any)
+
+    // Notify the recipient
+    await db.insert(notificationsTable).values({
+      userId: otherId,
+      fromId: id,
+      type: "message",
+      message: "You have a new message",
+      link: `/chat/${id}`,
+      read: 0,
+      time: now(),
+    } as any).catch(() => {})
+
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId,
+      title: "Admin sent message as user",
+      message: `Sent as user #${id} → user #${otherId}`,
+      time: now(),
+    }).catch(() => {})
+
+    res.json({ success: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
