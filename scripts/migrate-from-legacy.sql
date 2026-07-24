@@ -806,3 +806,10 @@ CREATE TABLE IF NOT EXISTS `engagement_events` (
   `starts_at` int NOT NULL DEFAULT 0,
   `capacity` int NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Add read column to engagement_reactions (safe, idempotent)
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'engagement_reactions' AND COLUMN_NAME = 'read');
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `engagement_reactions` ADD COLUMN `read` int NOT NULL DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

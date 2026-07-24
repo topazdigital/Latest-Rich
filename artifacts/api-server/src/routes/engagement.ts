@@ -124,15 +124,55 @@ router.get("/icebreakers/:otherId", requireAuth, async (req, res) => {
   }
 })
 
+router.get("/reactions/:otherId", requireAuth, async (req, res) => {
+  try {
+    const otherId = Number(req.params.otherId)
+    const me = req.userId!
+    if (!otherId) return res.status(400).json({ error: "Invalid user" })
+    const rows = await db.select().from(engagementReactionsTable)
+      .where(or(
+        and(eq(engagementReactionsTable.fromId, me), eq(engagementReactionsTable.toId, otherId)),
+        and(eq(engagementReactionsTable.fromId, otherId), eq(engagementReactionsTable.toId, me)),
+      ))
+      .orderBy(engagementReactionsTable.time)
+    res.json(rows)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch reactions" })
+  }
+})
+
+router.post("/reactions/mark-read", requireAuth, async (req, res) => {
+  try {
+    const fromId = Number(req.body?.fromId)
+    const me = req.userId!
+    if (!fromId) return res.status(400).json({ error: "Invalid sender" })
+    await db.update(engagementReactionsTable)
+      .set({ read: 1 } as any)
+      .where(and(eq(engagementReactionsTable.fromId, fromId), eq(engagementReactionsTable.toId, me)))
+    // Notify the original sender that their reaction was seen
+    const { send: wsSend } = await import("../lib/websocket")
+    wsSend(fromId, { type: "reaction_read", byUserId: me })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to mark read" })
+  }
+})
+
 router.post("/reactions", requireAuth, async (req, res) => {
   try {
     const toId = Number(req.body?.toId)
     const type = ["wink", "rose", "heart"].includes(req.body?.type) ? req.body.type : "wink"
     if (!toId || toId === req.userId) return res.status(400).json({ error: "A valid recipient is required" })
     const [sender] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
-    await db.insert(engagementReactionsTable).values({ fromId: req.userId!, toId, type, time: now() } as any)
-    await db.insert(notificationsTable).values({ userId: toId, fromId: req.userId!, type: "reaction", message: `${sender?.name || "Someone"} sent you a ${type} ${type === "rose" ? "🌹" : type === "heart" ? "❤️" : "😉"}`, link: `/profile/${req.userId}`, time: now() } as any)
-    res.json({ success: true, type })
+    const t = now()
+    const result = await db.insert(engagementReactionsTable).values({ fromId: req.userId!, toId, type, time: t, read: 0 } as any)
+    const id = (result as any).insertId ?? (result as any)[0]?.insertId ?? Date.now()
+    await db.insert(notificationsTable).values({ userId: toId, fromId: req.userId!, type: "reaction", message: `${sender?.name || "Someone"} sent you a ${type} ${type === "rose" ? "🌹" : type === "heart" ? "❤️" : "😉"}`, link: `/chat/${req.userId}`, time: t } as any)
+    const reaction = { id, fromId: req.userId!, toId, type, time: t, read: 0 }
+    // Push reaction live to the recipient if they're connected
+    const { send: wsSend } = await import("../lib/websocket")
+    wsSend(toId, { type: "reaction_received", reaction })
+    res.json({ success: true, reaction })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Reaction failed" })
   }

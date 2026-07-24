@@ -25,6 +25,24 @@ interface Message {
   _localPreview?: string
 }
 
+interface Reaction {
+  id: number
+  fromId: number
+  toId: number
+  type: string
+  time: number
+  read: number
+  _isReaction: true
+  _sending?: boolean
+  _tempId?: string
+}
+
+type ChatItem = Message | Reaction
+
+function isReaction(item: ChatItem): item is Reaction {
+  return (item as Reaction)._isReaction === true
+}
+
 interface Props { me: any; other: any; initialMessages: Message[] }
 
 function MediaBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
@@ -53,8 +71,11 @@ function MediaBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
   return null
 }
 
+const REACTION_EMOJI: Record<string, string> = { wink: '😉', rose: '🌹', heart: '❤️' }
+
 export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [reactions, setReactions] = useState<Reaction[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
@@ -107,9 +128,27 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       .then(r => r.json()).then(d => setIcebreakers(Array.isArray(d.prompts) ? d.prompts : [])).catch(() => {})
   }, [other.id, token])
 
+  // Fetch reactions between the two users
+  useEffect(() => {
+    fetch(`/api/engagement/reactions/${other.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setReactions(data.map((r: any) => ({ ...r, _isReaction: true as const })))
+        }
+      })
+      .catch(() => {})
+  }, [other.id, token])
+
   // Mark messages as read when opening chat
   useEffect(() => {
     send({ type: 'mark_read', fromUserId: other.id })
+    // Mark any reactions from the other user as read
+    fetch('/api/engagement/reactions/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ fromId: other.id }),
+    }).then(r => r.ok && setReactions(prev => prev.map(rx => rx.fromId === other.id ? { ...rx, read: 1 } : rx))).catch(() => {})
   }, [other.id])
 
   // WS: new message received
@@ -144,6 +183,27 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   useWSEvent('messages_read', (msg) => {
     if (msg.byUserId !== other.id) return
     setMessages(prev => prev.map(m => m.u1 === me.id ? { ...m, read: 1 } : m))
+  }, [other.id, me.id])
+
+  // WS: incoming reaction (recipient sees it live)
+  useWSEvent('reaction_received', (msg) => {
+    if (msg.reaction?.fromId !== other.id) return
+    setReactions(prev => {
+      if (prev.some(r => r.id === msg.reaction.id)) return prev
+      return [...prev, { ...msg.reaction, _isReaction: true as const }]
+    })
+    // Mark it read immediately since chat is open
+    fetch('/api/engagement/reactions/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ fromId: other.id }),
+    }).catch(() => {})
+  }, [other.id, token])
+
+  // WS: sender learns their reaction was seen
+  useWSEvent('reaction_read', (msg) => {
+    if (msg.byUserId !== other.id) return
+    setReactions(prev => prev.map(r => r.fromId === me.id && r.toId === other.id ? { ...r, read: 1 } : r))
   }, [other.id, me.id])
 
   // WS: user online status
@@ -182,6 +242,13 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       fetch(`/api/chat/${other.id}/messages`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json()).then(data => {
           if (Array.isArray(data) && data.length > messages.length) setMessages(data)
+        }).catch(() => {})
+      // Also poll reactions so incoming reactions and read-status update without WS
+      fetch(`/api/engagement/reactions/${other.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).then(data => {
+          if (Array.isArray(data)) {
+            setReactions(data.map((r: any) => ({ ...r, _isReaction: true as const })))
+          }
         }).catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
@@ -385,7 +452,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 bg-gray-50 relative">
-        {messages.length === 0 && (
+        {messages.length === 0 && reactions.length === 0 && (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">💬</div>
             <p className="text-gray-400 text-sm">Say hello to {other.name}!</p>
@@ -395,7 +462,42 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           </div>
         )}
 
-        {messages.map((msg) => {
+        {[
+          ...messages.map(m => ({ ...m, _kind: 'message' as const, _sortTime: m.time })),
+          ...reactions.map(r => ({ ...r, _kind: 'reaction' as const, _sortTime: r.time })),
+        ].sort((a, b) => a._sortTime - b._sortTime).map((item) => {
+          if (item._kind === 'reaction') {
+            const rx = item as Reaction & { _kind: 'reaction'; _sortTime: number }
+            const isMine = rx.fromId === me.id
+            const isTemp = !!rx._sending
+            const emoji = REACTION_EMOJI[rx.type] || '💝'
+            const label = rx.type.charAt(0).toUpperCase() + rx.type.slice(1)
+            return (
+              <div key={rx._tempId || `rx_${rx.id}`} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
+                {!isMine && (
+                  <Link href={profileUrl(other)} className="block w-7 h-7 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-brand-300 transition-shadow" aria-label={`View ${other.name}'s profile`}>
+                    <img src={getPhotoUrl(other.photoThumb || other.photo)} alt="" className="w-full h-full object-cover" />
+                  </Link>
+                )}
+                <div className={`flex flex-col gap-0.5 ${isMine ? 'items-end' : 'items-start'}`}>
+                  <div className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-medium ${isTemp ? 'opacity-60' : ''} ${isMine ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-gray-200 text-gray-700'}`}>
+                    <span className="text-lg leading-none">{emoji}</span>
+                    <span>{isMine ? `You sent a ${label}` : `${other.name} sent you a ${label}`}</span>
+                  </div>
+                  <div className={`flex items-center gap-1 text-[10px] ${isMine ? 'text-gray-400 justify-end' : 'text-gray-400'}`}>
+                    <span>{timeAgo(rx.time)}</span>
+                    {isMine && (
+                      isTemp ? <Check size={10} className="text-gray-300" />
+                      : rx.read === 1 ? <CheckCheck size={10} className="text-brand-500" title="Seen" />
+                      : <CheckCheck size={10} className="text-gray-400" title="Delivered" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          const msg = item as Message & { _kind: 'message'; _sortTime: number }
           const isMine = msg.u1 === me.id
           const isTemp = (msg as any)._sending
           const hasMedia = !!(msg.mediaType && (msg.mediaUrl || msg._localPreview))
@@ -500,13 +602,33 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         ].map(reaction => (
           <button key={reaction.type}
             onClick={async () => {
-              const res = await fetch('/api/engagement/reactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ toId: other.id, type: reaction.type }),
-              })
-              if (res.ok) toast.success(`${reaction.label} sent`)
-              else toast.error('Could not send reaction')
+              const tempId = `rx_temp_${Date.now()}`
+              const tempRx: Reaction = {
+                id: Date.now(), fromId: me.id, toId: other.id,
+                type: reaction.type, time: Math.floor(Date.now() / 1000),
+                read: 0, _isReaction: true, _sending: true, _tempId: tempId,
+              }
+              setReactions(prev => [...prev, tempRx])
+              try {
+                const res = await fetch('/api/engagement/reactions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ toId: other.id, type: reaction.type }),
+                })
+                if (res.ok) {
+                  const data = await res.json()
+                  setReactions(prev => prev.map(rx =>
+                    rx._tempId === tempId ? { ...data.reaction, _isReaction: true as const } : rx
+                  ))
+                  toast.success(`${reaction.label} sent`)
+                } else {
+                  setReactions(prev => prev.filter(rx => rx._tempId !== tempId))
+                  toast.error('Could not send reaction')
+                }
+              } catch {
+                setReactions(prev => prev.filter(rx => rx._tempId !== tempId))
+                toast.error('Could not send reaction')
+              }
             }}
             className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:border-rose-200 hover:bg-rose-50">
             {reaction.label}

@@ -376,6 +376,7 @@ export const engagementReactionsTable = mysqlTable("engagement_reactions", {
   toId: int("to_id").notNull(),
   type: varchar("type", { length: 20 }).notNull(),
   time: int("time").default(0),
+  read: int("read").default(0),
 })
 
 export const engagementFeedbackTable = mysqlTable("engagement_feedback", {

@@ -375,6 +375,7 @@ export const engagementReactionsTable = pgTable("engagement_reactions", {
   toId: integer("to_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
   time: integer("time").default(0),
+  read: integer("read").default(0),
 })
 
 export const engagementFeedbackTable = pgTable("engagement_feedback", {
