@@ -284,17 +284,20 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 <div>
                   <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>DISPLAY NAME</label>
                   <input value={editName} onChange={e => setEditName(e.target.value)}
-                    style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
+                    className="admin-dark-input"
+                    style={{ width: "100%", fontSize: 14, boxSizing: "border-box" }} />
                 </div>
                 <div>
                   <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>CITY</label>
                   <input value={editCity} onChange={e => setEditCity(e.target.value)}
-                    style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
+                    className="admin-dark-input"
+                    style={{ width: "100%", fontSize: 14, boxSizing: "border-box" }} />
                 </div>
                 <div>
                   <label style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>BIO</label>
                   <textarea value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
-                    style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14, resize: "vertical", boxSizing: "border-box" }} />
+                    className="admin-dark-input"
+                    style={{ width: "100%", fontSize: 14, resize: "vertical", boxSizing: "border-box" }} />
                 </div>
                 <button onClick={saveProfile} disabled={saving}
                   style={{ background: "#FF192C", color: "white", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 600, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
@@ -448,7 +451,8 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                       onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
                       placeholder={`Reply as ${user?.name}… (Enter to send)`}
                       rows={2}
-                      style={{ flex: 1, background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 13, resize: "none", outline: "none" }}
+                      className="admin-dark-input"
+                      style={{ flex: 1, fontSize: 13, resize: "none" }}
                     />
                     <button onClick={sendChatMessage} disabled={chatSending || !chatInput.trim()}
                       style={{ background: chatSending || !chatInput.trim() ? "#374151" : "#FF192C", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: chatSending || !chatInput.trim() ? "not-allowed" : "pointer", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
@@ -511,7 +515,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 <div style={{ color: "white", fontWeight: 600, marginBottom: 12 }}>Add / Remove Credits</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input type="number" value={creditsToAdd} onChange={e => setCreditsToAdd(e.target.value)} placeholder="Amount (negative to remove)"
-                    style={{ flex: 1, background: "#374151", border: "1px solid #4b5563", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14 }} />
+                    className="admin-dark-input" style={{ flex: 1, fontSize: 14 }} />
                   <button onClick={addCredits} style={{ background: "#10b981", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer" }}>Add</button>
                 </div>
               </div>
@@ -520,7 +524,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 <div style={{ color: "white", fontWeight: 600, marginBottom: 12 }}>Premium Access</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} placeholder="Days (0 = revoke)"
-                    style={{ width: 120, background: "#374151", border: "1px solid #4b5563", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14 }} />
+                    className="admin-dark-input" style={{ width: 120, fontSize: 14 }} />
                   <button onClick={givePremium} style={{ background: "#f59e0b", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer" }}>
                     {parseInt(premiumDays) > 0 ? "Grant Premium" : "Revoke Premium"}
                   </button>
@@ -556,7 +560,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 <Mail size={15} /> Send a branded email directly to <strong style={{ color: "#e5e7eb" }}>{user.email}</strong>
               </div>
               <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Subject"
-                style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: "10px 12px", color: "white", fontSize: 14, boxSizing: "border-box" }} />
+                className="admin-dark-input" style={{ width: "100%", fontSize: 14, boxSizing: "border-box" }} />
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button onClick={() => setEmailPreview(!emailPreview)} style={{ fontSize: 12, color: "#FF192C", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>
                   {emailPreview ? "Edit HTML" : "Preview"}
@@ -569,7 +573,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 </div>
               ) : (
                 <textarea value={emailBody} onChange={e => setEmailBody(e.target.value)} rows={9} placeholder="Write your message (HTML allowed)…"
-                  style={{ width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 8, padding: 12, color: "white", fontSize: 13.5, fontFamily: "monospace", resize: "vertical", boxSizing: "border-box" }} />
+                  className="admin-dark-input" style={{ width: "100%", fontSize: 13.5, fontFamily: "monospace", resize: "vertical", boxSizing: "border-box" }} />
               )}
               <div>
                 <button onClick={sendUserEmail} disabled={sendingEmail}
@@ -608,7 +612,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 <div style={{ color: "white", fontWeight: 600, marginBottom: 12 }}>Change Password</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password (min 6 chars)"
-                    style={{ flex: 1, background: "#374151", border: "1px solid #4b5563", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 14 }} />
+                    className="admin-dark-input" style={{ flex: 1, fontSize: 14 }} />
                   <button onClick={changePassword} style={{ background: "#6366f1", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer" }}>Set</button>
                 </div>
               </div>
