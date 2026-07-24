@@ -336,9 +336,14 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <ArrowLeft size={20} className="text-gray-600" />
         </Link>
         <div className="relative flex-shrink-0">
-          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-100">
+          <Link
+            href={profileUrl(other)}
+            className="block w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-100 hover:ring-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-shadow"
+            aria-label={`View ${other.name}'s profile`}
+            title={`View ${other.name}'s profile`}
+          >
             <img src={getPhotoUrl(other.photoThumb || other.photo)} alt={other.name} className="w-full h-full object-cover" />
-          </div>
+          </Link>
           {otherOnline && <div className="online-dot absolute bottom-0 right-0" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -384,9 +389,14 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           return (
             <div key={(msg as any)._tempId || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
               {!isMine && (
-                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                <Link
+                  href={profileUrl(other)}
+                  className="block w-7 h-7 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-shadow"
+                  aria-label={`View ${other.name}'s profile`}
+                  title={`View ${other.name}'s profile`}
+                >
                   <img src={getPhotoUrl(other.photoThumb || other.photo)} alt="" className="w-full h-full object-cover" />
-                </div>
+                </Link>
               )}
               <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
                 {/* Media bubble */}
@@ -417,9 +427,14 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         {/* Typing indicator */}
         {otherTyping && (
           <div className="flex items-end gap-2">
-            <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+            <Link
+              href={profileUrl(other)}
+              className="block w-7 h-7 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-shadow"
+              aria-label={`View ${other.name}'s profile`}
+              title={`View ${other.name}'s profile`}
+            >
               <img src={getPhotoUrl(other.photoThumb || other.photo)} alt="" className="w-full h-full object-cover" />
-            </div>
+            </Link>
             <div className="bubble-received inline-flex items-center gap-1 py-3 px-4">
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
