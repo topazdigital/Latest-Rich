@@ -18,6 +18,7 @@ import AdminReports from "../components/admin/AdminReports"
 import AdminEmailCampaigns from "../components/admin/AdminEmailCampaigns"
 import AdminChat from "../components/admin/AdminChat"
 import AdminContactMessages from "../components/admin/AdminContactMessages"
+import AdminFeedback from "../components/admin/AdminFeedback"
 
 const MENU = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
@@ -29,6 +30,7 @@ const MENU = [
   { key: "photos", label: "Photo Moderation", icon: "🖼️" },
   { key: "reports", label: "User Reports", icon: "🚩" },
   { key: "contact-messages", label: "Contact Messages", icon: "📥" },
+  { key: "feedback", label: "Ratings & Feedback", icon: "⭐" },
   { key: "boost", label: "Boost Config", icon: "⚡" },
   { key: "payments", label: "Payment Providers", icon: "💳" },
   { key: "custom-payments", label: "Manual Gateways", icon: "🏦" },
@@ -212,6 +214,7 @@ export default function AdminPage() {
           {tab === "photos" && <AdminPhotos />}
           {tab === "reports" && <AdminReports />}
           {tab === "contact-messages" && <AdminContactMessages />}
+          {tab === "feedback" && <AdminFeedback />}
           {tab === "boost" && <AdminBoost />}
           {tab === "payments" && <AdminPayments />}
           {tab === "custom-payments" && <AdminCustomPayments />}

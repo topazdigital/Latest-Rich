@@ -52,6 +52,8 @@ export default function CreditsPageWrapper() {
   const [submitting, setSubmitting] = useState(false)
   const [useCard, setUseCard] = useState(false)
   const [showManual, setShowManual] = useState(false)
+  const [offers, setOffers] = useState<any>(null)
+  const [offerLoading, setOfferLoading] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/credits/packages').then(r => r.json()).then((d: any[]) => {
@@ -68,7 +70,23 @@ export default function CreditsPageWrapper() {
         if (mapped.length > 0) setPackages(mapped)
       }
     }).catch(() => {})
+    fetch('/api/engagement/offers').then(r => r.json()).then(setOffers).catch(() => {})
   }, [])
+
+  async function buyOffer(kind: 'starter' | 'event', eventId?: number) {
+    setOfferLoading(kind === 'event' ? `event-${eventId}` : kind)
+    try {
+      const res = await authFetch('/api/engagement/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind, eventId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Offer unavailable'); return }
+      if (data.url) window.location.href = data.url
+    } catch { toast.error('Could not start checkout') }
+    finally { setOfferLoading(null) }
+  }
 
   useEffect(() => {
     if (!token) return
@@ -251,6 +269,34 @@ export default function CreditsPageWrapper() {
       {/* Payment options */}
       {step === 'packages' && (
         <>
+          {offers?.starter && (
+            <div style={{ marginBottom: '1rem', borderRadius: '1.25rem', padding: '1rem 1.25rem', background: 'linear-gradient(135deg,#fff7ed,#fff)', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ fontSize: '2rem' }}>🎁</div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 900, color: '#9a3412', fontSize: '0.95rem' }}>New here? Try chatting for $1</p>
+                <p style={{ color: '#6b7280', fontSize: '0.78rem' }}>Get 3 credits to start a conversation today.</p>
+              </div>
+              <button onClick={() => buyOffer('starter')} disabled={!!offerLoading} style={{ border: 'none', borderRadius: '0.75rem', padding: '0.65rem 0.85rem', background: '#f97316', color: '#fff', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {offerLoading === 'starter' ? 'Starting…' : '$1 trial'}
+              </button>
+            </div>
+          )}
+          {offers?.events?.length > 0 && (
+            <div style={{ marginBottom: '1rem', borderRadius: '1.25rem', padding: '1rem 1.25rem', background: '#fdf4ff', border: '1px solid #f0abfc' }}>
+              <p style={{ fontWeight: 900, color: '#86198f', fontSize: '0.95rem', marginBottom: '0.6rem' }}>Exclusive events</p>
+              {offers.events.map((event: any) => (
+                <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.45rem 0' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 700, color: '#374151', fontSize: '0.82rem' }}>{event.title}</p>
+                    <p style={{ color: '#6b7280', fontSize: '0.72rem' }}>{event.description || 'Curated members-only access'}</p>
+                  </div>
+                  <button onClick={() => buyOffer('event', event.id)} disabled={!!offerLoading} style={{ border: 'none', borderRadius: '0.7rem', padding: '0.5rem 0.75rem', background: '#a21caf', color: '#fff', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>
+                    ${Number(event.ticketPrice || 1).toFixed(2)}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Payment method switcher (M-Pesa / GCash users can switch to Card) */}
           {hasLocalMethod && (
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', background: '#f9fafb', borderRadius: '0.875rem', padding: '0.3rem' }}>

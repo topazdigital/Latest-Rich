@@ -13,8 +13,9 @@ export default function HomePage() {
       fetch('/api/users/suggested', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
       fetch('/api/feed', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
       fetch('/api/stories', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
-    ]).then(([suggestedUsers, feedPosts, stories]) => {
-      setData({ suggestedUsers, feedPosts: Array.isArray(feedPosts) ? feedPosts : [], stories: Array.isArray(stories) ? stories : [] })
+      fetch('/api/engagement/daily', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([suggestedUsers, feedPosts, stories, daily]) => {
+      setData({ suggestedUsers, feedPosts: Array.isArray(feedPosts) ? feedPosts : [], stories: Array.isArray(stories) ? stories : [], daily })
     }).finally(() => setLoading(false))
   }, [token])
 
@@ -36,6 +37,7 @@ export default function HomePage() {
       suggestedUsers={data?.suggestedUsers || []}
       feedPosts={data?.feedPosts || []}
       stories={data?.stories || []}
+      daily={data?.daily}
     />
   )
 }

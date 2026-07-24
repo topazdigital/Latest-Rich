@@ -157,11 +157,16 @@ router.get("/stripe/success", async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(String(session_id))
     if (session.payment_status !== "paid") return res.redirect("/credits?error=unpaid")
     const { userId, type, packageId } = session.metadata || {}
-    if (!userId || !type || !packageId) return res.redirect("/credits?error=missing_metadata")
+    if (!userId || !type) return res.redirect("/credits?error=missing_metadata")
     // Guard: only fulfill once — prevent double credits if user refreshes the success page
     const [existingOrder] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, String(session_id))).limit(1)
     if (!existingOrder || existingOrder.status === "pending") {
-      await fulfillOrder(parseInt(userId), type, parseInt(packageId), "USD")
+      if (type === "starter") {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(userId))).limit(1)
+        if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, user.id))
+      } else if (type !== "event") {
+        await fulfillOrder(parseInt(userId), type, parseInt(packageId || "0"), "USD")
+      }
       await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(session_id)))
     }
     res.redirect(`/credits?success=1`)

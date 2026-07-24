@@ -358,6 +358,49 @@ export const contactSubmissionsTable = pgTable("contact_submissions", {
   createdAt: integer("created_at").notNull(),
 })
 
+export const engagementDailyTable = pgTable("engagement_daily", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  dayKey: text("day_key").notNull(),
+  matchUserId: integer("match_user_id").default(0),
+  likedRevealUntil: integer("liked_reveal_until").default(0),
+  streakDays: integer("streak_days").default(1),
+  rewardCredits: integer("reward_credits").default(0),
+  createdAt: integer("created_at").default(0),
+})
+
+export const engagementReactionsTable = pgTable("engagement_reactions", {
+  id: serial("id").primaryKey(),
+  fromId: integer("from_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  toId: integer("to_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  time: integer("time").default(0),
+})
+
+export const engagementFeedbackTable = pgTable("engagement_feedback", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  comment: text("comment").default(""),
+  prompt: text("prompt").default(""),
+  trigger: text("trigger").default(""),
+  status: text("status").default("new"),
+  adminNote: text("admin_note").default(""),
+  createdAt: integer("created_at").default(0),
+  resolvedAt: integer("resolved_at").default(0),
+})
+
+export const engagementEventsTable = pgTable("engagement_events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").default(""),
+  image: text("image").default(""),
+  ticketPrice: real("ticket_price").default(1),
+  active: integer("active").default(1),
+  startsAt: integer("starts_at").default(0),
+  capacity: integer("capacity").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

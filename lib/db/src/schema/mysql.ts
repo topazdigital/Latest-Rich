@@ -359,6 +359,49 @@ export const contactSubmissionsTable = mysqlTable("contact_submissions", {
   createdAt: int("created_at").notNull(),
 })
 
+export const engagementDailyTable = mysqlTable("engagement_daily", {
+  id: serial("id").primaryKey(),
+  userId: int("user_id").notNull(),
+  dayKey: varchar("day_key", { length: 20 }).notNull(),
+  matchUserId: int("match_user_id").default(0),
+  likedRevealUntil: int("liked_reveal_until").default(0),
+  streakDays: int("streak_days").default(1),
+  rewardCredits: int("reward_credits").default(0),
+  createdAt: int("created_at").default(0),
+})
+
+export const engagementReactionsTable = mysqlTable("engagement_reactions", {
+  id: serial("id").primaryKey(),
+  fromId: int("from_id").notNull(),
+  toId: int("to_id").notNull(),
+  type: varchar("type", { length: 20 }).notNull(),
+  time: int("time").default(0),
+})
+
+export const engagementFeedbackTable = mysqlTable("engagement_feedback", {
+  id: serial("id").primaryKey(),
+  userId: int("user_id").notNull(),
+  rating: int("rating").notNull(),
+  comment: text("comment").default(""),
+  prompt: text("prompt").default(""),
+  trigger: varchar("trigger", { length: 50 }).default(""),
+  status: varchar("status", { length: 20 }).default("new"),
+  adminNote: text("admin_note").default(""),
+  createdAt: int("created_at").default(0),
+  resolvedAt: int("resolved_at").default(0),
+})
+
+export const engagementEventsTable = mysqlTable("engagement_events", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").default(""),
+  image: text("image").default(""),
+  ticketPrice: float("ticket_price").default(1),
+  active: int("active").default(1),
+  startsAt: int("starts_at").default(0),
+  capacity: int("capacity").default(0),
+})
+
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })
 export const insertLikeSchema = createInsertSchema(likesTable).omit({ id: true })

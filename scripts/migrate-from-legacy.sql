@@ -2,8 +2,8 @@
 -- Rich Dating Network — Legacy MySQL Migration Script
 -- Maps old PHP site tables (admin_testdating) → new app schema tables
 --
--- Run this ONCE on your production MySQL server BEFORE (or alongside)
--- drizzle-kit push. It is safe to re-run — all inserts use
+-- Run this ONCE on your production MySQL server. It is safe to re-run —
+-- all inserts use
 -- INSERT IGNORE or WHERE NOT EXISTS to avoid duplicates.
 --
 -- Usage:
@@ -757,4 +757,52 @@ CREATE TABLE IF NOT EXISTS `email_campaign_logs` (
   `status` varchar(50) NOT NULL DEFAULT '',
   `error` text NOT NULL DEFAULT '',
   `sent_at` int NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Engagement and retention features
+CREATE TABLE IF NOT EXISTS `engagement_daily` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` int NOT NULL,
+  `day_key` varchar(20) NOT NULL,
+  `match_user_id` int NOT NULL DEFAULT 0,
+  `liked_reveal_until` int NOT NULL DEFAULT 0,
+  `streak_days` int NOT NULL DEFAULT 1,
+  `reward_credits` int NOT NULL DEFAULT 0,
+  `created_at` int NOT NULL DEFAULT 0,
+  KEY `idx_engagement_daily_user_day` (`user_id`, `day_key`),
+  UNIQUE KEY `uq_engagement_daily_user_day` (`user_id`, `day_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `engagement_reactions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `from_id` int NOT NULL,
+  `to_id` int NOT NULL,
+  `type` varchar(20) NOT NULL,
+  `time` int NOT NULL DEFAULT 0,
+  KEY `idx_engagement_reactions_to` (`to_id`, `time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `engagement_feedback` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` int NOT NULL,
+  `rating` int NOT NULL,
+  `comment` text,
+  `prompt` varchar(255) NOT NULL DEFAULT '',
+  `trigger` varchar(50) NOT NULL DEFAULT '',
+  `status` varchar(20) NOT NULL DEFAULT 'new',
+  `admin_note` text,
+  `created_at` int NOT NULL DEFAULT 0,
+  `resolved_at` int NOT NULL DEFAULT 0,
+  KEY `idx_engagement_feedback_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `engagement_events` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `image` text,
+  `ticket_price` decimal(10,2) NOT NULL DEFAULT 1.00,
+  `active` tinyint NOT NULL DEFAULT 1,
+  `starts_at` int NOT NULL DEFAULT 0,
+  `capacity` int NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

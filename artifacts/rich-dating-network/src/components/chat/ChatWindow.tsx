@@ -5,6 +5,7 @@ import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wif
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
+import FeedbackPrompt from '../engagement/FeedbackPrompt'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
 
@@ -65,6 +66,8 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [pendingMedia, setPendingMedia] = useState<{ file: File; preview: string; type: string } | null>(null)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
+  const [icebreakers, setIcebreakers] = useState<string[]>([])
+  const [showFeedback, setShowFeedback] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -98,6 +101,11 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
     fetch('/api/chat/credit-cost', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setCreditCost(d.cost || 10)).catch(() => {})
   }, [token])
+
+  useEffect(() => {
+    fetch(`/api/engagement/icebreakers/${other.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => setIcebreakers(Array.isArray(d.prompts) ? d.prompts : [])).catch(() => {})
+  }, [other.id, token])
 
   // Mark messages as read when opening chat
   useEffect(() => {
@@ -314,6 +322,11 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         const data = await res.json()
         setMessages(prev => prev.map(m => (m as any)._tempId === tempId ? { ...data, read: 0 } : m))
         if (data.credits !== undefined) setCredits(data.credits)
+        const myMessageCount = messages.filter(message => message.u1 === me.id).length + 1
+        if (myMessageCount >= 5 && !localStorage.getItem('rdn_feedback_prompted')) {
+          localStorage.setItem('rdn_feedback_prompted', '1')
+          setShowFeedback(true)
+        }
       }
     } catch {
       toast.error('Failed to send message')
@@ -464,6 +477,43 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         </div>
       )}
 
+      {messages.length === 0 && icebreakers.length > 0 && (
+        <div className="border-t border-gray-100 bg-white px-3 py-2">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-400">Try an icebreaker</p>
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            {icebreakers.map(prompt => (
+              <button key={prompt} onClick={() => setInput(prompt)}
+                className="flex-shrink-0 rounded-full border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 border-t border-gray-100 bg-white px-3 py-2">
+        <span className="text-[11px] font-semibold text-gray-400">Free:</span>
+        {[
+          { type: 'wink', label: '😉 Wink' },
+          { type: 'rose', label: '🌹 Rose' },
+          { type: 'heart', label: '❤️ Heart' },
+        ].map(reaction => (
+          <button key={reaction.type}
+            onClick={async () => {
+              const res = await fetch('/api/engagement/reactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ toId: other.id, type: reaction.type }),
+              })
+              if (res.ok) toast.success(`${reaction.label} sent`)
+              else toast.error('Could not send reaction')
+            }}
+            className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:border-rose-200 hover:bg-rose-50">
+            {reaction.label}
+          </button>
+        ))}
+      </div>
+
       {/* Pending media preview */}
       {pendingMedia && (
         <div className="px-3 py-2 bg-white border-t border-gray-100 flex-shrink-0">
@@ -550,6 +600,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           </button>
         </div>
       </div>
+      {showFeedback && <FeedbackPrompt onClose={() => setShowFeedback(false)} trigger="fifth_message" />}
     </div>
   )
 }

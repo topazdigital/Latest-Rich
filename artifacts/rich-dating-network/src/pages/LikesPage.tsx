@@ -11,6 +11,7 @@ export default function LikesPage() {
   const [tab, setTab] = useState('Matches')
   const [data, setData] = useState<{ likedMe: any[]; iLiked: any[]; matches: any[] }>({ likedMe: [], iLiked: [], matches: [] })
   const [loading, setLoading] = useState(true)
+  const [expiringMatches, setExpiringMatches] = useState<any[]>([])
   const { token } = useAuth()
 
   useEffect(() => {
@@ -20,6 +21,8 @@ export default function LikesPage() {
       .then(d => { if (d && !d.error) setData(d) })
       .catch(() => {})
       .finally(() => setLoading(false))
+    fetch('/api/engagement/matches', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : []).then(d => setExpiringMatches(Array.isArray(d) ? d : [])).catch(() => {})
   }, [token])
 
   const list = tab === 'Matches' ? data.matches : tab === 'Liked Me' ? data.likedMe : data.iLiked
@@ -88,7 +91,7 @@ export default function LikesPage() {
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {list.map((item: any, i: number) => (
-              <MatchCard key={i} item={item} tab={tab} token={token!} />
+              <MatchCard key={i} item={item} tab={tab} token={token!} expiry={expiringMatches.find(match => match.id === item.user?.id)} />
             ))}
           </div>
         </>
@@ -97,12 +100,12 @@ export default function LikesPage() {
   )
 }
 
-function MatchCard({ item, tab, token }: { item: any; tab: string; token: string }) {
+function MatchCard({ item, tab, token, expiry }: { item: any; tab: string; token: string; expiry?: any }) {
   const user = item.user
   if (!user) return null
 
   return (
-    <div className="card overflow-hidden group">
+    <div className="card overflow-hidden group relative">
       <div className="relative overflow-hidden bg-gray-200" style={{ aspectRatio: '3/4' }}>
         <img src={getPhotoUrl(user.photoThumb || user.photo)} alt={user.name}
           className="absolute inset-0 w-full h-full object-cover"
@@ -132,11 +135,16 @@ function MatchCard({ item, tab, token }: { item: any; tab: string; token: string
         </div>
       </div>
       <div className="p-2 flex gap-2">
+        {tab === 'Matches' && expiry && (
+          <div className={`absolute bottom-12 left-2 rounded-full px-2 py-1 text-[10px] font-bold ${expiry.expired ? 'bg-gray-900/80 text-white' : 'bg-amber-400 text-white'}`}>
+            {expiry.expired ? 'Match expired' : `Expires ${new Date(expiry.expiresAt * 1000).toLocaleDateString()}`}
+          </div>
+        )}
         <Link href={profileUrl(user)}
           className="flex-1 text-center text-xs font-medium py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
           Profile
         </Link>
-        {tab === 'Matches' && (
+        {tab === 'Matches' && !expiry?.expired && (
           <Link href={`/chat/${user.id}`}
             className="flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition-colors">
             <MessageCircle size={13} /> Chat

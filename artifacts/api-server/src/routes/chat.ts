@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { messagesTable, usersTable, siteConfigTable, activityTable } from "@workspace/db/schema"
-import { eq, and, or, desc } from "drizzle-orm"
+import { messagesTable, usersTable, siteConfigTable, activityTable, notificationsTable } from "@workspace/db/schema"
+import { eq, and, or, desc, count } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_CHAT_ERROR } from "../lib/contact-filter"
@@ -203,6 +203,16 @@ router.post("/", requireAuth, async (req, res) => {
           url: `/chat/${sender.id}`,
         })
       }).catch(() => {})
+    }
+
+    if (sender.fake !== 1) {
+      const [sentCount] = await db.select({ count: count() }).from(messagesTable)
+        .where(or(eq(messagesTable.u1, myId), eq(messagesTable.u2, myId)))
+      if ((sentCount?.count || 0) === 5) {
+        await db.insert(notificationsTable).values({
+          userId: myId, type: "feedback_prompt", message: "How are you enjoying your connections?", link: "/home", read: 0, time: now(),
+        } as any).catch(() => {})
+      }
     }
 
     res.json({ ...msg, credits: updatedSender?.credits })

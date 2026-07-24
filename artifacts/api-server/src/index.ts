@@ -5,6 +5,7 @@ import { setupWebSocket } from "./lib/websocket"
 import { startPaymentReconciler } from "./lib/payment-reconciler"
 import { startFakeOnlineSimulator } from "./lib/fake-message-scheduler"
 import { runMigrations } from "./lib/db-migrate"
+import { sendReengagementEmails } from "./lib/reengagement"
 
 const rawPort = process.env["PORT"]
 
@@ -29,6 +30,8 @@ runMigrations().then(() => {
     logger.info({ port }, "Server listening with WebSocket support")
     startPaymentReconciler()
     startFakeOnlineSimulator()
+    setTimeout(() => { sendReengagementEmails().catch(() => {}) }, 20_000)
+    setInterval(() => { sendReengagementEmails().catch(() => {}) }, 6 * 60 * 60 * 1000)
   })
 })
 

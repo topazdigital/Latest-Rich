@@ -4,12 +4,14 @@ import { Link } from 'wouter'
 import { Heart, MessageCircle, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight, Search, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import DailyHighlights from '../engagement/DailyHighlights'
 
 interface Props {
   userId: number
   suggestedUsers: any[]
   feedPosts: any[]
   stories: any[]
+  daily?: any
 }
 
 export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }: Props) {
@@ -56,6 +58,8 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
 
           {/* ── Main column ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} className="main-col">
+
+            <DailyHighlights />
 
             {/* Welcome banner */}
             <div style={{

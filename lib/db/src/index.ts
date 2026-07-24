@@ -91,6 +91,10 @@ export const referralsTable = (schema as any).referralsTable
 export const emailCampaignsTable = (schema as any).emailCampaignsTable
 export const emailCampaignLogsTable = (schema as any).emailCampaignLogsTable
 export const contactSubmissionsTable = (schema as any).contactSubmissionsTable
+export const engagementDailyTable = (schema as any).engagementDailyTable
+export const engagementReactionsTable = (schema as any).engagementReactionsTable
+export const engagementFeedbackTable = (schema as any).engagementFeedbackTable
+export const engagementEventsTable = (schema as any).engagementEventsTable
 
 export const insertUserSchema = schema.insertUserSchema
 export const insertMessageSchema = schema.insertMessageSchema

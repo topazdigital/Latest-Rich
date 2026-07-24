@@ -29,6 +29,7 @@ import emailCampaignsRouter from "./email-campaigns"
 import contactRouter from "./contact"
 import contactMessagesRouter from "./contact-messages"
 import pushRouter from "./push"
+import engagementRouter from "./engagement"
 
 const router: IRouter = Router()
 
@@ -58,6 +59,7 @@ router.use("/custom-payments", customPaymentsRouter)
 router.use("/verification", verificationRouter)
 router.use("/referrals", referralsRouter)
 router.use("/push", pushRouter)
+router.use("/engagement", engagementRouter)
 router.use("/admin/email-campaigns", emailCampaignsRouter)
 router.use("/admin/contact-messages", contactMessagesRouter)
 router.use("/", contactRouter)
