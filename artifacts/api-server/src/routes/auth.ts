@@ -264,7 +264,8 @@ router.post("/login", async (req, res) => {
       res.status(403).json({ error: "Account suspended. Contact support." })
       return
     }
-    await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, user.id))
+    const loginIp = (req.headers["x-forwarded-for"] as string || req.socket?.remoteAddress || "").split(",")[0].trim()
+    await db.update(usersTable).set({ lastAccess: String(now()), online: 1, ...(loginIp ? { lastIp: loginIp } : {}) }).where(eq(usersTable.id, user.id))
     await db.insert(activityTable).values({
       type: "login", userId: user.id,
       title: "User login", message: `${user.name} logged in`, time: now()

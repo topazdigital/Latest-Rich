@@ -44,6 +44,7 @@ export const usersTable = mysqlTable("users", {
   referralCode: text("referral_code").default(""),
   referredBy: int("referred_by").default(0),
   profileVideo: text("profile_video").default(""),
+  lastIp: text("last_ip").default(""),
 })
 
 export const userExtendedTable = mysqlTable("user_extended", {

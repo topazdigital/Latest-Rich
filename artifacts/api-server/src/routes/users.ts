@@ -21,7 +21,8 @@ router.get("/me", requireAuth, async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
-    await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, user.id))
+    const heartbeatIp = (req.headers["x-forwarded-for"] as string || req.socket?.remoteAddress || "").split(",")[0].trim()
+    await db.update(usersTable).set({ lastAccess: String(now()), ...(heartbeatIp ? { lastIp: heartbeatIp } : {}) }).where(eq(usersTable.id, user.id))
     res.json(safeUser(user))
   } catch (err) {
     console.error(err)

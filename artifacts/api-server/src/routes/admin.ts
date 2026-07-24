@@ -74,6 +74,7 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
     const [totalMessages] = await db.select({ count: count() }).from(messagesTable)
     const [totalLikes] = await db.select({ count: count() }).from(likesTable)
     const [bannedUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.banned, 1))
+    const [verifiedUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.verified, 1))
 
     // Revenue: wrapped separately so a schema/column issue never breaks all stats
     let totalRevenue = 0
@@ -101,6 +102,7 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
       premiumUsers: premiumUsers.count,
       onlineUsers: onlineUsers.count,
       bannedUsers: bannedUsers.count,
+      verifiedUsers: verifiedUsers.count,
       totalRevenue,
       todayRevenue,
       totalMessages: totalMessages.count,
@@ -122,26 +124,59 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
     const filter = String(req.query.filter || "all")
     const search = String(req.query.search || "").trim()
 
-    const filterCondition: SQL | undefined =
-      filter === "fake"    ? eq(usersTable.fake, 1)    :
-      filter === "real"    ? eq(usersTable.fake, 0)    :
-      filter === "premium" ? eq(usersTable.premium, 1) :
-      filter === "banned"  ? eq(usersTable.banned, 1)  :
-      filter === "admin"   ? gte(usersTable.admin, 1)  :
-      undefined
+    // Extended filter params
+    const gender = req.query.gender !== undefined ? parseInt(String(req.query.gender)) : null
+    const dateFrom = req.query.dateFrom ? parseInt(String(req.query.dateFrom)) : null
+    const dateTo = req.query.dateTo ? parseInt(String(req.query.dateTo)) : null
+    const country = String(req.query.country || "").trim()
+    const city = String(req.query.city || "").trim()
+    const ageMin = req.query.ageMin ? parseInt(String(req.query.ageMin)) : null
+    const ageMax = req.query.ageMax ? parseInt(String(req.query.ageMax)) : null
+    const orderBy = String(req.query.orderBy || "lastAccess")
+    const onlineNow = req.query.onlineNow === "1"
+    const verifiedOnly = req.query.verified === "1"
 
-    // Build search condition at the DB level so it works across all pages
-    const searchCondition: SQL | undefined = search
-      ? sql`(${usersTable.name} LIKE ${'%' + search + '%'} OR ${usersTable.email} LIKE ${'%' + search + '%'} OR ${usersTable.city} LIKE ${'%' + search + '%'} OR ${usersTable.username} LIKE ${'%' + search + '%'})`
+    const conditions: (SQL | undefined)[] = []
+
+    // Quick filter tab
+    if (filter === "fake")    conditions.push(eq(usersTable.fake, 1))
+    else if (filter === "real")    conditions.push(eq(usersTable.fake, 0))
+    else if (filter === "premium") conditions.push(eq(usersTable.premium, 1))
+    else if (filter === "banned")  conditions.push(eq(usersTable.banned, 1))
+    else if (filter === "admin")   conditions.push(gte(usersTable.admin, 1))
+    else if (filter === "verified") conditions.push(eq(usersTable.verified, 1))
+    else if (filter === "online")  conditions.push(gte(usersTable.lastAccess as any, String(now() - 300)))
+
+    // Search
+    if (search) {
+      conditions.push(sql`(${usersTable.name} LIKE ${'%' + search + '%'} OR ${usersTable.email} LIKE ${'%' + search + '%'} OR ${usersTable.city} LIKE ${'%' + search + '%'} OR ${usersTable.username} LIKE ${'%' + search + '%'} OR CAST(${usersTable.id} AS CHAR) = ${search})`)
+    }
+
+    // Advanced filters
+    if (gender !== null && !isNaN(gender)) conditions.push(eq(usersTable.gender, gender))
+    if (dateFrom !== null && !isNaN(dateFrom)) conditions.push(gte(usersTable.created, dateFrom))
+    if (dateTo !== null && !isNaN(dateTo)) conditions.push(sql`${usersTable.created} <= ${dateTo}`)
+    if (country) conditions.push(sql`LOWER(${usersTable.country}) LIKE ${('%' + country.toLowerCase() + '%')}`)
+    if (city) conditions.push(sql`LOWER(${usersTable.city}) LIKE ${('%' + city.toLowerCase() + '%')}`)
+    if (ageMin !== null && !isNaN(ageMin)) conditions.push(gte(usersTable.age, ageMin))
+    if (ageMax !== null && !isNaN(ageMax)) conditions.push(sql`${usersTable.age} <= ${ageMax}`)
+    if (onlineNow) conditions.push(gte(usersTable.lastAccess as any, String(now() - 300)))
+    if (verifiedOnly) conditions.push(eq(usersTable.verified, 1))
+
+    const whereCondition: SQL | undefined = conditions.filter(Boolean).length > 0
+      ? and(...conditions.filter(Boolean) as SQL[])
       : undefined
 
-    const whereCondition: SQL | undefined =
-      filterCondition && searchCondition ? and(filterCondition, searchCondition) :
-      filterCondition ?? searchCondition
+    const orderExpr =
+      orderBy === "createdDesc" ? desc(usersTable.created) :
+      orderBy === "createdAsc"  ? usersTable.created :
+      orderBy === "name"        ? usersTable.name :
+      orderBy === "credits"     ? desc(usersTable.credits) :
+      sql`CAST(COALESCE(${usersTable.lastAccess}, '0') AS ${sql.raw(isMysql ? 'SIGNED' : 'BIGINT')}) DESC`
 
     const users = await db.select().from(usersTable)
       .where(whereCondition)
-      .orderBy(sql`CAST(COALESCE(${usersTable.lastAccess}, '0') AS ${sql.raw(isMysql ? 'SIGNED' : 'BIGINT')}) DESC`)
+      .orderBy(orderExpr)
       .limit(limit)
       .offset(offset)
 
