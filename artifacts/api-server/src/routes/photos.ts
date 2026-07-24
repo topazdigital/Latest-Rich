@@ -190,6 +190,64 @@ router.get("/mine", requireAuth, async (req, res) => {
   } catch { res.status(500).json({ error: "Failed" }) }
 })
 
+// Admin uploads a photo directly to any user's profile
+router.post("/admin/upload/:userId", requireAuth, upload.single("photo"), async (req: any, res) => {
+  try {
+    const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    if (!me || me.admin < 1) { res.status(403).json({ error: "Admin only" }); return }
+    if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return }
+
+    const targetUserId = parseInt(req.params.userId)
+    const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1)
+    if (!targetUser) { res.status(404).json({ error: "User not found" }); return }
+
+    // Compress the uploaded image
+    const compressed = await compressImage(req.file.path)
+    let filename = req.file.filename
+    if (compressed) {
+      const ext = path.extname(filename).toLowerCase()
+      if (ext !== ".jpg" && ext !== ".jpeg") {
+        const newFilename = filename.replace(/\.[^.]+$/, ".jpg")
+        const oldPath = path.join(uploadDir, filename)
+        const newPath = path.join(uploadDir, newFilename)
+        if (fs.existsSync(oldPath)) fs.renameSync(oldPath, newPath)
+        filename = newFilename
+      }
+    }
+
+    // Check if user already has a main photo
+    const [existingMain] = await db.select().from(photosTable)
+      .where(and(eq(photosTable.userId, targetUserId), eq(photosTable.main, 1))).limit(1)
+
+    const isMain = !existingMain ? 1 : 0
+
+    await db.insert(photosTable).values({
+      userId: targetUserId,
+      photo: filename,
+      thumb: filename,
+      approved: 1,
+      main: isMain,
+      created: now(),
+    })
+
+    // If this is the first photo, also update the user's main photo field
+    if (isMain) {
+      await db.update(usersTable)
+        .set({ photo: filename, photoThumb: filename })
+        .where(eq(usersTable.id, targetUserId))
+    }
+
+    await db.insert(activityTable).values({
+      type: "admin", userId: req.userId,
+      title: "Admin uploaded photo", message: `Photo uploaded for user id:${targetUserId}`, time: now()
+    }).catch(() => {})
+
+    res.json({ success: true, filename, main: isMain })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Upload failed" })
+  }
+})
+
 router.put("/admin/approve/:id", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id as string)

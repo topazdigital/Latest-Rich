@@ -36,6 +36,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
   const [premiumDays, setPremiumDays] = useState("30")
   const [newPassword, setNewPassword] = useState("")
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [editBio, setEditBio] = useState("")
   const [editName, setEditName] = useState("")
   const [editCity, setEditCity] = useState("")
@@ -272,7 +273,37 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
           {/* MEDIA TAB */}
           {tab === "Media" && (
             <div>
-              <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 16, fontWeight: 500 }}>{user.photos?.length || 0} photo(s) on record</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 500 }}>{user.photos?.length || 0} photo(s) on record</div>
+                <label style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 14px", background: uploadingPhoto ? "#374151" : "#FF192C",
+                  color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  cursor: uploadingPhoto ? "not-allowed" : "pointer"
+                }}>
+                  {uploadingPhoto ? "Uploading…" : "📤 Upload Photo"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} disabled={uploadingPhoto}
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setUploadingPhoto(true)
+                      try {
+                        const fd = new FormData()
+                        fd.append("photo", file)
+                        const r = await authFetch(`/api/photos/admin/upload/${user.id}`, { method: "POST", body: fd })
+                        const d = await r.json()
+                        if (!r.ok) throw new Error(d.error || "Upload failed")
+                        toast.success(d.main ? "Photo uploaded and set as main ✓" : "Photo uploaded ✓")
+                        load()
+                      } catch (err: any) {
+                        toast.error(err.message || "Upload failed")
+                      } finally {
+                        setUploadingPhoto(false)
+                        e.target.value = ""
+                      }
+                    }} />
+                </label>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 14 }}>
                 {(user.photos || []).map(p => (
                   <div key={p.id} style={{ borderRadius: 10, overflow: "hidden", border: `2px solid ${p.main ? "#FF192C" : "#374151"}`, position: "relative", background: "#1f2937" }}>
