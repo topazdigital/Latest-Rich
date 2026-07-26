@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import toast from "react-hot-toast"
+import LocationAutocomplete from "../ui/LocationAutocomplete"
 
 interface GeneratedProfile {
   name: string
@@ -30,9 +31,10 @@ export default function AdminFakeUsers() {
   const [selectedProfiles, setSelectedProfiles] = useState<Set<number>>(new Set())
   const [importingGenerated, setImportingGenerated] = useState(false)
   const [form, setForm] = useState({
-    name: "", username: "", gender: "2", looking: "1", city: "", country: "",
+    name: "", username: "", gender: "2", looking: "1", city: "", country: "", countryCode: "",
     age: "28", bio: "", photo: "", photoThumb: "", profileVideo: ""
   })
+  const [detectingLocation, setDetectingLocation] = useState(false)
   const [extraPhotos, setExtraPhotos] = useState<string[]>([""])
   const [usernameError, setUsernameError] = useState("")
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle")
@@ -50,6 +52,27 @@ export default function AdminFakeUsers() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Auto-detect location from IP when the create form opens
+  useEffect(() => {
+    if (!showCreate) return
+    if (form.city || form.country) return   // already has a value, don't overwrite
+    setDetectingLocation(true)
+    authFetch("/api/location/detect")
+      .then(r => r.json())
+      .then(d => {
+        if (d.city || d.country) {
+          setForm(f => ({
+            ...f,
+            city: f.city || d.city || "",
+            country: f.country || d.country || "",
+            countryCode: f.countryCode || d.countryCode || "",
+          }))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setDetectingLocation(false))
+  }, [showCreate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const val = form.username.trim()
@@ -91,7 +114,7 @@ export default function AdminFakeUsers() {
       toast.success("Fake user created")
       setShowCreate(false)
       setUsernameError("")
-      setForm({ name: "", username: "", gender: "2", looking: "1", city: "", country: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
+      setForm({ name: "", username: "", gender: "2", looking: "1", city: "", country: "", countryCode: "", age: "28", bio: "", photo: "", photoThumb: "", profileVideo: "" })
       setExtraPhotos([""])
       load()
     } catch { toast.error("Failed to create") }
@@ -377,13 +400,30 @@ export default function AdminFakeUsers() {
                 <option value="1">Men</option><option value="2">Women</option><option value="3">Both</option>
               </select>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>City</label>
-              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Country</label>
-              <input style={{ width: '100%', background: '#f9fafb', border: '1px solid #d1d5db', color: '#111827', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                City {detectingLocation && <span style={{ color: '#94a3b8', fontWeight: 400 }}>· detecting…</span>}
+              </label>
+              <LocationAutocomplete
+                value={form.city}
+                country={form.country}
+                onChange={(city, country, countryCode) =>
+                  setForm(f => ({ ...f, city, country, countryCode: countryCode || f.countryCode }))
+                }
+                placeholder="Type to search city…"
+              />
+              {form.country && (
+                <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#64748b' }}>
+                  📍 {form.country}{form.countryCode ? ` (${form.countryCode})` : ''}
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, city: '', country: '', countryCode: '' }))}
+                    style={{ marginLeft: '0.5rem', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontFamily: 'inherit' }}
+                  >
+                    clear
+                  </button>
+                </div>
+              )}
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>Main Photo URL</label>
