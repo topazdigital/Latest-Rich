@@ -192,7 +192,12 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
 
   const creditPkgs = await getCreditPackages()
   let amount = 0, description = "", creditsToAward = 0
-  if (type === "credits") {
+  if (type === "starter") {
+    const kesToUsdRate = Number(await getConfig("kes_rate") || "130")
+    amount = Math.round(1 * kesToUsdRate) // $1 trial
+    description = "3 Credits Trial"
+    creditsToAward = 3
+  } else if (type === "credits") {
     const pkg = creditPkgs[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     const kesToUsdRate = Number(await getConfig("kes_rate") || "130")
@@ -387,7 +392,10 @@ router.post("/payhero/callback", async (req, res) => {
       if (confirmed?.status !== "completed") {
         res.json({ success: true }); return
       }
-      if (order.type === "credits") {
+      if (order.type === "starter") {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+        if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, order.userId))
+      } else if (order.type === "credits") {
         const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
         const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
         if (creditsToAdd > 0) {
@@ -442,7 +450,10 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
       await db.update(ordersTable)
         .set({ status: "completed" })
         .where(and(eq(ordersTable.stripeSessionId, req.params.ref as string), eq(ordersTable.status, "pending")))
-      if (freshOrder.type === "credits") {
+      if (freshOrder.type === "starter") {
+        const [u] = await db.select().from(usersTable).where(eq(usersTable.id, freshOrder.userId)).limit(1)
+        if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + 3 }).where(eq(usersTable.id, freshOrder.userId))
+      } else if (freshOrder.type === "credits") {
         const parsedFromDesc = freshOrder.description ? parseInt((freshOrder.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
         const creditsToAdd = (freshOrder.credits && freshOrder.credits > 0) ? freshOrder.credits : parsedFromDesc
         if (creditsToAdd > 0) {
@@ -504,7 +515,11 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
 
   const creditPkgsPaystack = await getCreditPackages()
   let amount = 0, description = "", credits = 0
-  if (type === "credits") {
+  if (type === "starter") {
+    amount = Math.round(1 * rate * 100) // $1 trial
+    description = "3 Credits Trial"
+    credits = 3
+  } else if (type === "credits") {
     const pkg = creditPkgsPaystack[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents (USD: cents)
@@ -568,7 +583,10 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
 
   const creditPkgsPaymongo = await getCreditPackages()
   let amount = 0, description = ""
-  if (type === "credits") {
+  if (type === "starter") {
+    amount = Math.round(1 * phpRate * 100) // $1 trial → centavos
+    description = "3 Credits Trial"
+  } else if (type === "credits") {
     const pkg = creditPkgsPaymongo[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * phpRate * 100) // centavos
@@ -634,7 +652,9 @@ router.post("/intasend/checkout", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const creditPkgs = await getCreditPackages()
   let amount = 0, description = "", credits = 0
-  if (type === "credits") {
+  if (type === "starter") {
+    amount = 1; description = "3 Credits Trial"; credits = 3
+  } else if (type === "credits") {
     const pkg = creditPkgs[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name; credits = pkg.credits
@@ -787,7 +807,9 @@ router.post("/pesapal/checkout", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const creditPkgs = await getCreditPackages()
   let amount = 0, description = "", credits = 0
-  if (type === "credits") {
+  if (type === "starter") {
+    amount = 1; description = "3 Credits Trial"; credits = 3
+  } else if (type === "credits") {
     const pkg = creditPkgs[packageId]
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name; credits = pkg.credits
@@ -1072,7 +1094,10 @@ router.post("/config", requireAuth, async (req, res) => {
 
 /* ─── Shared fulfillment ─── */
 async function fulfillOrder(userId: number, type: string, packageId: number, currency: string) {
-  if (type === "premium") {
+  if (type === "starter") {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+    if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, userId))
+  } else if (type === "premium") {
     const pkg = PREMIUM_PACKAGES[packageId]
     if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, userId))
   } else if (type === "credits") {
@@ -1089,7 +1114,10 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
 // where packageId is known but cannot be re-derived from request params).
 async function fulfillOrderFromRecord(order: { userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null }) {
   const type = order.type || "credits"
-  if (type === "credits") {
+  if (type === "starter") {
+    const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+    if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + 3 }).where(eq(usersTable.id, order.userId))
+  } else if (type === "credits") {
     const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : 0
     if (creditsToAdd > 0) {
       const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)

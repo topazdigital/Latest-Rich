@@ -45,6 +45,7 @@ export default function CreditsPageWrapper() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [paymentType] = useState<'credits'>('credits')
+  const [starterMode, setStarterMode] = useState(false)
   const [customGateways, setCustomGateways] = useState<any[]>([])
   const [selectedGateway, setSelectedGateway] = useState<any>(null)
   const [proof, setProof] = useState('')
@@ -74,16 +75,33 @@ export default function CreditsPageWrapper() {
   }, [])
 
   async function buyOffer(kind: 'starter' | 'event', eventId?: number) {
-    setOfferLoading(kind === 'event' ? `event-${eventId}` : kind)
+    if (kind === 'event') {
+      setOfferLoading(`event-${eventId}`)
+      try {
+        const res = await authFetch('/api/engagement/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind, eventId }),
+        })
+        const data = await res.json()
+        if (!res.ok) { toast.error(data.error || 'Offer unavailable'); return }
+        if (data.url) window.location.href = data.url
+      } catch { toast.error('Could not start checkout') }
+      finally { setOfferLoading(null) }
+      return
+    }
+
+    // starter: route through provider-aware flow (same as credits)
+    setOfferLoading('starter')
     try {
-      const res = await authFetch('/api/engagement/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, eventId }),
-      })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error || 'Offer unavailable'); return }
-      if (data.url) window.location.href = data.url
+      if (effectiveProvider === 'payhero') {
+        setStarterMode(true)
+        setShowManual(false)
+        setProof('')
+        setStep('confirm')
+      } else {
+        await initiatePayment(0, undefined, 'starter')
+      }
     } catch { toast.error('Could not start checkout') }
     finally { setOfferLoading(null) }
   }
@@ -129,11 +147,12 @@ export default function CreditsPageWrapper() {
     }
   }
 
-  async function initiatePayment(pkgId: number, phoneNum?: string) {
+  async function initiatePayment(pkgId: number, phoneNum?: string, typeOverride?: string) {
+    const type = typeOverride || paymentType
     setLoading(true)
     try {
       let endpoint = '/api/payments/paystack/initiate'
-      let body: any = { packageId: pkgId, type: paymentType }
+      let body: any = { packageId: pkgId, type }
 
       if (effectiveProvider === 'payhero') {
         endpoint = '/api/payments/payhero/initiate'
@@ -435,12 +454,14 @@ export default function CreditsPageWrapper() {
       )}
 
       {/* Step: M-Pesa phone confirm */}
-      {step === 'confirm' && pkg && (
+      {step === 'confirm' && (pkg || starterMode) && (
         <div style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '1.25rem', padding: '1.5rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📱</div>
             <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.35rem' }}>Pay with M-Pesa</h2>
-            <p style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 600 }}>{pkg.credits} credits · {formatLocalPrice(pkg.usdPrice, provider, paymentMethod?.country || '')}</p>
+            <p style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 600 }}>
+              {starterMode ? '3 credits · $1 trial' : `${pkg!.credits} credits · ${formatLocalPrice(pkg!.usdPrice, provider, paymentMethod?.country || '')}`}
+            </p>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>Your M-Pesa Phone Number</label>
@@ -452,8 +473,8 @@ export default function CreditsPageWrapper() {
             <p style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: '0.35rem' }}>We will send an STK push to this number.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button onClick={() => setStep('packages')} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.875rem', border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
-            <button onClick={() => initiatePayment(pkg.id)} disabled={!phone.trim() || loading} style={{
+            <button onClick={() => { setStep('packages'); setStarterMode(false) }} style={{ flex: 1, padding: '0.75rem', borderRadius: '0.875rem', border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
+            <button onClick={() => initiatePayment(starterMode ? 0 : pkg!.id, phone, starterMode ? 'starter' : undefined)} disabled={!phone.trim() || loading} style={{
               flex: 2, padding: '0.75rem', borderRadius: '0.875rem', border: 'none',
               background: !phone.trim() ? '#e5e7eb' : '#00a651', color: '#fff',
               fontWeight: 800, cursor: phone.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: '0.9rem',
