@@ -198,13 +198,19 @@ export default function AdminEmailCampaigns() {
     subject: "",
     htmlBody: "",
     batchSize: "50",
-    coolingSeconds: "60",
+    coolingSeconds: "900",   // default: 50 emails × 4 batches/hr = 200/hr
+    hourlyRate: "200",       // the primary control; coolingSeconds derived from this
     filterGender: "0",
     filterCountry: "",
     filterMinAge: "0",
     filterMaxAge: "0",
     onlyReal: true,
   })
+
+  // State for editing rate on an existing draft/paused campaign in detail view
+  const [editingRate, setEditingRate] = useState(false)
+  const [editRateValue, setEditRateValue] = useState("")
+  const [savingRate, setSavingRate] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -230,7 +236,7 @@ export default function AdminEmailCampaigns() {
   }, [campaigns, load])
 
   function resetForm() {
-    setForm({ name: "", subject: "", htmlBody: "", batchSize: "50", coolingSeconds: "60", filterGender: "0", filterCountry: "", filterMinAge: "0", filterMaxAge: "0", onlyReal: true })
+    setForm({ name: "", subject: "", htmlBody: "", batchSize: "50", coolingSeconds: "900", hourlyRate: "200", filterGender: "0", filterCountry: "", filterMinAge: "0", filterMaxAge: "0", onlyReal: true })
     setPreviewCount(null)
     setComposerTab("template")
   }
@@ -447,61 +453,76 @@ export default function AdminEmailCampaigns() {
         {/* Tab: Settings */}
         {composerTab === "settings" && (() => {
           const batchNum = Math.max(1, parseInt(form.batchSize) || 50)
-          const coolNum = Math.max(1, parseInt(form.coolingSeconds) || 60)
-          const perHour = Math.round((batchNum / coolNum) * 3600)
-
-          function applyHourlyRate(rateStr: string) {
-            const rate = Math.max(1, parseInt(rateStr) || 100)
-            // Fix batch size at current value; adjust cooling to match hourly rate
-            const newCooling = Math.max(10, Math.round((batchNum / rate) * 3600))
-            setForm(f => ({ ...f, coolingSeconds: String(newCooling) }))
-          }
+          const rateNum = Math.max(1, parseInt(form.hourlyRate) || 200)
+          // coolingSeconds is always derived: how many seconds between batches to hit the hourly rate
+          const derivedCooling = Math.max(10, Math.round((batchNum / rateNum) * 3600))
+          const actualPerHour = Math.round((batchNum / derivedCooling) * 3600)
+          const safeBadge = actualPerHour > 500 ? { bg: "#78350f44", color: "#fde68a", text: "⚡ Above recommended" }
+            : actualPerHour > 200 ? { bg: "#14532d44", color: "#86efac", text: "✅ Moderate" }
+            : { bg: "#14532d44", color: "#86efac", text: "✅ Safe" }
 
           return (
             <div style={CARD}>
-              {/* Per-hour control — primary */}
+              {/* Primary: emails per hour */}
               <div style={{ marginBottom: "1.25rem", background: "#1e293b", borderRadius: "0.625rem", padding: "1rem 1.125rem", border: "1px solid #334155" }}>
                 <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.5rem" }}>
-                  📬 MAX EMAILS PER HOUR
+                  📬 EMAILS PER HOUR (your server limit)
                 </label>
-                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="number"
-                    defaultValue={perHour}
-                    key={`ph-${batchNum}`}
-                    onBlur={e => applyHourlyRate(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") applyHourlyRate((e.target as HTMLInputElement).value) }}
-                    min="1" max="100000"
+                    value={form.hourlyRate}
+                    onChange={e => {
+                      const rate = e.target.value
+                      const rateN = Math.max(1, parseInt(rate) || 1)
+                      const newCooling = Math.max(10, Math.round((batchNum / rateN) * 3600))
+                      setForm(f => ({ ...f, hourlyRate: rate, coolingSeconds: String(newCooling) }))
+                    }}
+                    min="1" max="10000"
                     style={{ ...INPUT, width: "8rem" }}
                   />
                   <span style={{ color: "#64748b", fontSize: "0.8rem" }}>emails / hour</span>
-                  <span style={{ marginLeft: "auto", background: perHour > 5000 ? "#7f1d1d44" : perHour > 1000 ? "#78350f44" : "#14532d44", color: perHour > 5000 ? "#fca5a5" : perHour > 1000 ? "#fde68a" : "#86efac", padding: "0.2rem 0.75rem", borderRadius: "50px", fontSize: "0.72rem", fontWeight: 700 }}>
-                    {perHour > 5000 ? "⚠️ Very aggressive" : perHour > 1000 ? "⚡ Moderate" : "✅ Safe"}
+                  <span style={{ marginLeft: "auto", background: safeBadge.bg, color: safeBadge.color, padding: "0.2rem 0.75rem", borderRadius: "50px", fontSize: "0.72rem", fontWeight: 700 }}>
+                    {safeBadge.text}
                   </span>
                 </div>
-                <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.5rem", margin: "0.5rem 0 0" }}>
-                  Set how many emails to send per hour. The cooling time adjusts automatically. Keep under 500/hour to stay out of spam.
+                <p style={{ color: "#475569", fontSize: "0.72rem", margin: "0.5rem 0 0" }}>
+                  Match this to your mail server's hourly sending limit. The cooling interval between batches is calculated automatically.
                 </p>
               </div>
 
-              {/* Advanced: batch + cooling */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-                <div>
-                  <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>BATCH SIZE</label>
-                  <input type="number" value={form.batchSize} onChange={e => setForm(f => ({ ...f, batchSize: e.target.value }))} min="1" max="500" style={INPUT} />
-                  <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Emails per batch</p>
-                </div>
-                <div>
-                  <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>COOLING TIME (seconds)</label>
-                  <input type="number" value={form.coolingSeconds} onChange={e => setForm(f => ({ ...f, coolingSeconds: e.target.value }))} min="10" max="86400" style={INPUT} />
-                  <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>Seconds between batches</p>
-                </div>
+              {/* Batch size */}
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ color: "#94a3b8", fontSize: "0.78rem", fontWeight: 600, display: "block", marginBottom: "0.4rem" }}>BATCH SIZE (emails per batch)</label>
+                <input
+                  type="number"
+                  value={form.batchSize}
+                  onChange={e => {
+                    const batch = e.target.value
+                    const batchN = Math.max(1, parseInt(batch) || 1)
+                    const newCooling = Math.max(10, Math.round((batchN / rateNum) * 3600))
+                    setForm(f => ({ ...f, batchSize: batch, coolingSeconds: String(newCooling) }))
+                  }}
+                  min="1" max="500"
+                  style={{ ...INPUT, width: "8rem" }}
+                />
+                <p style={{ color: "#475569", fontSize: "0.72rem", marginTop: "0.3rem" }}>How many emails to send in each batch. Cooling adjusts automatically.</p>
               </div>
 
-              <div style={{ background: "#1e293b", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
-                <p style={{ color: "#94a3b8", fontSize: "0.78rem", margin: 0, lineHeight: 1.6 }}>
-                  Current rate: <strong style={{ color: "#e2e8f0" }}>{batchNum} emails</strong> every <strong style={{ color: "#e2e8f0" }}>{coolNum}s</strong> = <strong style={{ color: perHour > 1000 ? "#fde68a" : "#86efac" }}>{perHour.toLocaleString()} emails/hour</strong>
-                </p>
+              {/* Derived summary */}
+              <div style={{ background: "#1e293b", borderRadius: "0.5rem", padding: "0.875rem 1rem", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", textAlign: "center" }}>
+                <div>
+                  <div style={{ color: "#e2e8f0", fontWeight: 800, fontSize: "1.1rem" }}>{batchNum}</div>
+                  <div style={{ color: "#64748b", fontSize: "0.68rem", fontWeight: 600 }}>EMAILS/BATCH</div>
+                </div>
+                <div>
+                  <div style={{ color: "#e2e8f0", fontWeight: 800, fontSize: "1.1rem" }}>{derivedCooling >= 3600 ? `${(derivedCooling/3600).toFixed(1)}h` : derivedCooling >= 60 ? `${Math.round(derivedCooling/60)}m` : `${derivedCooling}s`}</div>
+                  <div style={{ color: "#64748b", fontSize: "0.68rem", fontWeight: 600 }}>BETWEEN BATCHES</div>
+                </div>
+                <div>
+                  <div style={{ color: actualPerHour > 500 ? "#fde68a" : "#86efac", fontWeight: 800, fontSize: "1.1rem" }}>{actualPerHour.toLocaleString()}</div>
+                  <div style={{ color: "#64748b", fontSize: "0.68rem", fontWeight: 600 }}>ACTUAL EMAILS/HR</div>
+                </div>
               </div>
             </div>
           )
@@ -603,6 +624,86 @@ export default function AdminEmailCampaigns() {
             <div style={{ background: "#fff", borderRadius: "0.5rem", overflow: "hidden" }}>
               <iframe srcDoc={selected.htmlBody} style={{ width: "100%", height: "360px", border: "none" }} title="Email Preview" />
             </div>
+          </div>
+        )}
+
+        {/* Rate editor — visible on draft/paused campaigns */}
+        {(selected.status === "draft" || selected.status === "paused") && (
+          <div style={{ ...CARD, marginBottom: "1.25rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+              <div>
+                <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: "0.85rem" }}>📬 Send Rate</div>
+                <div style={{ color: "#64748b", fontSize: "0.72rem", marginTop: "0.15rem" }}>
+                  Currently: <strong style={{ color: "#94a3b8" }}>{Math.round((selected.batchSize / Math.max(1, selected.coolingSeconds)) * 3600).toLocaleString()} emails/hour</strong>
+                  {" "}({selected.batchSize} per batch, every {selected.coolingSeconds >= 3600 ? `${(selected.coolingSeconds / 3600).toFixed(1)}h` : selected.coolingSeconds >= 60 ? `${Math.round(selected.coolingSeconds / 60)}m` : `${selected.coolingSeconds}s`})
+                </div>
+              </div>
+              {!editingRate && (
+                <button
+                  onClick={() => { setEditRateValue(String(Math.round((selected.batchSize / Math.max(1, selected.coolingSeconds)) * 3600))); setEditingRate(true) }}
+                  style={{ ...BTN_GHOST, fontSize: "0.75rem", padding: "0.35rem 0.75rem" }}
+                >
+                  ✏️ Edit
+                </button>
+              )}
+            </div>
+
+            {editingRate && (
+              <div style={{ background: "#1e293b", borderRadius: "0.5rem", padding: "1rem" }}>
+                <label style={{ color: "#94a3b8", fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.5rem" }}>
+                  NEW EMAILS PER HOUR (your server allows 200)
+                </label>
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    type="number"
+                    value={editRateValue}
+                    onChange={e => setEditRateValue(e.target.value)}
+                    min="1" max="10000"
+                    style={{ ...INPUT, width: "8rem" }}
+                    autoFocus
+                  />
+                  <span style={{ color: "#64748b", fontSize: "0.8rem" }}>emails / hour</span>
+                  {(() => {
+                    const rate = Math.max(1, parseInt(editRateValue) || 1)
+                    const newCooling = Math.max(10, Math.round((selected.batchSize / rate) * 3600))
+                    const actual = Math.round((selected.batchSize / newCooling) * 3600)
+                    return (
+                      <span style={{ color: "#64748b", fontSize: "0.75rem" }}>
+                        → batch every {newCooling >= 3600 ? `${(newCooling/3600).toFixed(1)}h` : newCooling >= 60 ? `${Math.round(newCooling/60)}m` : `${newCooling}s`} ({actual.toLocaleString()}/hr actual)
+                      </span>
+                    )
+                  })()}
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.875rem" }}>
+                  <button
+                    disabled={savingRate}
+                    onClick={async () => {
+                      setSavingRate(true)
+                      const rate = Math.max(1, parseInt(editRateValue) || 1)
+                      const newCooling = Math.max(10, Math.round((selected.batchSize / rate) * 3600))
+                      try {
+                        const r = await authFetch(`/api/admin/email-campaigns/${selected.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ coolingSeconds: newCooling }),
+                        })
+                        if (!r.ok) { const d = await r.json(); toast.error(d.error || "Failed to save"); }
+                        else {
+                          toast.success(`Rate updated to ~${Math.round((selected.batchSize / newCooling) * 3600).toLocaleString()} emails/hour`)
+                          setEditingRate(false)
+                          await load()
+                        }
+                      } catch { toast.error("Failed to save rate") }
+                      setSavingRate(false)
+                    }}
+                    style={BTN_PRIMARY}
+                  >
+                    {savingRate ? "Saving…" : "Save Rate"}
+                  </button>
+                  <button onClick={() => setEditingRate(false)} style={BTN_GHOST}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
