@@ -320,118 +320,211 @@ export default function AdminUsers() {
         <div className="flex justify-center py-12">
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50/60">
-                <tr className="text-gray-500 text-left text-xs uppercase tracking-wide">
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Last Active</th>
-                  <th className="px-4 py-3">IP Address</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Credits</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => {
-                  const time = relativeTime(u.lastAccess)
-                  const isDuplicateIp = !!(u.lastIp && sharedIps.has(u.lastIp))
-                  return (
-                    <tr key={u.id} className={`border-b border-gray-100 transition-colors ${isDuplicateIp ? "bg-orange-50 hover:bg-orange-100/60" : "hover:bg-gray-50/40"}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0 rounded-full bg-gray-100 overflow-hidden" style={{ width: '2.25rem', height: '2.25rem', minWidth: '2.25rem', minHeight: '2.25rem' }}>
-                            <img src={getPhotoUrl(u.photo)} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
-                          </div>
-                          <div>
-                            <div className="text-gray-900 font-medium">{u.name}{u.age ? `, ${u.age}` : ""}</div>
-                            <div className="text-gray-400 text-xs">{u.username ? `@${u.username} · ` : ""}#{u.id}</div>
-                            <div className="text-gray-400 text-xs truncate max-w-[160px]">{u.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                        {u.city || u.country ? <><div>{u.city}</div><div>{u.country}</div></> : <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-xs whitespace-nowrap">
-                        {time ? <span className={time.cls}>{time.label}</span> : <span className="text-gray-300">Never</span>}
-                      </td>
-                      <td className="px-4 py-3 text-xs font-mono">
-                        {u.lastIp ? (
-                          <span className={`${isDuplicateIp ? "text-orange-600 font-semibold" : "text-gray-500"}`} title={isDuplicateIp ? "Multiple profiles using this IP" : undefined}>
-                            {u.lastIp}
-                            {isDuplicateIp && <span className="ml-1 text-orange-500">⚠</span>}
-                          </span>
-                        ) : <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {u.fake === 1 ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600">Fake</span>
-                          ) : u.admin === 2 ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600">Admin</span>
-                          ) : u.admin === 1 ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">Mod</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600">User</span>
-                          )}
-                          {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-500">Banned</span>}
-                          {u.verified === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">✓</span>}
-                          {u.premium === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
-                          {u.fake !== 1 && (
-                            <select
-                              value={u.admin}
-                              onChange={async e => {
-                                const newLevel = parseInt(e.target.value)
-                                await authFetch(`/api/admin/users/${u.id}`, {
-                                  method: "PUT", headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ ...u, admin: newLevel }),
-                                })
-                                toast.success(newLevel === 2 ? "Set as Admin" : newLevel === 1 ? "Set as Moderator" : "Set as User")
-                                load()
-                              }}
-                              className="text-xs bg-gray-50 text-gray-600 border border-gray-200 rounded px-1 py-0.5 cursor-pointer focus:outline-none"
-                            >
-                              <option value="0">User</option>
-                              <option value="1">Moderator</option>
-                              <option value="2">Admin</option>
-                            </select>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-gray-900 font-semibold w-6 text-right">{u.credits}</span>
-                          <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)}
-                            className="w-12 bg-white text-gray-900 text-xs px-1.5 py-1 rounded border border-gray-300" />
-                          <button onClick={() => addCredits(u)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-1.5 py-1 rounded">+</button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setDetailUserId(u.id)} className="px-2 py-1 rounded text-xs bg-brand-600 hover:bg-brand-700 text-white">View</button>
-                          <button onClick={() => toggleFake(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.fake === 1 ? "bg-green-100 hover:bg-green-600 text-green-600 hover:text-white" : "bg-purple-100 hover:bg-purple-600 text-purple-600 hover:text-white"}`}>
-                            {u.fake === 1 ? "→Real" : "→Fake"}
-                          </button>
-                          <button onClick={() => banUser(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-100 hover:bg-red-600 text-red-500 hover:text-white"}`}>
-                            {u.banned ? "Unban" : "Ban"}
-                          </button>
-                          <button onClick={() => deleteUser(u)} className="px-2 py-1 rounded text-xs bg-gray-100 hover:bg-red-600 text-gray-500 hover:text-white transition-colors">Del</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {users.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-gray-400">No users match these filters</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      ) : users.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 text-center py-12 text-gray-400">
+          No users match these filters
         </div>
+      ) : (
+        <>
+          {/* ── Mobile card list (hidden on md+) ── */}
+          <div className="md:hidden space-y-2">
+            {users.map(u => {
+              const time = relativeTime(u.lastAccess)
+              const isDuplicateIp = !!(u.lastIp && sharedIps.has(u.lastIp))
+              return (
+                <div key={u.id} className={`rounded-2xl border p-3 space-y-3 ${isDuplicateIp ? "bg-orange-50 border-orange-200" : "bg-white border-gray-200"}`}>
+                  {/* Top row: avatar + identity + badge */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-11 h-11 rounded-full bg-gray-100 overflow-hidden">
+                      <img src={getPhotoUrl(u.photo)} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 text-sm leading-tight">{u.name}{u.age ? `, ${u.age}` : ""}</div>
+                      <div className="text-gray-400 text-xs">{u.username ? `@${u.username} · ` : ""}#{u.id}</div>
+                      <div className="text-gray-400 text-xs truncate">{u.email}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 justify-end flex-shrink-0">
+                      {u.fake === 1 ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600">Fake</span>
+                      ) : u.admin === 2 ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600">Admin</span>
+                      ) : u.admin === 1 ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">Mod</span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600">User</span>
+                      )}
+                      {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-500">Banned</span>}
+                      {u.verified === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">✓</span>}
+                      {u.premium === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
+                    </div>
+                  </div>
+
+                  {/* Meta row */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                    {(u.city || u.country) && (
+                      <span>📍 {[u.city, u.country].filter(Boolean).join(", ")}</span>
+                    )}
+                    {time && <span className={time.cls}>🕐 {time.label}</span>}
+                    {u.lastIp && (
+                      <span className={`font-mono ${isDuplicateIp ? "text-orange-600 font-semibold" : ""}`}>
+                        {isDuplicateIp && "⚠ "}{u.lastIp}
+                      </span>
+                    )}
+                    <span>💳 {u.credits} credits</span>
+                  </div>
+
+                  {/* Controls row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+                    {u.fake !== 1 && (
+                      <select
+                        value={u.admin}
+                        onChange={async e => {
+                          const newLevel = parseInt(e.target.value)
+                          await authFetch(`/api/admin/users/${u.id}`, {
+                            method: "PUT", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ ...u, admin: newLevel }),
+                          })
+                          toast.success(newLevel === 2 ? "Set as Admin" : newLevel === 1 ? "Set as Moderator" : "Set as User")
+                          load()
+                        }}
+                        className="text-xs bg-gray-50 text-gray-600 border border-gray-200 rounded px-2 py-1 cursor-pointer focus:outline-none"
+                      >
+                        <option value="0">User</option>
+                        <option value="1">Moderator</option>
+                        <option value="2">Admin</option>
+                      </select>
+                    )}
+                    <div className="flex items-center gap-1 ml-auto">
+                      <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)}
+                        className="w-12 bg-white text-gray-900 text-xs px-1.5 py-1 rounded border border-gray-300" />
+                      <button onClick={() => addCredits(u)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">+Credits</button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button onClick={() => setDetailUserId(u.id)} className="flex-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white text-center">View</button>
+                    <button onClick={() => toggleFake(u)} className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${u.fake === 1 ? "bg-green-100 hover:bg-green-600 text-green-700 hover:text-white" : "bg-purple-100 hover:bg-purple-600 text-purple-700 hover:text-white"}`}>
+                      {u.fake === 1 ? "→ Real" : "→ Fake"}
+                    </button>
+                    <button onClick={() => banUser(u)} className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-100 hover:bg-red-600 text-red-600 hover:text-white"}`}>
+                      {u.banned ? "Unban" : "Ban"}
+                    </button>
+                    <button onClick={() => deleteUser(u)} className="flex-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-red-600 text-gray-500 hover:text-white transition-colors text-center">Delete</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden below md) ── */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50/60">
+                  <tr className="text-gray-500 text-left text-xs uppercase tracking-wide">
+                    <th className="px-4 py-3">User</th>
+                    <th className="px-4 py-3">Location</th>
+                    <th className="px-4 py-3">Last Active</th>
+                    <th className="px-4 py-3">IP Address</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Credits</th>
+                    <th className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => {
+                    const time = relativeTime(u.lastAccess)
+                    const isDuplicateIp = !!(u.lastIp && sharedIps.has(u.lastIp))
+                    return (
+                      <tr key={u.id} className={`border-b border-gray-100 transition-colors ${isDuplicateIp ? "bg-orange-50 hover:bg-orange-100/60" : "hover:bg-gray-50/40"}`}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 rounded-full bg-gray-100 overflow-hidden" style={{ width: '2.25rem', height: '2.25rem', minWidth: '2.25rem', minHeight: '2.25rem' }}>
+                              <img src={getPhotoUrl(u.photo)} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.src = "/images/default-avatar.svg")} />
+                            </div>
+                            <div>
+                              <div className="text-gray-900 font-medium">{u.name}{u.age ? `, ${u.age}` : ""}</div>
+                              <div className="text-gray-400 text-xs">{u.username ? `@${u.username} · ` : ""}#{u.id}</div>
+                              <div className="text-gray-400 text-xs truncate max-w-[160px]">{u.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                          {u.city || u.country ? <><div>{u.city}</div><div>{u.country}</div></> : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-xs whitespace-nowrap">
+                          {time ? <span className={time.cls}>{time.label}</span> : <span className="text-gray-300">Never</span>}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono">
+                          {u.lastIp ? (
+                            <span className={`${isDuplicateIp ? "text-orange-600 font-semibold" : "text-gray-500"}`} title={isDuplicateIp ? "Multiple profiles using this IP" : undefined}>
+                              {u.lastIp}
+                              {isDuplicateIp && <span className="ml-1 text-orange-500">⚠</span>}
+                            </span>
+                          ) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {u.fake === 1 ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600">Fake</span>
+                            ) : u.admin === 2 ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600">Admin</span>
+                            ) : u.admin === 1 ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">Mod</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600">User</span>
+                            )}
+                            {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-500">Banned</span>}
+                            {u.verified === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">✓</span>}
+                            {u.premium === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
+                            {u.fake !== 1 && (
+                              <select
+                                value={u.admin}
+                                onChange={async e => {
+                                  const newLevel = parseInt(e.target.value)
+                                  await authFetch(`/api/admin/users/${u.id}`, {
+                                    method: "PUT", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ ...u, admin: newLevel }),
+                                  })
+                                  toast.success(newLevel === 2 ? "Set as Admin" : newLevel === 1 ? "Set as Moderator" : "Set as User")
+                                  load()
+                                }}
+                                className="text-xs bg-gray-50 text-gray-600 border border-gray-200 rounded px-1 py-0.5 cursor-pointer focus:outline-none"
+                              >
+                                <option value="0">User</option>
+                                <option value="1">Moderator</option>
+                                <option value="2">Admin</option>
+                              </select>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-900 font-semibold w-6 text-right">{u.credits}</span>
+                            <input type="number" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)}
+                              className="w-12 bg-white text-gray-900 text-xs px-1.5 py-1 rounded border border-gray-300" />
+                            <button onClick={() => addCredits(u)} className="text-xs bg-green-600 hover:bg-green-700 text-white px-1.5 py-1 rounded">+</button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setDetailUserId(u.id)} className="px-2 py-1 rounded text-xs bg-brand-600 hover:bg-brand-700 text-white">View</button>
+                            <button onClick={() => toggleFake(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.fake === 1 ? "bg-green-100 hover:bg-green-600 text-green-600 hover:text-white" : "bg-purple-100 hover:bg-purple-600 text-purple-600 hover:text-white"}`}>
+                              {u.fake === 1 ? "→Real" : "→Fake"}
+                            </button>
+                            <button onClick={() => banUser(u)} className={`px-2 py-1 rounded text-xs transition-colors ${u.banned ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-100 hover:bg-red-600 text-red-500 hover:text-white"}`}>
+                              {u.banned ? "Unban" : "Ban"}
+                            </button>
+                            <button onClick={() => deleteUser(u)} className="px-2 py-1 rounded text-xs bg-gray-100 hover:bg-red-600 text-gray-500 hover:text-white transition-colors">Del</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Pagination */}
