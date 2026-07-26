@@ -40,11 +40,21 @@ const MENU = [
   { key: "settings", label: "Settings", icon: "⚙️" },
 ]
 
+const VALID_KEYS = new Set(MENU.map(m => m.key))
+
 export default function AdminPage() {
-  const [tab, setTab] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, loading } = useAuth()
-  const [, setLocation] = useLocation()
+  const [location, setLocation] = useLocation()
+
+  // Derive tab from URL: /admin/users → "users", /admin → "dashboard"
+  const tabFromUrl = location.replace(/^\/admin\/?/, "").split("/")[0]
+  const tab = VALID_KEYS.has(tabFromUrl) ? tabFromUrl : "dashboard"
+
+  const navigate = (key: string) => {
+    setLocation(key === "dashboard" ? "/admin" : `/admin/${key}`)
+    setSidebarOpen(false)
+  }
   const [chatUnread, setChatUnread] = useState(0)
   const [contactPending, setContactPending] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -132,7 +142,7 @@ export default function AdminPage() {
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             {MENU.map(m => (
-              <button key={m.key} onClick={() => { setTab(m.key); setSidebarOpen(false) }} style={{
+              <button key={m.key} onClick={() => navigate(m.key)} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
                 padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
                 background: tab === m.key ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
