@@ -1140,8 +1140,9 @@ router.post("/users/:id/boost-messages", requireAuth, requireAdmin, async (req, 
     const userId = parseInt(req.params.id)
     if (isNaN(userId)) { res.status(400).json({ error: "Invalid user ID" }); return }
     const count = Math.max(5, Math.min(20, parseInt(req.body?.count ?? "10") || 10))
+    const windowMinutes = Math.max(1, Math.min(120, parseInt(req.body?.windowMinutes ?? "30") || 30))
     const { boostMessagesToUser } = await import("../lib/fake-message-scheduler")
-    const scheduled = await boostMessagesToUser(userId, count)
+    const scheduled = await boostMessagesToUser(userId, count, windowMinutes)
     res.json({ scheduled })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"

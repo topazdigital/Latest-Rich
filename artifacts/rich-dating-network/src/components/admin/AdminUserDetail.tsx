@@ -51,6 +51,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
   const [chatSending, setChatSending] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
   const [boostCount, setBoostCount] = useState(10)
+  const [boostWindowMinutes, setBoostWindowMinutes] = useState(30)
   const [boostingMessages, setBoostingMessages] = useState(false)
 
   const load = async () => {
@@ -84,11 +85,11 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
       const r = await authFetch(`/api/admin/users/${userId}/boost-messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: boostCount }),
+        body: JSON.stringify({ count: boostCount, windowMinutes: boostWindowMinutes }),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || "Failed")
-      toast.success(`✅ ${d.scheduled} messages scheduled — they'll arrive over the next ${Math.round(d.scheduled * 3)} minutes`)
+      toast.success(`✅ ${d.scheduled} messages scheduled over ${boostWindowMinutes} min`)
     } catch (e: any) {
       toast.error(e.message || "Failed to boost messages")
     } finally {
@@ -486,22 +487,32 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                   {/* Boost messages panel */}
                   {user?.fake !== 1 && (
                     <div style={{ background: "#1a1f2e", border: "1px solid #2d3748", borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
                         <div style={{ color: "#e5e7eb", fontWeight: 600, fontSize: 13, marginBottom: 2 }}>🚀 Boost fake messages</div>
-                        <div style={{ color: "#6b7280", fontSize: 11.5 }}>Send {boostCount} messages from different fake profiles, spaced 1–5 min apart. Bypasses the daily cap.</div>
+                        <div style={{ color: "#6b7280", fontSize: 11.5 }}>
+                          {boostCount} messages from different fake profiles over {boostWindowMinutes} min ({boostWindowMinutes < 2 ? "all at once" : `~${Math.round(boostWindowMinutes / boostCount * 60)}s apart`}). Bypasses daily cap.
+                        </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                         <select
                           value={boostCount}
                           onChange={e => setBoostCount(parseInt(e.target.value))}
                           disabled={boostingMessages}
-                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}>
-                          {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} messages</option>)}
+                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+                          {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} msgs</option>)}
+                        </select>
+                        <span style={{ color: "#4b5563", fontSize: 12 }}>in</span>
+                        <select
+                          value={boostWindowMinutes}
+                          onChange={e => setBoostWindowMinutes(parseInt(e.target.value))}
+                          disabled={boostingMessages}
+                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+                          {[1, 2, 5, 10, 20, 30, 60].map(m => <option key={m} value={m}>{m === 1 ? "1 min (urgent)" : `${m} min`}</option>)}
                         </select>
                         <button
                           onClick={boostMessages}
                           disabled={boostingMessages}
-                          style={{ background: boostingMessages ? "#374151" : "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: boostingMessages ? "not-allowed" : "pointer", opacity: boostingMessages ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                          style={{ background: boostingMessages ? "#374151" : "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 700, fontSize: 13, cursor: boostingMessages ? "not-allowed" : "pointer", opacity: boostingMessages ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
                           {boostingMessages ? "Scheduling…" : "🚀 Boost"}
                         </button>
                       </div>

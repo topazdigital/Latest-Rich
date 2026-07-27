@@ -257,8 +257,9 @@ export async function triggerAutoMessages(realUserId?: number, isNewUser = false
  * Bypasses the daily cap — intended as a manual nudge from the admin panel.
  * Returns the number of messages that were successfully scheduled.
  */
-export async function boostMessagesToUser(realUserId: number, count: number): Promise<number> {
+export async function boostMessagesToUser(realUserId: number, count: number, windowMinutes = 30): Promise<number> {
   const safeCount = Math.max(5, Math.min(20, Math.round(count)))
+  const safeWindow = Math.max(1, Math.min(120, Math.round(windowMinutes)))
 
   const templates = await db.select().from(fakeMessageTemplatesTable)
     .where(eq(fakeMessageTemplatesTable.active, 1))
@@ -287,15 +288,17 @@ export async function boostMessagesToUser(realUserId: number, count: number): Pr
   const toSend = Math.min(safeCount, shuffledFakers.length, shuffledTemplates.length)
   let scheduled = 0
 
-  // Space messages 1–5 minutes apart so they arrive naturally
+  // Divide the window evenly across messages, with a small random jitter (±20%)
+  // so they don't all land on exact round numbers.
+  const windowMs = safeWindow * 60 * 1000
+  const baseIntervalMs = toSend > 1 ? windowMs / toSend : windowMs
   let cumulativeDelayMs = 0
-  const minIntervalMs = 60 * 1000
-  const maxIntervalMs = 5 * 60 * 1000
 
   for (let i = 0; i < toSend; i++) {
     const faker = shuffledFakers[i % shuffledFakers.length]
     const template = shuffledTemplates[i % shuffledTemplates.length]
-    const interval = minIntervalMs + Math.floor(Math.random() * (maxIntervalMs - minIntervalMs + 1))
+    const jitter = (Math.random() * 0.4 - 0.2) * baseIntervalMs // ±20%
+    const interval = Math.max(2000, Math.round(baseIntervalMs + jitter))
     cumulativeDelayMs += interval
 
     const delayMs = cumulativeDelayMs
