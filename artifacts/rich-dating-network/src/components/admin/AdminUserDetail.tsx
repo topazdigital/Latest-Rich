@@ -498,15 +498,15 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                           value={boostCount}
                           onChange={e => setBoostCount(parseInt(e.target.value))}
                           disabled={boostingMessages}
-                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+                          style={{ background: "#374151", color: "#f3f4f6", border: "1px solid #6b7280", borderRadius: 6, padding: "6px 10px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
                           {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} msgs</option>)}
                         </select>
-                        <span style={{ color: "#4b5563", fontSize: 12 }}>in</span>
+                        <span style={{ color: "#9ca3af", fontSize: 13, fontWeight: 600 }}>in</span>
                         <select
                           value={boostWindowMinutes}
                           onChange={e => setBoostWindowMinutes(parseInt(e.target.value))}
                           disabled={boostingMessages}
-                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+                          style={{ background: "#374151", color: "#f3f4f6", border: "1px solid #6b7280", borderRadius: 6, padding: "6px 10px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
                           {[1, 2, 5, 10, 20, 30, 60].map(m => <option key={m} value={m}>{m === 1 ? "1 min (urgent)" : `${m} min`}</option>)}
                         </select>
                         <button
