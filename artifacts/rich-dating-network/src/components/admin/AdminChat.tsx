@@ -61,6 +61,8 @@ export default function AdminChat() {
   const [viewUserId, setViewUserId] = useState<number | null>(null)
   const [lockExpiry, setLockExpiry] = useState<number>(0)
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const keepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollMsgRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollConvRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -176,6 +178,7 @@ export default function AdminChat() {
     setMessages([])
     setMsgLoading(true)
     setReply("")
+    setSuggestions([])
     lastMsgIdRef.current = 0
     try {
       const r = await authFetch(`/api/moderator/conversations/${conv.key}/messages`)
@@ -183,6 +186,7 @@ export default function AdminChat() {
       const msgs: Message[] = d.messages || []
       setMessages(msgs)
       lastMsgIdRef.current = msgs.length > 0 ? msgs[msgs.length - 1].id : 0
+      fetchSuggestions(conv.key)
     } catch { toast.error("Failed to load messages") }
     setMsgLoading(false)
   }
@@ -204,6 +208,17 @@ export default function AdminChat() {
     } catch { toast.error("Failed to lock") }
   }
 
+  const fetchSuggestions = useCallback(async (key: string) => {
+    setLoadingSuggestions(true)
+    setSuggestions([])
+    try {
+      const r = await authFetch(`/api/moderator/conversations/${key}/suggestions`)
+      const d = await r.json()
+      setSuggestions(d.suggestions || [])
+    } catch {}
+    setLoadingSuggestions(false)
+  }, [])
+
   const sendReply = async () => {
     if (!selected || !reply.trim()) return
     setSending(true)
@@ -220,6 +235,9 @@ export default function AdminChat() {
         return updated
       })
       setReply("")
+      setSuggestions([])
+      // Refresh suggestions after a short delay for the next message
+      setTimeout(() => fetchSuggestions(selected.key), 800)
     } catch { toast.error("Failed to send") }
     setSending(false)
   }
@@ -465,20 +483,68 @@ export default function AdminChat() {
                   {selected.lock ? `🔒 Locked by ${selected.lock.moderatorName}` : "Lock the conversation above to reply"}
                 </div>
               ) : (
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    value={reply}
-                    onChange={e => setReply(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply() } }}
-                    placeholder={`Reply as ${selected.fakeUser.name}…`}
-                    className="admin-dark-input"
-                    style={{ flex: 1, width: "100%", padding: "0.6rem 0.875rem", fontSize: "0.85rem", boxSizing: "border-box" }}
-                    disabled={sending}
-                    autoFocus
-                  />
-                  <button onClick={sendReply} disabled={sending || !reply.trim()} style={{ ...S.btn(), opacity: !reply.trim() || sending ? 0.5 : 1 }}>
-                    <Send size={13} />
-                  </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {/* Suggestion chips */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", minHeight: 28 }}>
+                    {loadingSuggestions ? (
+                      <span style={{ color: "#475569", fontSize: "0.68rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <div style={{ width: 10, height: 10, border: "1.5px solid #7c3aed", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                        Generating suggestions…
+                      </span>
+                    ) : suggestions.length > 0 ? (
+                      <>
+                        <span style={{ color: "#475569", fontSize: "0.65rem", fontWeight: 600, flexShrink: 0 }}>💡</span>
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setReply(s)}
+                            title={s}
+                            style={{
+                              background: reply === s ? "#5b21b6" : "#1e293b",
+                              border: `1px solid ${reply === s ? "#7c3aed" : "#334155"}`,
+                              color: reply === s ? "#e9d5ff" : "#94a3b8",
+                              borderRadius: "999px",
+                              padding: "0.25rem 0.75rem",
+                              fontSize: "0.7rem",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              maxWidth: 220,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              transition: "all 0.15s",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => fetchSuggestions(selected.key)}
+                          title="Refresh suggestions"
+                          style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", padding: "0.2rem", display: "flex", alignItems: "center" }}
+                        >
+                          <RefreshCw size={11} />
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                  {/* Input row */}
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                      value={reply}
+                      onChange={e => setReply(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                      placeholder={`Reply as ${selected.fakeUser.name}…`}
+                      className="admin-dark-input"
+                      style={{ flex: 1, width: "100%", padding: "0.6rem 0.875rem", fontSize: "0.85rem", boxSizing: "border-box" }}
+                      disabled={sending}
+                      autoFocus
+                    />
+                    <button onClick={sendReply} disabled={sending || !reply.trim()} style={{ ...S.btn(), opacity: !reply.trim() || sending ? 0.5 : 1 }}>
+                      <Send size={13} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

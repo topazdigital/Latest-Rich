@@ -300,6 +300,51 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
   }
 })
 
+// GET /api/moderator/conversations/:key/suggestions
+// Returns 3 contextual reply suggestions based on the real user's last message.
+router.get("/conversations/:key/suggestions", requireAuth, requireModerator, async (req, res) => {
+  try {
+    const parts = (req.params.key as string).split("_")
+    if (parts.length !== 2) { res.status(400).json({ error: "Invalid conversation key" }); return }
+    const [a, b] = parts.map(Number)
+    if (isNaN(a) || isNaN(b)) { res.status(400).json({ error: "Invalid user IDs" }); return }
+
+    const users = await db.select({ id: usersTable.id, name: usersTable.name, photo: usersTable.photo, fake: usersTable.fake })
+      .from(usersTable)
+      .where(sql`${usersTable.id} IN (${a}, ${b})`)
+    const fakeUser = users.find(u => u.fake === 1)
+    const realUser = users.find(u => u.fake !== 1)
+    if (!fakeUser || !realUser) { res.status(400).json({ suggestions: [] }); return }
+
+    const msgs = await db.select().from(messagesTable)
+      .where(or(
+        and(eq(messagesTable.u1, a), eq(messagesTable.u2, b)),
+        and(eq(messagesTable.u1, b), eq(messagesTable.u2, a)),
+      ))
+      .orderBy(desc(messagesTable.id))
+      .limit(6)
+
+    msgs.reverse()
+
+    // Find the last message from the real user
+    const lastRealMsg = [...msgs].reverse().find(m => m.u1 === realUser.id || m.u2 === realUser.id && m.u1 !== fakeUser.id)
+    const lastRealMessage = lastRealMsg?.message || ""
+
+    const { generateReplySuggestions } = await import("../lib/reply-suggestions")
+    const suggestions = generateReplySuggestions({
+      lastRealMessage,
+      recentMessages: msgs as any,
+      fakeUserId: fakeUser.id,
+      fakeName: fakeUser.name || "Unknown",
+      realName: realUser.name || "there",
+    })
+
+    res.json({ suggestions })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, suggestions: [] })
+  }
+})
+
 // GET /api/moderator/push/vapid-key
 router.get("/push/vapid-key", requireAuth, requireModerator, async (req, res) => {
   try {
