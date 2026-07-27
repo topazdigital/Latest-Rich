@@ -50,6 +50,8 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
   const [chatInput, setChatInput] = useState("")
   const [chatSending, setChatSending] = useState(false)
   const [chatLoading, setChatLoading] = useState(false)
+  const [boostCount, setBoostCount] = useState(10)
+  const [boostingMessages, setBoostingMessages] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -75,6 +77,24 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
       authFetch(`/api/admin/users/${userId}/chats`).then(r => r.json()).then(setChats).catch(() => {})
     }
   }, [tab, userId])
+
+  async function boostMessages() {
+    setBoostingMessages(true)
+    try {
+      const r = await authFetch(`/api/admin/users/${userId}/boost-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count: boostCount }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || "Failed")
+      toast.success(`✅ ${d.scheduled} messages scheduled — they'll arrive over the next ${Math.round(d.scheduled * 3)} minutes`)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to boost messages")
+    } finally {
+      setBoostingMessages(false)
+    }
+  }
 
   async function openChat(partner: { id: number; name: string; photo: string; fake: number }) {
     setActiveChatPartner(partner)
@@ -463,6 +483,30 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
               ) : (
                 /* ── Conversation list ── */
                 <div>
+                  {/* Boost messages panel */}
+                  {user?.fake !== 1 && (
+                    <div style={{ background: "#1a1f2e", border: "1px solid #2d3748", borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ color: "#e5e7eb", fontWeight: 600, fontSize: 13, marginBottom: 2 }}>🚀 Boost fake messages</div>
+                        <div style={{ color: "#6b7280", fontSize: 11.5 }}>Send {boostCount} messages from different fake profiles, spaced 1–5 min apart. Bypasses the daily cap.</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <select
+                          value={boostCount}
+                          onChange={e => setBoostCount(parseInt(e.target.value))}
+                          disabled={boostingMessages}
+                          style={{ background: "#1f2937", color: "#e5e7eb", border: "1px solid #374151", borderRadius: 6, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}>
+                          {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} messages</option>)}
+                        </select>
+                        <button
+                          onClick={boostMessages}
+                          disabled={boostingMessages}
+                          style={{ background: boostingMessages ? "#374151" : "#7c3aed", color: "white", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: boostingMessages ? "not-allowed" : "pointer", opacity: boostingMessages ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                          {boostingMessages ? "Scheduling…" : "🚀 Boost"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 14, fontWeight: 500 }}>
                     {chats.length} recent conversation{chats.length !== 1 ? "s" : ""} — click to open &amp; reply
                   </div>

@@ -251,6 +251,116 @@ export async function triggerAutoMessages(realUserId?: number, isNewUser = false
   return total
 }
 
+/**
+ * Admin-initiated message boost for a single real user.
+ * Schedules `count` fake messages (5–20) at staggered intervals.
+ * Bypasses the daily cap — intended as a manual nudge from the admin panel.
+ * Returns the number of messages that were successfully scheduled.
+ */
+export async function boostMessagesToUser(realUserId: number, count: number): Promise<number> {
+  const safeCount = Math.max(5, Math.min(20, Math.round(count)))
+
+  const templates = await db.select().from(fakeMessageTemplatesTable)
+    .where(eq(fakeMessageTemplatesTable.active, 1))
+  if (!templates.length) return 0
+
+  const [realUser] = await db.select().from(usersTable)
+    .where(and(eq(usersTable.id, realUserId), eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
+    .limit(1)
+  if (!realUser) return 0
+
+  const genderFilter = realUser.looking === 3 ? [1, 2] : [realUser.looking ?? 2]
+
+  const fakeUsers = await db.select().from(usersTable)
+    .where(and(
+      eq(usersTable.fake, 1),
+      eq(usersTable.banned, 0),
+      inArray(usersTable.gender, genderFilter),
+    ))
+    .limit(50)
+  if (!fakeUsers.length) return 0
+
+  // Build a pool of (faker, template) pairs — shuffle both for variety
+  const shuffledFakers = [...fakeUsers].sort(() => Math.random() - 0.5)
+  const shuffledTemplates = [...templates].sort(() => Math.random() - 0.5)
+
+  const toSend = Math.min(safeCount, shuffledFakers.length, shuffledTemplates.length)
+  let scheduled = 0
+
+  // Space messages 1–5 minutes apart so they arrive naturally
+  let cumulativeDelayMs = 0
+  const minIntervalMs = 60 * 1000
+  const maxIntervalMs = 5 * 60 * 1000
+
+  for (let i = 0; i < toSend; i++) {
+    const faker = shuffledFakers[i % shuffledFakers.length]
+    const template = shuffledTemplates[i % shuffledTemplates.length]
+    const interval = minIntervalMs + Math.floor(Math.random() * (maxIntervalMs - minIntervalMs + 1))
+    cumulativeDelayMs += interval
+
+    const delayMs = cumulativeDelayMs
+    setTimeout(async () => {
+      try {
+        // Re-check the user is still valid before each send
+        const [u] = await db.select().from(usersTable)
+          .where(and(eq(usersTable.id, realUserId), eq(usersTable.fake, 0), eq(usersTable.banned, 0)))
+          .limit(1)
+        if (!u) return
+
+        const msgTime = now()
+
+        wsSend(u.id, { type: 'typing', fromUserId: faker.id, typing: true })
+
+        await db.insert(messagesTable).values({
+          u1: faker.id,
+          u2: u.id,
+          message: template.message,
+          time: msgTime,
+          read: 0,
+        })
+
+        wsSend(u.id, { type: 'typing', fromUserId: faker.id, typing: false })
+
+        const fakeTs = await fakeLastSeenTimestamp()
+        await db.update(usersTable)
+          .set({ lastAccess: String(fakeTs) })
+          .where(eq(usersTable.id, faker.id))
+
+        await db.insert(notificationsTable).values({
+          userId: u.id,
+          fromId: faker.id,
+          type: "message",
+          message: `${faker.name} sent you a message`,
+          link: `/chat/${faker.id}`,
+          read: 0,
+          time: msgTime,
+        })
+
+        await db.insert(autoMessageLogTable).values({
+          fakeUserId: faker.id,
+          realUserId: u.id,
+          templateId: template.id,
+          time: now(),
+        })
+
+        try {
+          await db.insert(likesTable).values({
+            userId: faker.id,
+            targetId: u.id,
+            created: msgTime,
+          })
+        } catch { /* ignore duplicate like */ }
+      } catch (err) {
+        console.error("[BoostMessages] Error sending boosted message:", err)
+      }
+    }, delayMs)
+
+    scheduled++
+  }
+
+  return scheduled
+}
+
 export function startAutoMessageScheduler() {
   setTimeout(() => { triggerAutoMessages().catch(console.error) }, 10000)
   setInterval(() => { triggerAutoMessages().catch(console.error) }, 30 * 60 * 1000)

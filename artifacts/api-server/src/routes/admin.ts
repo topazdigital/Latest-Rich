@@ -1134,6 +1134,21 @@ router.post("/trigger-auto-messages", requireAuth, requireAdmin, async (req, res
   }
 })
 
+// Boost fake messages to a single user — admin-initiated, bypasses daily cap
+router.post("/users/:id/boost-messages", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id)
+    if (isNaN(userId)) { res.status(400).json({ error: "Invalid user ID" }); return }
+    const count = Math.max(5, Math.min(20, parseInt(req.body?.count ?? "10") || 10))
+    const { boostMessagesToUser } = await import("../lib/fake-message-scheduler")
+    const scheduled = await boostMessagesToUser(userId, count)
+    res.json({ scheduled })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
 // Import fake users
 interface FakeUserImport {
   origId?: number
