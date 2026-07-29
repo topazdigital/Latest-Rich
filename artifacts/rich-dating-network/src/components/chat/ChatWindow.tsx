@@ -391,11 +391,13 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         if (data.credits !== undefined) setCredits(data.credits)
         const myMessageCount = messages.filter(message => message.u1 === me.id).length + 1
         if (myMessageCount >= 5) {
-          const lastPrompted = parseInt(localStorage.getItem('rdn_feedback_prompted') || '0', 10)
-          const thirtyDays = 30 * 24 * 60 * 60 * 1000
-          if (!lastPrompted || Date.now() - lastPrompted > thirtyDays) {
-            localStorage.setItem('rdn_feedback_prompted', String(Date.now()))
-            setShowFeedback(true)
+          // rdn_feedback_done = permanent (rated or "never show again")
+          if (!localStorage.getItem('rdn_feedback_done')) {
+            const snoozed = parseInt(localStorage.getItem('rdn_feedback_snoozed') || '0', 10)
+            const sevenDays = 7 * 24 * 60 * 60 * 1000
+            if (!snoozed || Date.now() - snoozed > sevenDays) {
+              setShowFeedback(true)
+            }
           }
         }
       }

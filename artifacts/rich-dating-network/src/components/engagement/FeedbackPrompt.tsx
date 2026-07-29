@@ -12,6 +12,17 @@ export default function FeedbackPrompt({ trigger = "positive_moment", onClose }:
   const [comment, setComment] = useState("")
   const [saving, setSaving] = useState(false)
 
+  function dismiss() {
+    // Snooze — will re-appear after 7 days
+    localStorage.setItem('rdn_feedback_snoozed', String(Date.now()))
+    onClose()
+  }
+
+  function neverShow() {
+    localStorage.setItem('rdn_feedback_done', '1')
+    onClose()
+  }
+
   async function submit() {
     if (!rating || saving) return
     setSaving(true)
@@ -23,6 +34,8 @@ export default function FeedbackPrompt({ trigger = "positive_moment", onClose }:
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Could not save feedback")
+      // Rated — never show again
+      localStorage.setItem('rdn_feedback_done', '1')
       toast.success("Thanks for helping us improve!")
       onClose()
       if (data.trustpilot) {
@@ -44,7 +57,7 @@ export default function FeedbackPrompt({ trigger = "positive_moment", onClose }:
             <h2 className="mt-1 text-xl font-black text-gray-900">How are we doing?</h2>
             <p className="mt-1 text-sm text-gray-500">Your feedback helps us make better connections.</p>
           </div>
-          <button onClick={onClose} className="text-xl text-gray-400 hover:text-gray-700" aria-label="Close">×</button>
+          <button onClick={dismiss} className="text-xl text-gray-400 hover:text-gray-700" aria-label="Close">×</button>
         </div>
         <div className="mb-5 flex justify-center gap-2" aria-label="Rate your experience">
           {[1, 2, 3, 4, 5].map(value => (
@@ -56,6 +69,9 @@ export default function FeedbackPrompt({ trigger = "positive_moment", onClose }:
           className="mb-4 min-h-24 w-full resize-none rounded-2xl border border-gray-200 p-3 text-sm outline-none focus:border-brand-400" />
         <button onClick={submit} disabled={!rating || saving} className="btn-primary w-full disabled:opacity-50">
           {saving ? "Saving…" : "Send feedback"}
+        </button>
+        <button onClick={neverShow} className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors">
+          Don't show this again
         </button>
       </div>
     </div>
