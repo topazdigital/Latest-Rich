@@ -20,27 +20,76 @@ import AdminChat from "../components/admin/AdminChat"
 import AdminContactMessages from "../components/admin/AdminContactMessages"
 import AdminFeedback from "../components/admin/AdminFeedback"
 
-const MENU = [
+type MenuItem = { key: string; label: string; icon: string }
+type MenuGroup = { group: string; icon: string; items: MenuItem[] }
+type MenuEntry = { key: string; label: string; icon: string } | MenuGroup
+
+const MENU: MenuEntry[] = [
   { key: "dashboard", label: "Dashboard", icon: "📊" },
-  { key: "users", label: "Manage Users", icon: "👥" },
-  { key: "verifications", label: "Verifications", icon: "✅" },
-  { key: "fake-users", label: "Fake Users", icon: "🤖" },
-  { key: "fake-messages", label: "Fake Messages", icon: "💬" },
-  { key: "fake-chat", label: "Fake User Chat", icon: "🗨️" },
-  { key: "photos", label: "Photo Moderation", icon: "🖼️" },
-  { key: "reports", label: "User Reports", icon: "🚩" },
-  { key: "contact-messages", label: "Contact Messages", icon: "📥" },
-  { key: "feedback", label: "Ratings & Feedback", icon: "⭐" },
-  { key: "boost", label: "Boost Config", icon: "⚡" },
-  { key: "payments", label: "Payment Providers", icon: "💳" },
-  { key: "custom-payments", label: "Manual Gateways", icon: "🏦" },
-  { key: "email-campaigns", label: "Email Campaigns", icon: "📧" },
-  { key: "activity", label: "Activity Log", icon: "📋" },
-  { key: "orders", label: "Orders / Revenue", icon: "💰" },
-  { key: "settings", label: "Settings", icon: "⚙️" },
+  {
+    group: "Users & Moderation", icon: "👥",
+    items: [
+      { key: "users",         label: "Manage Users",     icon: "👥" },
+      { key: "verifications", label: "Verifications",    icon: "✅" },
+      { key: "photos",        label: "Photo Moderation", icon: "🖼️" },
+      { key: "reports",       label: "User Reports",     icon: "🚩" },
+    ],
+  },
+  {
+    group: "Fake Profiles", icon: "🤖",
+    items: [
+      { key: "fake-users",    label: "Fake Users",       icon: "🤖" },
+      { key: "fake-messages", label: "Fake Messages",    icon: "💬" },
+      { key: "fake-chat",     label: "Fake User Chat",   icon: "🗨️" },
+    ],
+  },
+  {
+    group: "Inbox", icon: "📥",
+    items: [
+      { key: "contact-messages", label: "Contact Messages",  icon: "📥" },
+      { key: "feedback",         label: "Ratings & Feedback", icon: "⭐" },
+    ],
+  },
+  {
+    group: "Monetization", icon: "💰",
+    items: [
+      { key: "payments",        label: "Payment Providers", icon: "💳" },
+      { key: "custom-payments", label: "Manual Gateways",   icon: "🏦" },
+      { key: "boost",           label: "Boost Config",      icon: "⚡" },
+      { key: "orders",          label: "Orders / Revenue",  icon: "💰" },
+    ],
+  },
+  {
+    group: "Marketing", icon: "📧",
+    items: [
+      { key: "email-campaigns", label: "Email Campaigns", icon: "📧" },
+    ],
+  },
+  {
+    group: "System", icon: "⚙️",
+    items: [
+      { key: "activity", label: "Activity Log", icon: "📋" },
+      { key: "settings", label: "Settings",     icon: "⚙️" },
+    ],
+  },
 ]
 
-const VALID_KEYS = new Set(MENU.map(m => m.key))
+// Flat list of all valid keys for URL matching
+const VALID_KEYS = new Set<string>(
+  MENU.flatMap(entry => 'group' in entry ? entry.items.map(i => i.key) : [entry.key])
+)
+
+// Map each key → its group label (undefined for top-level items)
+const KEY_TO_GROUP = new Map<string, string>(
+  MENU.flatMap(entry =>
+    'group' in entry ? entry.items.map(i => [i.key, entry.group] as [string, string]) : []
+  )
+)
+
+// Human-readable label for any key
+const KEY_LABEL = new Map<string, string>(
+  MENU.flatMap(entry => 'group' in entry ? entry.items.map(i => [i.key, i.label] as [string, string]) : [[entry.key, entry.label] as [string, string]])
+)
 
 export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -50,6 +99,14 @@ export default function AdminPage() {
   // Derive tab from URL: /admin/users → "users", /admin → "dashboard"
   const tabFromUrl = location.replace(/^\/admin\/?/, "").split("/")[0]
   const tab = VALID_KEYS.has(tabFromUrl) ? tabFromUrl : "dashboard"
+
+  // Track which groups are collapsed. Default: all open.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const toggleGroup = (group: string) =>
+    setCollapsed(prev => ({ ...prev, [group]: !prev[group] }))
+  // A group is open if: not explicitly collapsed, OR the active tab lives in it
+  const isGroupOpen = (group: string) =>
+    !collapsed[group] || KEY_TO_GROUP.get(tab) === group
 
   const navigate = (key: string) => {
     setLocation(key === "dashboard" ? "/admin" : `/admin/${key}`)
@@ -140,47 +197,111 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            {MENU.map(m => (
-              <button key={m.key} onClick={() => navigate(m.key)} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
-                padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
-                background: tab === m.key ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
-                color: tab === m.key ? '#fff' : '#475569',
-                fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
-                fontFamily: 'inherit',
-                boxShadow: tab === m.key ? '0 3px 8px rgba(255,25,44,0.25)' : 'none',
-              }}
-                onMouseEnter={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = '#f1f5f9' }}
-                onMouseLeave={e => { if (tab !== m.key) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                <span style={{ fontSize: '0.875rem' }}>{m.icon}</span>
-                <span style={{ flex: 1 }}>{m.label}</span>
-                {m.key === 'fake-chat' && chatUnread > 0 && (
-                  <span style={{
-                    background: tab === m.key ? 'rgba(255,255,255,0.9)' : '#FF192C',
-                    color: tab === m.key ? '#FF192C' : '#fff',
-                    fontSize: '0.6rem', fontWeight: 800,
-                    borderRadius: '999px', padding: '1px 5px',
-                    minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4',
-                    flexShrink: 0,
-                  }}>
-                    {chatUnread > 99 ? '99+' : chatUnread}
-                  </span>
-                )}
-                {m.key === 'contact-messages' && contactPending > 0 && (
-                  <span style={{
-                    background: tab === m.key ? 'rgba(255,255,255,0.9)' : '#FF192C',
-                    color: tab === m.key ? '#FF192C' : '#fff',
-                    fontSize: '0.6rem', fontWeight: 800,
-                    borderRadius: '999px', padding: '1px 5px',
-                    minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4',
-                    flexShrink: 0,
-                  }}>
-                    {contactPending > 99 ? '99+' : contactPending}
-                  </span>
-                )}
-              </button>
-            ))}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            {MENU.map(entry => {
+              if (!('group' in entry)) {
+                // Top-level standalone item (Dashboard)
+                const m = entry as MenuItem
+                const active = tab === m.key
+                return (
+                  <button key={m.key} onClick={() => navigate(m.key)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+                    padding: '0.45rem 0.625rem', borderRadius: '0.6rem', border: 'none', cursor: 'pointer',
+                    background: active ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
+                    color: active ? '#fff' : '#475569',
+                    fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
+                    fontFamily: 'inherit',
+                    boxShadow: active ? '0 3px 8px rgba(255,25,44,0.25)' : 'none',
+                  }}
+                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#f1f5f9' }}
+                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                    <span style={{ fontSize: '0.875rem' }}>{m.icon}</span>
+                    <span style={{ flex: 1 }}>{m.label}</span>
+                  </button>
+                )
+              }
+
+              // Grouped section
+              const g = entry as MenuGroup
+              const open = isGroupOpen(g.group)
+              // Badge totals for group header
+              const groupChatBadge = g.items.some(i => i.key === 'fake-chat') ? chatUnread : 0
+              const groupContactBadge = g.items.some(i => i.key === 'contact-messages') ? contactPending : 0
+              const groupBadge = groupChatBadge + groupContactBadge
+              const groupActive = g.items.some(i => i.key === tab)
+
+              return (
+                <div key={g.group}>
+                  {/* Group header */}
+                  <button onClick={() => toggleGroup(g.group)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.35rem 0.625rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                    background: groupActive && !open ? 'rgba(255,25,44,0.08)' : 'transparent',
+                    color: groupActive ? '#FF192C' : '#94a3b8',
+                    fontSize: '0.68rem', fontWeight: 700, textAlign: 'left',
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    fontFamily: 'inherit', marginTop: '0.35rem', transition: 'all 0.15s',
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = groupActive && !open ? 'rgba(255,25,44,0.08)' : 'transparent' }}>
+                    <span style={{ fontSize: '0.75rem' }}>{g.icon}</span>
+                    <span style={{ flex: 1 }}>{g.group}</span>
+                    {!open && groupBadge > 0 && (
+                      <span style={{
+                        background: '#FF192C', color: '#fff',
+                        fontSize: '0.6rem', fontWeight: 800,
+                        borderRadius: '999px', padding: '1px 5px',
+                        minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4', flexShrink: 0,
+                      }}>{groupBadge > 99 ? '99+' : groupBadge}</span>
+                    )}
+                    <span style={{ fontSize: '0.6rem', opacity: 0.6, transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+                  </button>
+
+                  {/* Group items */}
+                  {open && (
+                    <div style={{ marginLeft: '0.5rem', borderLeft: '2px solid #f1f5f9', paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', marginBottom: '0.1rem' }}>
+                      {g.items.map(m => {
+                        const active = tab === m.key
+                        return (
+                          <button key={m.key} onClick={() => navigate(m.key)} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '0.55rem',
+                            padding: '0.4rem 0.55rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
+                            background: active ? 'linear-gradient(135deg,#FF192C,#ff5f6b)' : 'transparent',
+                            color: active ? '#fff' : '#475569',
+                            fontSize: '0.76rem', fontWeight: 600, textAlign: 'left', transition: 'all 0.15s',
+                            fontFamily: 'inherit',
+                            boxShadow: active ? '0 2px 6px rgba(255,25,44,0.25)' : 'none',
+                          }}
+                            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#f1f5f9' }}
+                            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                            <span style={{ fontSize: '0.8rem' }}>{m.icon}</span>
+                            <span style={{ flex: 1 }}>{m.label}</span>
+                            {m.key === 'fake-chat' && chatUnread > 0 && (
+                              <span style={{
+                                background: active ? 'rgba(255,255,255,0.9)' : '#FF192C',
+                                color: active ? '#FF192C' : '#fff',
+                                fontSize: '0.6rem', fontWeight: 800,
+                                borderRadius: '999px', padding: '1px 5px',
+                                minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4', flexShrink: 0,
+                              }}>{chatUnread > 99 ? '99+' : chatUnread}</span>
+                            )}
+                            {m.key === 'contact-messages' && contactPending > 0 && (
+                              <span style={{
+                                background: active ? 'rgba(255,255,255,0.9)' : '#FF192C',
+                                color: active ? '#FF192C' : '#fff',
+                                fontSize: '0.6rem', fontWeight: 800,
+                                borderRadius: '999px', padding: '1px 5px',
+                                minWidth: '1.1rem', textAlign: 'center', lineHeight: '1.4', flexShrink: 0,
+                              }}>{contactPending > 99 ? '99+' : contactPending}</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </nav>
 
           <div style={{ marginTop: '0.875rem', paddingTop: '0.875rem', borderTop: '1px solid #e2e8f0' }}>
@@ -209,7 +330,7 @@ export default function AdminPage() {
             </svg>
           </button>
           <div>
-            <h1 style={{ color: '#1e293b', fontWeight: 700, fontSize: '1rem' }}>{MENU.find(m => m.key === tab)?.label}</h1>
+            <h1 style={{ color: '#1e293b', fontWeight: 700, fontSize: '1rem' }}>{KEY_LABEL.get(tab) ?? 'Dashboard'}</h1>
             <p style={{ color: '#94a3b8', fontSize: '0.72rem' }}>Rich Dating Network · Admin</p>
           </div>
         </header>
