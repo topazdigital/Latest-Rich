@@ -253,15 +253,30 @@ router.get("/suggested", requireAuth, async (req, res) => {
 
 router.get("/meet", requireAuth, async (req, res) => {
   try {
-    const users = await db.select().from(usersTable)
+    // Fetch current user to get their gender + looking preference
+    const [me] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+    const myGender = me?.gender ?? 0
+    const myLooking = me?.looking ?? 0
+
+    let users = await db.select().from(usersTable)
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
         or(isNull(usersTable.admin), lt(usersTable.admin, 2))
       ))
       .orderBy(sql.raw(isMysql ? "RAND()" : "RANDOM()"))
-      .limit(50)
-    res.json(users.map(safeUser))
+      .limit(200)
+
+    // Filter: show profiles whose gender matches what I'm looking for,
+    // and who are also looking for my gender (mutual interest).
+    // Falls back to no gender filter if either side has no preference set.
+    users = users.filter(u => {
+      if (myLooking > 0 && u.gender !== myLooking) return false
+      if (myGender > 0 && u.looking !== myGender) return false
+      return true
+    })
+
+    res.json(users.slice(0, 50).map(safeUser))
   } catch {
     res.status(500).json([])
   }
