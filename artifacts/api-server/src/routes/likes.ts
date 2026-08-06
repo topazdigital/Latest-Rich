@@ -97,17 +97,50 @@ router.post("/", requireAuth, async (req, res) => {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
     const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
 
-    // Auto-like back if the target is a fake user and hasn't already liked the real user
-    let autoLikedBack = false
+    // Auto-like back if the target is a fake user — after a random delay so it doesn't look instant
     if (target?.fake === 1) {
       const [alreadyLikedBack] = await db.select().from(likesTable)
         .where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId)))
         .limit(1)
       if (!alreadyLikedBack) {
-        await db.insert(likesTable).values({ userId: targetId, targetId: myId, superlike: 0, created: now() })
-        // Refresh fake user's lastAccess so they appear online/recent (prevents "hours ago" block)
-        await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, targetId))
-        autoLikedBack = true
+        // Random delay: 2–15 minutes in ms
+        const delayMs = (Math.floor(Math.random() * 14) + 2) * 60 * 1000
+        setTimeout(async () => {
+          try {
+            // Re-check in case real user deleted the like in the meantime
+            const [stillLiked] = await db.select().from(likesTable)
+              .where(and(eq(likesTable.userId, myId), eq(likesTable.targetId, targetId)))
+              .limit(1)
+            const [alreadyExists] = await db.select().from(likesTable)
+              .where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId)))
+              .limit(1)
+            if (!stillLiked || alreadyExists) return
+
+            await db.insert(likesTable).values({ userId: targetId, targetId: myId, superlike: 0, created: now() })
+            // Refresh fake user's lastAccess so they appear recent (prevents "hours ago" block)
+            await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, targetId))
+
+            // Notify the real user of the match
+            const [fakeUser] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+            const [realUser] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
+            if (fakeUser && realUser) {
+              await db.insert(notificationsTable).values({
+                userId: myId,
+                fromId: targetId,
+                type: "match",
+                message: `You matched with ${fakeUser.name}! 💝`,
+                link: `/profile/${targetId}`,
+                time: now(),
+              })
+              send(myId, { type: "matched", otherUser: { id: fakeUser.id, name: fakeUser.name, photo: fakeUser.photoThumb || fakeUser.photo } })
+              import("../lib/push").then(({ sendPushToUser }) => {
+                sendPushToUser(myId, { title: `💝 It's a match with ${fakeUser.name}!`, body: "You both liked each other — send a message!", url: `/profile/${targetId}` })
+              }).catch(() => {})
+            }
+          } catch (err) {
+            console.error("[auto-like-back]", err)
+          }
+        }, delayMs)
       }
     }
 
