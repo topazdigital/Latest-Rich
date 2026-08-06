@@ -100,9 +100,16 @@ router.get("/matches", requireAuth, async (req, res) => {
       const [lastMessage] = await db.select({ time: messagesTable.time }).from(messagesTable)
         .where(and(or(and(eq(messagesTable.u1, userId), eq(messagesTable.u2, like.targetId)), and(eq(messagesTable.u1, like.targetId), eq(messagesTable.u2, userId)))))
         .orderBy(desc(messagesTable.time)).limit(1)
-      const expiresAt = (lastMessage?.time || Math.max(like.created || 0, reciprocal.created || 0)) + 7 * 86400
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, like.targetId)).limit(1)
-      if (user) result.push({ ...publicUser(user), matchedAt: Math.max(like.created || 0, reciprocal.created || 0), expiresAt, expired: expiresAt <= now() })
+      if (!user) continue
+      // Fake-user matches never expire. For real users, use the most recent activity
+      // as base; fall back to now() if timestamps are zero/ancient (imported legacy data).
+      const MIN_VALID_TS = 1_000_000_000 // anything before ~2001 is bad data
+      const matchedAt = Math.max(Number(like.created) || 0, Number(reciprocal.created) || 0)
+      const baseTs = lastMessage?.time || (matchedAt > MIN_VALID_TS ? matchedAt : now())
+      const expiresAt = baseTs + 30 * 86400 // 30-day window
+      const expired = user.fake === 1 ? false : expiresAt <= now()
+      result.push({ ...publicUser(user), matchedAt, expiresAt, expired })
     }
     res.json(result)
   } catch (err: any) {

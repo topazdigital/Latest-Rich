@@ -141,9 +141,9 @@ function MatchCard({ item, tab, token, expiry }: { item: any; tab: string; token
         </div>
       </div>
       <div className="p-2 flex gap-2">
-        {tab === 'Matches' && expiry && (
-          <div className={`absolute bottom-12 left-2 rounded-full px-2 py-1 text-[10px] font-bold ${expiry.expired ? 'bg-gray-900/80 text-white' : 'bg-amber-400 text-white'}`}>
-            {expiry.expired ? 'Match expired' : `Expires ${new Date(expiry.expiresAt * 1000).toLocaleDateString()}`}
+        {tab === 'Matches' && expiry && !expiry.expired && (
+          <div className="absolute bottom-12 left-2 rounded-full px-2 py-1 text-[10px] font-bold bg-amber-400 text-white">
+            Expires {new Date(expiry.expiresAt * 1000).toLocaleDateString()}
           </div>
         )}
         <Link href={profileUrl(user)}

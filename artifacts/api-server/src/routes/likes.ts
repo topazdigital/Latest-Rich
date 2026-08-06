@@ -97,53 +97,63 @@ router.post("/", requireAuth, async (req, res) => {
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
     const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
 
-    // Auto-like back if the target is a fake user — after a random delay so it doesn't look instant
+    // --- Fake user: schedule a delayed like-back, then return immediately without declaring a match.
+    // The match notification arrives via WebSocket after the random delay fires.
+    // We never check theyLikedMe for fake targets — stale rows from old tests would otherwise
+    // trigger an instant match on every new like.
     if (target?.fake === 1) {
-      const [alreadyLikedBack] = await db.select().from(likesTable)
-        .where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId)))
-        .limit(1)
-      if (!alreadyLikedBack) {
-        // Random delay: 2–15 minutes in ms
-        const delayMs = (Math.floor(Math.random() * 14) + 2) * 60 * 1000
-        setTimeout(async () => {
-          try {
-            // Re-check in case real user deleted the like in the meantime
-            const [stillLiked] = await db.select().from(likesTable)
-              .where(and(eq(likesTable.userId, myId), eq(likesTable.targetId, targetId)))
-              .limit(1)
-            const [alreadyExists] = await db.select().from(likesTable)
-              .where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId)))
-              .limit(1)
-            if (!stillLiked || alreadyExists) return
+      // Notify the fake user's side (harmless, no real socket) using a plain "like"
+      await db.insert(notificationsTable).values({
+        userId: targetId,
+        fromId: myId,
+        type: superlike ? "superlike" : "like",
+        message: superlike ? `${me?.name} super liked you! ⭐` : `${me?.name} liked you 💝`,
+        link: `/profile/${myId}`,
+        time: now(),
+      })
 
-            await db.insert(likesTable).values({ userId: targetId, targetId: myId, superlike: 0, created: now() })
-            // Refresh fake user's lastAccess so they appear recent (prevents "hours ago" block)
-            await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, targetId))
+      // Delete any stale like-back row so the delayed insert starts fresh
+      await db.delete(likesTable).where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId)))
 
-            // Notify the real user of the match
-            const [fakeUser] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
-            const [realUser] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
-            if (fakeUser && realUser) {
-              await db.insert(notificationsTable).values({
-                userId: myId,
-                fromId: targetId,
-                type: "match",
-                message: `You matched with ${fakeUser.name}! 💝`,
-                link: `/profile/${targetId}`,
-                time: now(),
-              })
-              send(myId, { type: "matched", otherUser: { id: fakeUser.id, name: fakeUser.name, photo: fakeUser.photoThumb || fakeUser.photo } })
-              import("../lib/push").then(({ sendPushToUser }) => {
-                sendPushToUser(myId, { title: `💝 It's a match with ${fakeUser.name}!`, body: "You both liked each other — send a message!", url: `/profile/${targetId}` })
-              }).catch(() => {})
-            }
-          } catch (err) {
-            console.error("[auto-like-back]", err)
+      // Random delay: 2–15 minutes
+      const delayMs = (Math.floor(Math.random() * 14) + 2) * 60 * 1000
+      setTimeout(async () => {
+        try {
+          // Bail out if the real user un-liked in the meantime
+          const [stillLiked] = await db.select().from(likesTable)
+            .where(and(eq(likesTable.userId, myId), eq(likesTable.targetId, targetId)))
+            .limit(1)
+          if (!stillLiked) return
+
+          await db.insert(likesTable).values({ userId: targetId, targetId: myId, superlike: 0, created: now() })
+          // Refresh fake user's lastAccess so they appear online/recent
+          await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, targetId))
+
+          const [fakeUser] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+          if (fakeUser) {
+            await db.insert(notificationsTable).values({
+              userId: myId,
+              fromId: targetId,
+              type: "match",
+              message: `You matched with ${fakeUser.name}! 💝`,
+              link: `/profile/${targetId}`,
+              time: now(),
+            })
+            send(myId, { type: "matched", otherUser: { id: fakeUser.id, name: fakeUser.name, photo: fakeUser.photoThumb || fakeUser.photo } })
+            import("../lib/push").then(({ sendPushToUser }) => {
+              sendPushToUser(myId, { title: `💝 It's a match with ${fakeUser.name}!`, body: "You both liked each other — send a message!", url: `/profile/${targetId}` })
+            }).catch(() => {})
           }
-        }, delayMs)
-      }
+        } catch (err) {
+          console.error("[auto-like-back]", err)
+        }
+      }, delayMs)
+
+      res.json({ liked: true, isMatch: false })
+      return
     }
 
+    // --- Real user target: normal match detection
     const [theyLikedMe] = await db.select().from(likesTable).where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId))).limit(1)
     const isMatch = !!theyLikedMe
 
@@ -160,11 +170,10 @@ router.post("/", requireAuth, async (req, res) => {
       time: now(),
     })
 
-    // Send real-time WS notification to target (only for real users)
+    // Real-time notification to the liked user
     if (me && me.fake !== 1) {
       const fromUser = { id: me.id, name: me.name, photo: me.photoThumb || me.photo, age: me.age, city: me.city }
       send(targetId, { type: "liked", fromUser, isMatch, superlike: !!superlike })
-      // Push notification to the liked user
       import("../lib/push").then(({ sendPushToUser }) => {
         const title = superlike ? `⭐ ${me.name} super liked you!` : isMatch ? `💝 It's a match with ${me.name}!` : `💌 ${me.name} liked you`
         const body = isMatch ? "You both liked each other — send a message!" : "View their profile on Rich Dating Network"
@@ -181,12 +190,8 @@ router.post("/", requireAuth, async (req, res) => {
         link: `/profile/${targetId}`,
         time: now(),
       })
-      // Notify the liker in real-time
       if (target) {
         send(myId, { type: "matched", otherUser: { id: target.id, name: target.name, photo: target.photoThumb || target.photo } })
-      }
-      // Push match notification to the liker
-      if (target) {
         import("../lib/push").then(({ sendPushToUser }) => {
           sendPushToUser(myId, { title: `💝 It's a match with ${target.name}!`, body: "You both liked each other — send a message!", url: `/profile/${targetId}` })
         }).catch(() => {})
