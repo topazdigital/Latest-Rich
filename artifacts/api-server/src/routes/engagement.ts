@@ -108,8 +108,11 @@ router.get("/matches", requireAuth, async (req, res) => {
       const matchedAt = Math.max(Number(like.created) || 0, Number(reciprocal.created) || 0)
       const baseTs = lastMessage?.time || (matchedAt > MIN_VALID_TS ? matchedAt : now())
       const expiresAt = baseTs + 30 * 86400 // 30-day window
-      const expired = user.fake === 1 ? false : expiresAt <= now()
-      result.push({ ...publicUser(user), matchedAt, expiresAt, expired })
+      // Fake-user matches never expire — give them a rolling 1-year window
+      const isFake = user.fake === 1
+      const finalExpiresAt = isFake ? now() + 365 * 86400 : expiresAt
+      const expired = isFake ? false : expiresAt <= now()
+      result.push({ ...publicUser(user), matchedAt, expiresAt: finalExpiresAt, expired })
     }
     res.json(result)
   } catch (err: any) {
