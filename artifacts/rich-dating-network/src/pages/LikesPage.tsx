@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'wouter'
 import { getPhotoUrl, timeAgo, isOnline, profileUrl } from '../lib/utils'
 import { Heart, Star, MessageCircle, BadgeCheck, Crown, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { useWSEvent } from '../hooks/useWebSocket'
 
 const TABS = ['Matches', 'Liked Me', 'I Liked']
 
@@ -14,7 +15,7 @@ export default function LikesPage() {
   const [expiringMatches, setExpiringMatches] = useState<any[]>([])
   const { token } = useAuth()
 
-  useEffect(() => {
+  const fetchLikes = useCallback(() => {
     if (!token) return
     fetch('/api/likes', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -24,6 +25,11 @@ export default function LikesPage() {
     fetch('/api/engagement/matches', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : []).then(d => setExpiringMatches(Array.isArray(d) ? d : [])).catch(() => {})
   }, [token])
+
+  useEffect(() => { fetchLikes() }, [fetchLikes])
+
+  // Re-fetch when a delayed auto-like from a fake user fires and creates a match
+  useWSEvent('matched', () => { fetchLikes() })
 
   const list = tab === 'Matches' ? data.matches : tab === 'Liked Me' ? data.likedMe : data.iLiked
 
