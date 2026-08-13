@@ -881,11 +881,15 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
 
-    if (order.type === "credits") {
+    // Starter trials are credit orders too, but use their own order type so
+    // the payment flows can distinguish the 3-credit trial from regular packs.
+    if (order.type === "credits" || order.type === "starter") {
       const overrideCredits = req.body.creditsOverride ? parseInt(req.body.creditsOverride) : null
       // Fallback: parse credits from description e.g. "10 Credits" → 10
       const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
-      const creditsToAdd = (overrideCredits && overrideCredits > 0) ? overrideCredits : (order.credits && order.credits > 0 ? order.credits : parsedFromDesc)
+      const creditsToAdd = (overrideCredits && overrideCredits > 0)
+        ? overrideCredits
+        : (order.credits && order.credits > 0 ? order.credits : (parsedFromDesc || (order.type === "starter" ? 3 : 0)))
       if (creditsToAdd <= 0) { res.status(400).json({ error: "Specify a credits amount to add (order has 0 credits stored)" }); return }
       await db.update(usersTable).set({ credits: (user.credits || 0) + creditsToAdd }).where(eq(usersTable.id, order.userId))
       // Update credits on order record too if it was 0
@@ -1032,10 +1036,12 @@ router.post("/orders/reconcile-pending", requireAuth, requireAdmin, async (req, 
     const results: { id: number; email: string; credits: number; fulfilled: boolean; reason?: string }[] = []
 
     for (const order of stuckOrders) {
-      if (order.type !== "credits") continue
+      if (order.type !== "credits" && order.type !== "starter") continue
       // Fallback: parse credits from description e.g. "10 Credits" → 10
       const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
-      const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
+      const creditsToAdd = (order.credits && order.credits > 0)
+        ? order.credits
+        : (parsedFromDesc || (order.type === "starter" ? 3 : 0))
       if (creditsToAdd <= 0) continue
       try {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)

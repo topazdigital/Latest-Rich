@@ -115,9 +115,11 @@ async function reconcile() {
       }
 
       // ── Credit logic (PayHero SUCCESS only) ─────────────────────────────
-      if (order.type !== "credits") continue
+      if (order.type !== "credits" && order.type !== "starter") continue
       const creditsFromDesc = parseCreditsFromDescription(order.description)
-      const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : creditsFromDesc
+      const creditsToAdd = (order.credits && order.credits > 0)
+        ? order.credits
+        : (creditsFromDesc || (order.type === "starter" ? 3 : 0))
       if (creditsToAdd <= 0) continue
 
       try {

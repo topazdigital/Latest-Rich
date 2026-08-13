@@ -33,6 +33,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
 const TYPE_STYLES: Record<string, { bg: string; color: string }> = {
   premium:  { bg: "rgba(245,158,11,0.15)", color: "#f59e0b" },
   credits:  { bg: "rgba(168,85,247,0.15)", color: "#a855f7" },
+  starter:  { bg: "rgba(249,115,22,0.15)", color: "#f97316" },
   boost:    { bg: "rgba(236,72,153,0.15)", color: "#ec4899" },
 }
 
