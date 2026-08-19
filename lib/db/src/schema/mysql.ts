@@ -257,6 +257,19 @@ export const fakeVideoCallsTable = mysqlTable("fake_video_calls", {
   dismissed: int("dismissed").default(0),
 })
 
+export const videoCallSessionsTable = mysqlTable("video_call_sessions", {
+  id: serial("id").primaryKey(),
+  callerId: int("caller_id").notNull(),
+  calleeId: int("callee_id").notNull(),
+  status: varchar("status", { length: 20 }).default("ringing"),
+  createdAt: int("created_at").default(0),
+  connectedAt: int("connected_at").default(0),
+  endedAt: int("ended_at").default(0),
+  billedMinutes: int("billed_minutes").default(0),
+  creditsCharged: int("credits_charged").default(0),
+  endReason: varchar("end_reason", { length: 80 }).default(""),
+})
+
 export const customPaymentsTable = mysqlTable("custom_payments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

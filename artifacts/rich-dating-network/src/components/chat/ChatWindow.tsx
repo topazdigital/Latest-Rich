@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getPhotoUrl, isOnline, timeAgo, profileUrl } from '../../lib/utils'
 import { Link } from 'wouter'
-import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff, Paperclip, X, Play, Volume2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Send, BadgeCheck, Crown, Smile, Gift, Check, CheckCheck, Wifi, WifiOff, Paperclip, X, Volume2, ChevronDown, Video } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
 import FeedbackPrompt from '../engagement/FeedbackPrompt'
+import PaidVideoCallModal from '../common/PaidVideoCallModal'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
 
@@ -89,6 +90,8 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [showScrollBottom, setShowScrollBottom] = useState(false)
   const [icebreakers, setIcebreakers] = useState<string[]>([])
   const [showFeedback, setShowFeedback] = useState(false)
+  const [activeCall, setActiveCall] = useState<{ sessionId: number; peer: any } | null>(null)
+  const [startingCall, setStartingCall] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -122,6 +125,28 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
     fetch('/api/chat/credit-cost', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setCreditCost(d.cost || 10)).catch(() => {})
   }, [token])
+
+  async function startVideoCall() {
+    if (startingCall || me.fake === 1) return
+    setStartingCall(true)
+    try {
+      const response = await fetch("/api/video-calls/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ toUserId: other.id }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        toast.error(data.error || "Could not start video call")
+        return
+      }
+      setActiveCall({ sessionId: data.sessionId, peer: data.peer })
+    } catch {
+      toast.error("Could not start video call")
+    } finally {
+      setStartingCall(false)
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/engagement/icebreakers/${other.id}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -445,6 +470,18 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {me.fake !== 1 && (
+            <button
+              onClick={startVideoCall}
+              disabled={startingCall}
+              title="Start video call"
+              aria-label={`Start video call with ${other.name}`}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-brand-50 px-2.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-100 disabled:opacity-50"
+            >
+              {startingCall ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" /> : <Video size={15} />}
+              <span className="hidden sm:inline">Call</span>
+            </button>
+          )}
           {credits !== null && (
             <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2.5 py-1 rounded-full text-xs font-semibold">
               <span>💳</span><span>{credits}</span>
@@ -729,6 +766,14 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         </div>
       </div>
       {showFeedback && <FeedbackPrompt onClose={() => setShowFeedback(false)} trigger="fifth_message" />}
+      {activeCall && (
+        <PaidVideoCallModal
+          sessionId={activeCall.sessionId}
+          peer={activeCall.peer}
+          isCaller
+          onClose={() => setActiveCall(null)}
+        />
+      )}
     </div>
   )
 }

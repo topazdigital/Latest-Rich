@@ -256,6 +256,19 @@ export const fakeVideoCallsTable = pgTable("fake_video_calls", {
   dismissed: integer("dismissed").default(0),
 })
 
+export const videoCallSessionsTable = pgTable("video_call_sessions", {
+  id: serial("id").primaryKey(),
+  callerId: integer("caller_id").notNull(),
+  calleeId: integer("callee_id").notNull(),
+  status: text("status").default("ringing"),
+  createdAt: integer("created_at").default(0),
+  connectedAt: integer("connected_at").default(0),
+  endedAt: integer("ended_at").default(0),
+  billedMinutes: integer("billed_minutes").default(0),
+  creditsCharged: integer("credits_charged").default(0),
+  endReason: text("end_reason").default(""),
+})
+
 export const customPaymentsTable = pgTable("custom_payments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),

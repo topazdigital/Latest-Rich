@@ -83,6 +83,7 @@ export const passwordResetTokensTable = schema.passwordResetTokensTable
 export const emailVerificationsTable = schema.emailVerificationsTable
 export const profileBoostsTable = schema.profileBoostsTable
 export const fakeVideoCallsTable = schema.fakeVideoCallsTable
+export const videoCallSessionsTable = schema.videoCallSessionsTable
 export const customPaymentsTable = schema.customPaymentsTable
 export const customPaymentOrdersTable = schema.customPaymentOrdersTable
 export const chatLocksTable = schema.chatLocksTable

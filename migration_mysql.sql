@@ -211,6 +211,20 @@ CREATE TABLE IF NOT EXISTS `fake_video_calls` (
   CONSTRAINT `fk_fvc_real` FOREIGN KEY (`real_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `video_call_sessions` (
+  `id`              INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `caller_id`       INT(11) NOT NULL,
+  `callee_id`       INT(11) NOT NULL,
+  `status`          VARCHAR(20) NOT NULL DEFAULT 'ringing',
+  `created_at`      INT(11) NOT NULL DEFAULT 0,
+  `connected_at`    INT(11) NOT NULL DEFAULT 0,
+  `ended_at`        INT(11) NOT NULL DEFAULT 0,
+  `billed_minutes`  INT(11) NOT NULL DEFAULT 0,
+  `credits_charged` INT(11) NOT NULL DEFAULT 0,
+  `end_reason`      VARCHAR(80) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `custom_payments` (
   `id`           INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`         VARCHAR(80)  NOT NULL,

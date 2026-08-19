@@ -2,10 +2,11 @@ import { WebSocketServer, WebSocket } from "ws"
 import { IncomingMessage } from "http"
 import { Server } from "http"
 import { verifyToken } from "./jwt"
-import { db } from "@workspace/db"
+import { db, videoCallSessionsTable } from "@workspace/db"
 import { messagesTable, siteConfigTable, usersTable } from "@workspace/db/schema"
 import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
+import { connectVideoCall, endVideoCall, billVideoCall } from "../routes/video-calls"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -177,6 +178,40 @@ async function handleMessage(fromUserId: number, msg: any) {
     case "ping": {
       send(fromUserId, { type: "pong" })
       await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, fromUserId)).catch(() => {})
+      break
+    }
+
+    case "call_accept": {
+      const sessionId = Number(msg.sessionId)
+      const connected = await connectVideoCall(sessionId, fromUserId)
+      if (!connected) send(fromUserId, { type: "call_ended", sessionId, reason: "unavailable" })
+      break
+    }
+
+    case "call_reject":
+    case "call_end": {
+      const sessionId = Number(msg.sessionId)
+      if (sessionId) await endVideoCall(sessionId, fromUserId, msg.type === "call_reject" ? "declined" : "hangup")
+      break
+    }
+
+    case "call_heartbeat": {
+      const sessionId = Number(msg.sessionId)
+      if (sessionId) {
+        const result = await billVideoCall(sessionId)
+        if (result.ended) send(fromUserId, { type: "call_balance_empty", sessionId })
+      }
+      break
+    }
+
+    case "call_signal": {
+      const sessionId = Number(msg.sessionId)
+      const [session] = await db.select().from(videoCallSessionsTable)
+        .where(eq(videoCallSessionsTable.id, sessionId)).limit(1)
+      if (!session || session.status === "ended" || (session.callerId !== fromUserId && session.calleeId !== fromUserId)) return
+      send(session.callerId === fromUserId ? session.calleeId : session.callerId, {
+        type: "call_signal", sessionId, signal: msg.signal,
+      })
       break
     }
   }

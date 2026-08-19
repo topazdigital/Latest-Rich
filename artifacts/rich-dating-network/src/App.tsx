@@ -47,9 +47,11 @@ import WelcomeModal from "./components/common/WelcomeModal"
 import NewSiteModal from "./components/common/NewSiteModal"
 import ProfileQuestionsModal from "./components/common/ProfileQuestionsModal"
 import VideoCallModal from "./components/common/VideoCallModal"
+import PaidVideoCallModal from "./components/common/PaidVideoCallModal"
 import CookieConsent from "./components/common/CookieConsent"
 import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
+import { useWebSocket, useWSEvent } from "./hooks/useWebSocket"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
 // Routes that require login (redirect to /login if not authed). Profile pages excluded so Google can crawl them.
@@ -208,9 +210,17 @@ function ProfileQuestionsController() {
 // Polls for incoming fake video calls every 30 seconds
 function VideoCallController() {
   const { user } = useAuth()
+  useWebSocket()
   const [location] = useLocation()
   const [activeCaller, setActiveCaller] = useState<any | null>(null)
+  const [activeIncomingCall, setActiveIncomingCall] = useState<any | null>(null)
   const isProtected = PROTECTED_PREFIXES.some(p => location === p || location.startsWith(p + "/"))
+
+  useWSEvent("call_invite", message => {
+    if (user && message.sessionId && message.caller && !activeIncomingCall) {
+      setActiveIncomingCall({ sessionId: Number(message.sessionId), peer: message.caller })
+    }
+  }, [user, activeIncomingCall])
 
   const checkForCall = useCallback(async () => {
     if (!user || !isProtected) return
@@ -234,6 +244,16 @@ function VideoCallController() {
     return () => clearInterval(timer)
   }, [user, isProtected, location])
 
+  if (activeIncomingCall) {
+    return (
+      <PaidVideoCallModal
+        sessionId={activeIncomingCall.sessionId}
+        peer={activeIncomingCall.peer}
+        isCaller={false}
+        onClose={() => setActiveIncomingCall(null)}
+      />
+    )
+  }
   if (!activeCaller) return null
   return (
     <VideoCallModal
