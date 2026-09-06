@@ -132,6 +132,12 @@ interface Message {
   mediaUrl?: string; mediaType?: string
 }
 
+const MIN_MODERATOR_REPLY_CHARS = 20
+
+function countMeaningfulChars(value: string): number {
+  return Array.from(value).filter(char => !/\s/u.test(char)).length
+}
+
 function timeAgo(ts: number): string {
   const diff = Date.now() / 1000 - ts
   if (diff < 60) return 'just now'
@@ -298,6 +304,9 @@ export default function ModeratorPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const myUserId = user?.id || 0
+  const isFullAdmin = (user?.admin ?? 0) >= 2
+  const meaningfulReplyChars = countMeaningfulChars(replyText)
+  const meetsReplyLength = isFullAdmin || meaningfulReplyChars >= MIN_MODERATOR_REPLY_CHARS
 
   const loadConversations = useCallback(async () => {
     try {
@@ -456,6 +465,10 @@ export default function ModeratorPage() {
 
   async function sendReply() {
     if (!selectedConv || (!replyText.trim() && !pendingMedia)) return
+    if (!meetsReplyLength) {
+      toast.error(`Type at least ${MIN_MODERATOR_REPLY_CHARS} non-space characters before sending.`)
+      return
+    }
     if (selectedConv.lock?.moderatorId !== myUserId) {
       toast.error('Lock this conversation first before replying')
       return
@@ -505,6 +518,25 @@ export default function ModeratorPage() {
 
   const isLockedByMe = selectedConv?.lock?.moderatorId === myUserId
   const isLockedByOther = selectedConv?.lock && selectedConv.lock.moderatorId !== myUserId
+
+  function blockModeratorClipboardAction(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (!isFullAdmin) e.preventDefault()
+  }
+
+  function blockModeratorDragAction(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (!isFullAdmin) e.preventDefault()
+  }
+
+  function handleReplyKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!isFullAdmin && (e.ctrlKey || e.metaKey) && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendReply()
+    }
+  }
 
   const filteredConvs = conversations.filter(c => {
     const matchesSearch = search === '' ||
@@ -782,19 +814,38 @@ export default function ModeratorPage() {
                   <textarea
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                    onCopy={blockModeratorClipboardAction}
+                    onCut={blockModeratorClipboardAction}
+                    onPaste={blockModeratorClipboardAction}
+                    onContextMenu={e => { if (!isFullAdmin) e.preventDefault() }}
+                    onDragStart={blockModeratorDragAction}
+                    onDrop={blockModeratorDragAction}
+                    onKeyDown={handleReplyKeyDown}
                     disabled={!isLockedByMe || sendingReply}
-                    placeholder={isLockedByMe ? 'Type a reply as the fake user… (Enter to send)' : 'Lock this conversation to reply'}
+                    placeholder={isLockedByMe
+                      ? isFullAdmin
+                        ? 'Type a reply as the fake user… (Enter to send)'
+                        : `Type at least ${MIN_MODERATOR_REPLY_CHARS} characters… (Enter to send)`
+                      : 'Lock this conversation to reply'}
                     rows={2}
-                    className="w-full pt-8 pb-2 px-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 resize-none disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                    className={`w-full pt-8 pb-2 px-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 resize-none disabled:bg-gray-50 disabled:text-gray-400 transition-all ${isFullAdmin ? '' : 'select-none'}`}
                   />
                 </div>
                 <button onClick={sendReply}
-                  disabled={!isLockedByMe || (!replyText.trim() && !pendingMedia) || sendingReply}
+                  disabled={!isLockedByMe || (!replyText.trim() && !pendingMedia) || !meetsReplyLength || sendingReply}
+                  title={!isFullAdmin && !meetsReplyLength ? `${meaningfulReplyChars}/${MIN_MODERATOR_REPLY_CHARS} characters` : 'Send reply'}
                   className="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-500 text-white hover:bg-brand-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
                   {uploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>
               </div>
+              {isLockedByMe && !isFullAdmin && (
+                <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] text-gray-400">
+                  <span>Moderator replies must be typed. Copy, cut, paste, drag, and drop are disabled.</span>
+                  <span className={meetsReplyLength ? 'text-green-600 font-semibold' : ''}>
+                    {meaningfulReplyChars}/{MIN_MODERATOR_REPLY_CHARS}
+                  </span>
+                </div>
+              )}
             </div>
           </>
         )}

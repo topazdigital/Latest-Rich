@@ -8,6 +8,11 @@ import { send as wsSend } from "../lib/websocket"
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
 const LOCK_DURATION = 10 * 60 // 10 minutes
+const MIN_MODERATOR_REPLY_CHARS = 20
+
+function countMeaningfulChars(value: string): number {
+  return Array.from(value).filter(char => !/\s/u.test(char)).length
+}
 
 function requireModerator(req: any, res: any, next: any) {
   if (!req.userId) return res.status(401).json({ error: "Unauthorized" })
@@ -255,6 +260,13 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     const normalizedMediaType = allowedMediaTypes.has(mediaType) ? mediaType : ""
     if (!trimmedMessage && !mediaUrl) { res.status(400).json({ error: "Message or media is required" }); return }
     if (mediaUrl && !normalizedMediaType) { res.status(400).json({ error: "Unsupported media type" }); return }
+    if ((req.moderatorUser.admin ?? 0) < 2 && countMeaningfulChars(trimmedMessage) < MIN_MODERATOR_REPLY_CHARS) {
+      res.status(400).json({
+        error: `Moderator replies must contain at least ${MIN_MODERATOR_REPLY_CHARS} non-space characters.`,
+        minChars: MIN_MODERATOR_REPLY_CHARS,
+      })
+      return
+    }
 
     const [lock] = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
     if (!lock) { res.status(403).json({ error: "Lock this conversation first" }); return }
