@@ -50,6 +50,11 @@ export function containsContactInfo(text: string): boolean {
   return false
 }
 
+/** Only Priority 2+ Premium members can share contact details in chat. */
+export function canShareContactInfo(user: { fake?: number | null; premium?: number | null; premiumPriority?: number | null }): boolean {
+  return user.fake === 1 || (user.premium === 1 && (user.premiumPriority || 0) >= 2)
+}
+
 /** Error payload to send when contact info is detected in bio/name */
 export const CONTACT_INFO_BIO_ERROR = {
   error: "Your bio cannot contain phone numbers, email addresses, social media handles, or links.",
@@ -65,6 +70,6 @@ export const CONTACT_INFO_NAME_ERROR = {
 /** Error payload for non-premium chat */
 export const CONTACT_INFO_CHAT_ERROR = {
   error: "premium_required",
-  message: "Upgrade to Premium to share contact details, social handles, or links in chat.",
+  message: "A Priority 2 Premium plan or higher is required to share contact details, social handles, or links in chat.",
   code: "contact_info_blocked" as const,
 }

@@ -261,7 +261,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="text-2xl">👑</div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
-            <p className="text-xs text-gray-500 mb-2">Sharing contact info, social handles, or links is a Premium-only feature.</p>
+            <p className="text-xs text-gray-500 mb-2">A Priority 2 Premium plan or higher is required to share contact info, social handles, or links.</p>
             <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
               style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
           </div>
@@ -418,8 +418,8 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
               <div className="text-2xl">👑</div>
               <div className="flex-1">
-                <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
-                <p className="text-xs text-gray-500 mb-2">Sharing contact info is a Premium feature.</p>
+                <div className="font-bold text-gray-900 text-sm mb-1">Higher Premium Tier Required</div>
+                <p className="text-xs text-gray-500 mb-2">A Priority 2 Premium plan or higher is required to share contact info.</p>
                 <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
                   style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
               </div>

@@ -7,6 +7,7 @@ import { messagesTable, siteConfigTable, usersTable } from "@workspace/db/schema
 import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
 import { connectVideoCall, endVideoCall, billVideoCall } from "../routes/video-calls"
+import { canShareContactInfo, containsContactInfo } from "./contact-filter"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -17,17 +18,6 @@ interface WSClient {
 }
 
 const clients = new Map<number, WSClient>()
-
-// Detect contact info — duplicated here for WS handler
-function containsContactInfo(text: string): boolean {
-  if (/[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}/.test(text)) return true
-  if (/(\+?[\d][\d\s\.\-\(\)]{5,}[\d])/.test(text)) return true
-  if (/(instagram|insta|ig|whatsapp|whats\s*app|wa|telegram|tg|t\.me|snapchat|snap|sc|facebook|fb|twitter|x\.com|tiktok|tt|wechat|line|kik|skype|discord|viber|signal|linktree|onlyfans)[\s:\/=@\-]*[\w.@\-]{2,}/i.test(text)) return true
-  if (/@[\w.]{3,}/.test(text)) return true
-  if (/https?:\/\/[^\s]{4,}/.test(text)) return true
-  if (/\bwww\.[a-zA-Z0-9\-]{2,}\.[a-zA-Z]{2,}/.test(text)) return true
-  return false
-}
 
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ server, path: "/ws" })
@@ -102,8 +92,8 @@ async function handleMessage(fromUserId: number, msg: any) {
       const [fromUser] = await db.select().from(usersTable).where(eq(usersTable.id, fromUserId)).limit(1)
       if (!fromUser) return
 
-      // Block contact info for non-premium real users
-      if (fromUser.fake !== 1 && fromUser.premium !== 1 && containsContactInfo(message.trim())) {
+      // Contact sharing is reserved for Priority 2+ Premium members.
+      if (!canShareContactInfo(fromUser) && containsContactInfo(message.trim())) {
         send(fromUserId, {
           type: "error",
           code: "contact_info_blocked",

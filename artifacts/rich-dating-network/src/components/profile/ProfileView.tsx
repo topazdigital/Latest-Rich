@@ -173,8 +173,8 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
       } else if (data.error === 'Insufficient credits') {
         toast.error(`Not enough credits (need ${data.creditsNeeded})`)
         setLocation('/credits')
-      } else if (data.error === 'premium_required') {
-        toast.error('Upgrade to Premium to share contact info')
+      } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
+        toast.error('A Priority 2 Premium plan or higher is required to share contact info')
       } else {
         toast.error(data.error || 'Failed to send')
       }

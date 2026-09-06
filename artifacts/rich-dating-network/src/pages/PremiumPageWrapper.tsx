@@ -184,7 +184,7 @@ export default function PremiumPageWrapper() {
             <>
               <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>👑</div>
               <h2 style={{ fontWeight: 800, fontSize: '1.2rem', color: '#111827' }}>Premium Activated!</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem' }}>Welcome to VIP. Enjoy all premium features!</p>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem' }}>Welcome to VIP. Priority 2 plans and higher can also share contact details in chat.</p>
             </>
           )}
           {(pollOutcome === 'cancelled' || pollOutcome === 'failed' || pollOutcome === 'timeout') && (

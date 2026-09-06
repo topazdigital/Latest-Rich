@@ -57,8 +57,8 @@ export default function PremiumPage({
   const country = paymentMethod?.country || ''
 
   const features = [
-    { icon: <Phone size={16} />, t: 'Share Contact Details', d: 'Send phone numbers & WhatsApp in chat', premium: true },
-    { icon: <MessageCircle size={16} />, t: 'Share Social Handles', d: 'Share Instagram, Telegram & more in chat', premium: true },
+    { icon: <Phone size={16} />, t: 'Contact Sharing (Priority 2+)', d: 'Send phone numbers & WhatsApp in chat', premium: true },
+    { icon: <MessageCircle size={16} />, t: 'Social Sharing (Priority 2+)', d: 'Share Instagram, Telegram & more in chat', premium: true },
     { icon: <Eye size={16} />, t: 'See Profile Visitors', d: 'Know exactly who viewed your profile', premium: true },
     { icon: <Star size={16} />, t: 'Priority Placement', d: 'Appear at the top of search results', premium: true },
     { icon: <Check size={16} />, t: 'Read Receipts', d: 'Know when your messages are read', premium: false },
@@ -159,7 +159,7 @@ export default function PremiumPage({
         <div>
           <div className="font-bold text-gray-900 text-sm mb-1">Why Premium?</div>
           <p className="text-gray-600 text-sm leading-relaxed">
-            To protect all members, contact info (phones, social handles, emails, links) can only be shared in chat by <strong>Premium members</strong>. Upgrade to take your connections to the next level.
+            To protect all members, contact info (phones, social handles, emails, links) can only be shared in chat by <strong>Priority 2 Premium members or higher</strong>. Choose at least the 2-week plan to unlock contact sharing.
           </p>
         </div>
       </div>
