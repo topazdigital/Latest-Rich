@@ -67,6 +67,18 @@ export default defineConfig({
         target: "http://localhost:8080",
         changeOrigin: true,
       },
+      "/sitemap-index.xml": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/sitemap-static.xml": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/sitemap-": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
       "/robots.txt": {
         target: "http://localhost:8080",
         changeOrigin: true,

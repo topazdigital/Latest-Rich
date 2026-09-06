@@ -196,14 +196,15 @@ export default function SEOHead() {
     upsertMeta('og:description', description, true)
     upsertMeta('og:type', 'website', true)
     upsertMeta('og:site_name', 'Rich Dating Network', true)
-    upsertMeta('og:image', '/og-image.jpg', true)
+    upsertMeta('og:image', 'https://richdatingnetwork.com/opengraph.jpg', true)
+    upsertMeta('og:url', `https://richdatingnetwork.com${location}`, true)
     if (userCity) upsertMeta('og:locale', countryCode !== 'DEFAULT' ? `en_${countryCode}` : 'en_US', true)
 
     // Twitter Card
     upsertMeta('twitter:card', 'summary_large_image')
     upsertMeta('twitter:title', title)
     upsertMeta('twitter:description', description)
-    upsertMeta('twitter:image', '/og-image.jpg')
+    upsertMeta('twitter:image', 'https://richdatingnetwork.com/opengraph.jpg')
 
     // Canonical
     upsertLink('canonical', `https://richdatingnetwork.com${location}`)

@@ -8,6 +8,7 @@ export interface SeoLandingPage {
   country?: string
   city?: string
   category?: string
+  ethnicity?: string
   /** 1 = show men only, 2 = show women only, undefined = show any */
   gender?: number
 }
@@ -717,6 +718,59 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/['']/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 }
 
+/**
+ * Country hubs are useful even before a country has enough members for a
+ * city-level page. The existing PLACES_LIST remains the source for city
+ * pages; this list makes the country-level discovery layer worldwide.
+ *
+ * Names already represented by PLACES_LIST are de-duplicated by slug below.
+ */
+export const WORLD_COUNTRIES = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda',
+  'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas',
+  'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize',
+  'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil',
+  'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
+  'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China',
+  'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus',
+  'Czechia', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador',
+  'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini',
+  'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon', 'Gambia', 'Georgia',
+  'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea',
+  'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India',
+  'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan',
+  'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos',
+  'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania',
+  'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta',
+  'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova',
+  'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+  'Namibia', 'Nauru', 'Nepal', 'the Netherlands', 'New Zealand', 'Nicaragua',
+  'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman',
+  'Pakistan', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru',
+  'the Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia',
+  'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines',
+  'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal',
+  'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia',
+  'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan',
+  'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria',
+  'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga',
+  'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda',
+  'Ukraine', 'the UAE', 'the UK', 'the USA', 'Uruguay', 'Uzbekistan', 'Vanuatu',
+  'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
+].filter((country, index, all) => {
+  const key = slugify(country).replace(/^the-/, '')
+    .replace('usa', 'united-states')
+    .replace('uk', 'united-kingdom')
+    .replace('uae', 'united-arab-emirates')
+  return all.findIndex(other => {
+    const otherKey = slugify(other).replace(/^the-/, '')
+      .replace('usa', 'united-states')
+      .replace('uk', 'united-kingdom')
+      .replace('uae', 'united-arab-emirates')
+    return otherKey === key
+  }) === index
+})
+
 // ── Category definitions ────────────────────────────────────────────────────
 
 interface CategoryDef {
@@ -883,7 +937,14 @@ const CATEGORIES: CategoryDef[] = [
 // One page per country × category (e.g. /sugar-daddy-kenya, /rich-men-nigeria).
 // These act as mid-level hubs that link down to all city pages.
 
-const uniqueCountries = Array.from(new Set(PLACES_LIST.map(p => p.country)))
+const countryKey = (country: string) => slugify(country).replace(/^the-/, '')
+  .replace('usa', 'united-states')
+  .replace('uk', 'united-kingdom')
+  .replace('uae', 'united-arab-emirates')
+const uniqueCountries = Array.from(new Map(
+  [...PLACES_LIST.map(p => p.country), ...WORLD_COUNTRIES]
+    .map(country => [countryKey(country), country] as const)
+).values())
 
 const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
   const countrySlug = slugify(country)
@@ -1025,7 +1086,7 @@ const genericPages: SeoLandingPage[] = [
   // ── App / free-focused generic pages (high autocomplete volume) ────────────
   {
     slug: 'sugar-mummy-dating-sites',
-    h1: 'Best Sugar Mummy Dating Sites in 2025',
+    h1: 'Best Sugar Mummy Dating Sites',
     title: 'Sugar Mummy Dating Sites | Best Sites to Find a Sugar Mummy — Rich Dating Network',
     description: 'Looking for the best sugar mummy dating sites? Rich Dating Network is the #1 free sugar mummy site with verified profiles in 180+ countries. Join free today.',
     keywords: ['sugar mummy dating sites', 'sugar mummy sites', 'best sugar mummy sites', 'sugar mummy dating website', 'sugar mummy website', 'sugar mummy site free', 'sugar mummy sites in kenya', 'sugar mummy sites in nigeria', 'sugar mummy sites free', 'top sugar mummy sites', 'real sugar mummy sites', 'legit sugar mummy sites', 'genuine sugar mummy site', 'sugar mummy dating site free'],
@@ -1041,7 +1102,7 @@ const genericPages: SeoLandingPage[] = [
   },
   {
     slug: 'sugar-daddy-dating-sites',
-    h1: 'Best Sugar Daddy Dating Sites in 2025',
+    h1: 'Best Sugar Daddy Dating Sites',
     title: 'Sugar Daddy Dating Sites | Best Sites to Find a Sugar Daddy — Rich Dating Network',
     description: 'Looking for the best sugar daddy dating sites? Rich Dating Network is the #1 free sugar daddy site with verified profiles in 180+ countries. Join free today.',
     keywords: ['sugar daddy dating sites', 'sugar daddy sites', 'best sugar daddy sites', 'sugar daddy dating website', 'sugar daddy website', 'sugar daddy site free', 'sugar daddy sites in kenya', 'sugar daddy sites in nigeria', 'sugar daddy sites free', 'top sugar daddy sites', 'real sugar daddy sites', 'legit sugar daddy sites', 'genuine sugar daddy site', 'sugar daddy dating site free'],
@@ -1145,12 +1206,70 @@ const genericPages: SeoLandingPage[] = [
   },
 ]
 
+// ── Ethnicity and community pages ────────────────────────────────────────────
+// These pages are intentionally a small, editorially chosen set rather than
+// an unbounded combination generator. Each page has a real ethnicity filter,
+// useful copy, and links to profiles that can actually match that community.
+interface EthnicityDef {
+  slug: string
+  label: string
+  filterValue: string
+  keywords: string[]
+  gender?: number
+  ladiesIntent?: boolean
+}
+
+const ETHNICITY_DEFS: EthnicityDef[] = [
+  { slug: 'kamba-ladies-looking-for-rich-men', label: 'Kamba ladies', filterValue: 'Kamba', gender: 2, ladiesIntent: true, keywords: ['kamba ladies looking for rich men', 'kamba women dating', 'kamba singles', 'kamba dating site', 'meet kamba women'] },
+  { slug: 'kikuyu-ladies-looking-for-rich-men', label: 'Kikuyu ladies', filterValue: 'Kikuyu', gender: 2, ladiesIntent: true, keywords: ['kikuyu ladies looking for rich men', 'kikuyu women dating', 'kikuyu singles', 'kikuyu dating site', 'meet kikuyu women'] },
+  { slug: 'luo-ladies-looking-for-rich-men', label: 'Luo ladies', filterValue: 'Luo', gender: 2, ladiesIntent: true, keywords: ['luo ladies looking for rich men', 'luo women dating', 'luo singles', 'luo dating site', 'meet luo women'] },
+  { slug: 'luhya-ladies-looking-for-rich-men', label: 'Luhya ladies', filterValue: 'Luhya', gender: 2, ladiesIntent: true, keywords: ['luhya ladies looking for rich men', 'luhya women dating', 'luhya singles', 'luhya dating site', 'meet luhya women'] },
+  { slug: 'kalenjin-ladies-looking-for-rich-men', label: 'Kalenjin ladies', filterValue: 'Kalenjin', gender: 2, ladiesIntent: true, keywords: ['kalenjin ladies looking for rich men', 'kalenjin women dating', 'kalenjin singles', 'kalenjin dating site', 'meet kalenjin women'] },
+  { slug: 'kisii-ladies-looking-for-rich-men', label: 'Kisii ladies', filterValue: 'Kisii', gender: 2, ladiesIntent: true, keywords: ['kisii ladies looking for rich men', 'kisii women dating', 'kisii singles', 'kisii dating site', 'meet kisii women'] },
+  { slug: 'maasai-dating', label: 'Maasai singles', filterValue: 'Maasai', keywords: ['maasai dating', 'maasai singles', 'maasai women dating', 'maasai men dating', 'meet maasai people'] },
+  { slug: 'meru-dating', label: 'Meru singles', filterValue: 'Meru', keywords: ['meru dating', 'meru singles', 'meru women dating', 'meru men dating', 'meet meru people'] },
+  { slug: 'somali-dating', label: 'Somali singles', filterValue: 'Somali', keywords: ['somali dating', 'somali singles', 'somali women dating', 'somali men dating', 'meet somali people'] },
+  { slug: 'swahili-dating', label: 'Swahili singles', filterValue: 'Swahili', keywords: ['swahili dating', 'swahili singles', 'swahili women dating', 'swahili men dating', 'meet swahili people'] },
+  { slug: 'indian-dating', label: 'Indian singles', filterValue: 'Indian', keywords: ['indian dating', 'indian singles dating', 'indian women dating', 'indian men dating', 'meet indian singles'] },
+  { slug: 'pakistani-dating', label: 'Pakistani singles', filterValue: 'Pakistani', keywords: ['pakistani dating', 'pakistani singles dating', 'pakistani women dating', 'pakistani men dating', 'meet pakistani singles'] },
+  { slug: 'filipino-dating', label: 'Filipino singles', filterValue: 'Filipino', keywords: ['filipino dating', 'filipino singles dating', 'filipina women dating', 'filipino men dating', 'meet filipino singles'] },
+  { slug: 'african-dating', label: 'African singles', filterValue: 'Black/African', keywords: ['african dating', 'african singles dating', 'african women dating', 'african men dating', 'meet african singles'] },
+  { slug: 'asian-dating', label: 'Asian singles', filterValue: 'Asian', keywords: ['asian dating', 'asian singles dating', 'asian women dating', 'asian men dating', 'meet asian singles'] },
+  { slug: 'arab-dating', label: 'Arab singles', filterValue: 'Middle Eastern', keywords: ['arab dating', 'arab singles dating', 'arab women dating', 'arab men dating', 'meet arab singles'] },
+  { slug: 'hispanic-dating', label: 'Hispanic and Latino singles', filterValue: 'Hispanic/Latino', keywords: ['hispanic dating', 'latino dating', 'hispanic singles dating', 'latina women dating', 'meet latino singles'] },
+  { slug: 'mixed-heritage-dating', label: 'mixed-heritage singles', filterValue: 'Mixed', keywords: ['mixed heritage dating', 'mixed singles dating', 'mixed race dating', 'mixed heritage women dating', 'meet mixed singles'] },
+]
+
+const ethnicityPages: SeoLandingPage[] = ETHNICITY_DEFS.map(def => {
+  const subject = def.ladiesIntent
+    ? `${def.label} and successful men`
+    : `${def.label} looking for genuine relationships`
+  const titleSubject = def.ladiesIntent
+    ? `${def.label} Looking for Rich Men`
+    : `${def.label} Dating`
+  return {
+    slug: def.slug,
+    ethnicity: def.filterValue,
+    gender: def.gender,
+    h1: def.ladiesIntent
+      ? `${def.label} Looking for Rich Men`
+      : `Meet ${def.label}`,
+    title: `${titleSubject} | Verified Matches — Rich Dating Network`,
+    description: `Meet ${def.label} on Rich Dating Network. Browse verified profiles, connect respectfully, and join free to find genuine matches worldwide.`,
+    keywords: def.keywords,
+    intro: def.ladiesIntent
+      ? `Looking to meet ${subject}? Rich Dating Network helps you connect with verified members who share your interests and relationship goals. Browse community profiles, take your time getting to know people, and join free from anywhere in the world.`
+      : `Looking for ${subject}? Rich Dating Network helps you meet verified members who share your interests and relationship goals. Browse community profiles, take your time getting to know people, and join free from anywhere in the world.`,
+  }
+})
+
 // ── Build slug lookup map for O(1) retrieval ───────────────────────────────
 
 const _slugMap = new Map<string, SeoLandingPage>()
 
 export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   ...genericPages,
+  ...ethnicityPages,
   ...countryPages,
   ...cityPages,
 ]

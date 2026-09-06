@@ -36,10 +36,12 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
     upsertMeta('og:description', page.description, true)
     upsertMeta('og:type', 'website', true)
     upsertMeta('og:site_name', 'Rich Dating Network', true)
-    upsertMeta('og:image', '/og-image.jpg', true)
+    upsertMeta('og:image', 'https://richdatingnetwork.com/opengraph.jpg', true)
+    upsertMeta('og:url', `https://richdatingnetwork.com/${page.slug}`, true)
     upsertMeta('twitter:card', 'summary_large_image')
     upsertMeta('twitter:title', page.title)
     upsertMeta('twitter:description', page.description)
+    upsertMeta('twitter:image', 'https://richdatingnetwork.com/opengraph.jpg')
     upsertLink('canonical', `https://richdatingnetwork.com/${page.slug}`)
 
     // JSON-LD breadcrumbs
@@ -84,6 +86,7 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
 
   const isCountryPage = !!page.country && !page.city
   const isCityPage = !!page.city && !!page.country
+  const isEthnicityPage = !!page.ethnicity
 
   // Category prefix — stored in page.category for country/city pages
   const catPrefix = page.category && CATEGORY_PREFIXES.includes(page.category)
@@ -109,7 +112,10 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
   const otherCities = isCityPage
     ? SEO_LANDING_PAGES.filter(p => p.city && p.city !== page.city && p.category === catPrefix).slice(0, 8)
     : []
-  const relatedGeneric = !isCityPage && !isCountryPage
+  const relatedEthnicity = isEthnicityPage
+    ? SEO_LANDING_PAGES.filter(p => p.ethnicity && p.slug !== page.slug).slice(0, 8)
+    : []
+  const relatedGeneric = !isCityPage && !isCountryPage && !isEthnicityPage
     ? SEO_LANDING_PAGES.filter(p => !p.city && !p.country && p.slug !== page.slug).slice(0, 6)
     : []
 
@@ -187,16 +193,21 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
               Choose your city below to find {CATEGORY_LABELS[catPrefix] ?? catPrefix} near you.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {countryCities.map(({ city }) => (
-                <Link
-                  key={city}
-                  href={`/${catPrefix}-${slugify(city)}`}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 hover:border-[#FF192C] hover:bg-red-50 text-gray-700 hover:text-[#FF192C] text-sm font-medium transition-all group"
-                >
-                  <MapPin className="w-4 h-4 text-gray-400 group-hover:text-[#FF192C] shrink-0" />
-                  <span className="truncate">{city}</span>
-                </Link>
-              ))}
+                {countryCities.map(({ city }) => {
+                  const cityPage = SEO_LANDING_PAGES.find(
+                    p => p.city === city && p.country === page.country && p.category === catPrefix,
+                  )
+                  return (
+                    <Link
+                      key={city}
+                      href={`/${cityPage?.slug ?? `${catPrefix}-${slugify(city)}`}`}
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 hover:border-[#FF192C] hover:bg-red-50 text-gray-700 hover:text-[#FF192C] text-sm font-medium transition-all group"
+                    >
+                      <MapPin className="w-4 h-4 text-gray-400 group-hover:text-[#FF192C] shrink-0" />
+                      <span className="truncate">{city}</span>
+                    </Link>
+                  )
+                })}
             </div>
 
             {/* Other categories for this country */}
@@ -237,15 +248,18 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
 
         {/* ── FEATURED MEMBERS: real profiles from this city/country ─────────── */}
         {/* Shown on city pages (filter by city + country) and country pages (by country) */}
-        {(isCityPage || isCountryPage) && (
+        {(isCityPage || isCountryPage || isEthnicityPage) && (
           <FeaturedMembers
             city={isCityPage ? page.city ?? undefined : undefined}
             country={page.country ?? undefined}
+            ethnicity={page.ethnicity}
             gender={pageGender}
             heading={
               isCityPage
                 ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.city}`
-                : `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.country}`
+                : isCountryPage
+                  ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.country}`
+                  : `Meet ${page.h1.replace(/\s+—.*$/, '')}`
             }
             jsonLdId={page.slug}
           />
@@ -287,6 +301,20 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Ethnicity pages: related community links */}
+        {isEthnicityPage && relatedEthnicity.length > 0 && (
+          <div className="mt-14">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Explore more communities</h3>
+            <div className="flex flex-col gap-2 text-sm">
+              {relatedEthnicity.map(p => (
+                <Link key={p.slug} href={`/${p.slug}`} className="text-gray-500 hover:text-[#FF192C] transition-colors">
+                  {p.h1}
+                </Link>
+              ))}
             </div>
           </div>
         )}

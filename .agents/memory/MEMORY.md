@@ -4,3 +4,4 @@
 - [Production deploy command](production-deploy.md) — always use absolute path: bash /home/admin/domains/test.richdatingnetwork.com/public_html/deploy.sh
 - [GitHub auto-push](github-autopush.md) — always run `bash scripts/push-to-github.sh` at end of every task; GITHUB_TOKEN secret already set
 - [Artifact preview ports](artifact-preview-ports.md) — generated artifact workflows may serve on an internal port different from the configured 5000 preview port
+- [Workflow config preservation](workflow-config-preservation.md) — preserve the full .replit when validating workflow changes; metadata updates can remove existing settings

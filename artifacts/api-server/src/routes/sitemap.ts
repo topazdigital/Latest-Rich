@@ -111,6 +111,15 @@ const CATEGORY_PREFIXES = [
   "dating-events","find-sponsor","sugar-baby","generous-men","rich-singles",
 ]
 
+const ETHNICITY_SLUGS = [
+  "kamba-ladies-looking-for-rich-men", "kikuyu-ladies-looking-for-rich-men",
+  "luo-ladies-looking-for-rich-men", "luhya-ladies-looking-for-rich-men",
+  "kalenjin-ladies-looking-for-rich-men", "kisii-ladies-looking-for-rich-men",
+  "maasai-dating", "meru-dating", "somali-dating", "swahili-dating",
+  "indian-dating", "pakistani-dating", "filipino-dating", "african-dating",
+  "asian-dating", "arab-dating", "hispanic-dating", "mixed-heritage-dating",
+]
+
 const GENERIC_SLUGS = [
   "sugar-daddy","sugar-mummy","rich-men-dating","rich-women-dating",
   "millionaire-dating","cougar-dating","luxury-dating",
@@ -193,6 +202,7 @@ router.get("/sitemap-static.xml", (_req, res) => {
   const urls: string[] = []
   for (const p of STATIC_PAGES) urls.push(urlTag(`${BASE}${p}`, "0.9", "weekly", mod))
   for (const slug of GENERIC_SLUGS) urls.push(urlTag(`${BASE}/${slug}`, "0.7", "monthly", mod))
+  for (const slug of ETHNICITY_SLUGS) urls.push(urlTag(`${BASE}/${slug}`, "0.7", "monthly", mod))
   sendXml(res, sitemapDoc(urls))
 })
 
@@ -211,6 +221,41 @@ const COUNTRIES = [
   "Turkey","Israel","Iran","Iraq","Afghanistan",
 ]
 
+// Keep country-level discovery worldwide. Existing names stay preferred so
+// they continue matching imported profile data ("the USA", etc.).
+const WORLD_COUNTRIES_EXTRA = [
+  "Albania","Andorra","Antigua and Barbuda","Armenia","Azerbaijan","Bahamas",
+  "Barbados","Belarus","Belize","Benin","Bhutan","Bolivia",
+  "Bosnia and Herzegovina","Brunei","Bulgaria","Burkina Faso","Burundi",
+  "Cabo Verde","Chad","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus",
+  "Czechia","Djibouti","Dominica","Dominican Republic","Ecuador","El Salvador",
+  "Equatorial Guinea","Eritrea","Estonia","Fiji","Gabon","Gambia","Georgia",
+  "Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti",
+  "Honduras","Hungary","Iceland","Ireland","Jamaica","Jordan","Kazakhstan",
+  "Kiribati","Kyrgyzstan","Latvia","Lebanon","Liberia","Libya","Liechtenstein",
+  "Lithuania","Luxembourg","Madagascar","Maldives","Mali","Malta",
+  "Marshall Islands","Mauritania","Mauritius","Micronesia","Moldova","Mongolia",
+  "Montenegro","Nauru","Nicaragua","Niger","North Korea","North Macedonia",
+  "Palau","Panama","Papua New Guinea","Paraguay","Poland","Portugal","Romania",
+  "Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines",
+  "Samoa","San Marino","Sao Tome and Principe","Serbia","Seychelles",
+  "Sierra Leone","Slovakia","Slovenia","Solomon Islands","Suriname","Syria",
+  "Tajikistan","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Turkmenistan",
+  "Tuvalu","Ukraine","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela",
+  "Yemen",
+]
+
+function countryKey(country: string) {
+  return toSlug(country).replace(/^the-/, "")
+    .replace("usa", "united-states")
+    .replace("uk", "united-kingdom")
+    .replace("uae", "united-arab-emirates")
+}
+
+const COUNTRY_PAGE_COUNTRIES = Array.from(new Map(
+  [...COUNTRIES, ...WORLD_COUNTRIES_EXTRA].map(country => [countryKey(country), country] as const)
+).values())
+
 // ── Per-category sitemaps ─────────────────────────────────────────────────────
 // One sitemap per keyword type: country hubs (priority 0.7) + city pages (0.6).
 // e.g. /sitemap-sugar-daddy.xml → 81 country hubs + ~479 city pages = ~560 URLs
@@ -219,13 +264,15 @@ for (const prefix of CATEGORY_PREFIXES) {
     const mod = today()
     const urls: string[] = []
     // Country hub pages — higher priority as mid-level hubs
-    for (const country of COUNTRIES) {
+    for (const country of COUNTRY_PAGE_COUNTRIES) {
       urls.push(urlTag(`${BASE}/${prefix}-${toSlug(country)}`, "0.7", "monthly", mod))
     }
     // City-level pages
-    for (const place of PLACES) {
-      urls.push(urlTag(`${BASE}/${prefix}-${toSlug(place)}`, "0.6", "monthly", mod))
-    }
+    // PLACES is a flat compatibility list from the imported location data.
+    // De-duplicate raw city URLs so city/country collisions never emit the
+    // same URL twice in a sitemap.
+    const cityUrls = Array.from(new Set(PLACES.map(place => `${BASE}/${prefix}-${toSlug(place)}`)))
+    for (const url of cityUrls) urls.push(urlTag(url, "0.6", "monthly", mod))
     sendXml(res, sitemapDoc(urls))
   })
 }

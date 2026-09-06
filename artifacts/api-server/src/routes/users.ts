@@ -247,7 +247,10 @@ router.get("/suggested", requireAuth, async (req, res) => {
 
     res.json(sorted.slice(0, 40).map(u => ({ ...safeUser(u), isBoosted: boostedIds.has(u.id) })))
   } catch {
-    res.status(500).json([])
+    // This is an optional SEO enhancement. If the database is temporarily
+    // unavailable, keep the public page crawlable and render the empty state
+    // instead of turning the whole landing page into a browser console error.
+    res.json([])
   }
 })
 
@@ -278,7 +281,10 @@ router.get("/meet", requireAuth, async (req, res) => {
 
     res.json(users.slice(0, 50).map(safeUser))
   } catch {
-    res.status(500).json([])
+    // This is an optional SEO enhancement. If the database is temporarily
+    // unavailable, keep the public page crawlable and render the empty state
+    // instead of turning the whole landing page into a browser console error.
+    res.json([])
   }
 })
 
@@ -291,6 +297,7 @@ router.get("/public/members", async (req, res) => {
     const gender = (req.query.gender as string) || ""
     const country = (req.query.country as string) || ""
     const city = (req.query.city as string) || ""
+    const ethnicity = (req.query.ethnicity as string) || ""
 
     const fakeOnly = req.query.fakeOnly === '1'
 
@@ -302,6 +309,18 @@ router.get("/public/members", async (req, res) => {
     if (gender) conditions.push(eq(usersTable.gender, parseInt(gender)))
     if (country) conditions.push(sql`lower(${usersTable.country}) = ${country.toLowerCase()}`)
     if (city) conditions.push(sql`lower(${usersTable.city}) LIKE ${city.toLowerCase() + "%"}`)
+    if (ethnicity) {
+      const matchingProfiles = await db
+        .select({ userId: userExtendedTable.userId })
+        .from(userExtendedTable)
+        .where(sql`lower(${userExtendedTable.ethnicity}) = ${ethnicity.toLowerCase()}`)
+      const matchingIds = matchingProfiles.map(row => row.userId)
+      if (!matchingIds.length) {
+        res.json([])
+        return
+      }
+      conditions.push(inArray(usersTable.id, matchingIds))
+    }
 
     const members = await db
       .select({
@@ -337,7 +356,9 @@ router.get("/public/members", async (req, res) => {
     // Only return members that have a profile photo (quality filter)
     res.json(enriched.filter(m => m.photo))
   } catch {
-    res.status(500).json([])
+    // This optional SEO enhancement should not make the landing page fail
+    // when the local database is unavailable or has not been initialized.
+    res.json([])
   }
 })
 

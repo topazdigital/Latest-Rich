@@ -16,6 +16,7 @@ interface Member {
 interface Props {
   city?: string
   country?: string
+  ethnicity?: string
   heading?: string
   /** 1 = men only, 2 = women only, undefined = any */
   gender?: number
@@ -23,13 +24,14 @@ interface Props {
   jsonLdId?: string
 }
 
-export default function FeaturedMembers({ city, country, heading, gender, jsonLdId }: Props) {
+export default function FeaturedMembers({ city, country, ethnicity, heading, gender, jsonLdId }: Props) {
   const [members, setMembers] = useState<Member[]>([])
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (city) params.set('city', city)
     if (country) params.set('country', country)
+    if (ethnicity) params.set('ethnicity', ethnicity)
     if (gender) params.set('gender', String(gender))
     params.set('fakeOnly', '1')
     params.set('limit', '6')
@@ -37,7 +39,7 @@ export default function FeaturedMembers({ city, country, heading, gender, jsonLd
       .then(r => r.ok ? r.json() : [])
       .then(data => setMembers(Array.isArray(data) ? data.slice(0, 6) : []))
       .catch(() => {})
-  }, [city, country, gender])
+  }, [city, country, ethnicity, gender])
 
   // ItemList JSON-LD — tells Google exactly which profiles appear on this page
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function FeaturedMembers({ city, country, heading, gender, jsonLd
     el.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'ItemList',
-      name: heading || `Members${city ? ` in ${city}` : country ? ` in ${country}` : ''}`,
+       name: heading || `Members${city ? ` in ${city}` : country ? ` in ${country}` : ethnicity ? ` of ${ethnicity} heritage` : ''}`,
       itemListElement: members.map((m, i) => ({
         '@type': 'ListItem',
         position: i + 1,
