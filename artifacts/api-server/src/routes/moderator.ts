@@ -249,8 +249,12 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
   try {
     await cleanExpiredLocks()
     const key = req.params.key
-    const { message } = req.body
-    if (!message?.trim()) { res.status(400).json({ error: "Message is required" }); return }
+    const { message, mediaUrl, mediaType } = req.body
+    const trimmedMessage = typeof message === "string" ? message.trim() : ""
+    const allowedMediaTypes = new Set(["image", "video", "audio"])
+    const normalizedMediaType = allowedMediaTypes.has(mediaType) ? mediaType : ""
+    if (!trimmedMessage && !mediaUrl) { res.status(400).json({ error: "Message or media is required" }); return }
+    if (mediaUrl && !normalizedMediaType) { res.status(400).json({ error: "Unsupported media type" }); return }
 
     const [lock] = await db.select().from(chatLocksTable).where(eq(chatLocksTable.conversationKey, key)).limit(1)
     if (!lock) { res.status(403).json({ error: "Lock this conversation first" }); return }
@@ -272,9 +276,11 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     await db.insert(messagesTable).values({
       u1: fakeUser.id,
       u2: realUser.id,
-      message: message.trim(),
+      message: trimmedMessage,
       time: msgTime,
       read: 0,
+      mediaUrl: mediaUrl || "",
+      mediaType: normalizedMediaType,
     })
     const [msg] = await db.select().from(messagesTable)
       .where(and(eq(messagesTable.u1, fakeUser.id), eq(messagesTable.u2, realUser.id), eq(messagesTable.time, msgTime)))
@@ -292,7 +298,7 @@ router.post("/conversations/:key/reply", requireAuth, requireModerator, async (r
     await db.insert(activityTable).values({
       type: "message", userId: req.userId,
       title: `Moderator reply as ${fakeUser.name}`,
-      message: `To ${realUser.name}: ${message.trim().slice(0, 100)}`,
+      message: `To ${realUser.name}: ${normalizedMediaType ? `[${normalizedMediaType}] ` : ""}${trimmedMessage.slice(0, 100)}`,
       time: now(),
     }).catch(() => {})
 

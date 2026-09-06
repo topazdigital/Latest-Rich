@@ -164,7 +164,7 @@ router.get("/search", requireAuth, async (req, res) => {
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
-        or(isNull(usersTable.admin), lt(usersTable.admin, 2))
+        or(isNull(usersTable.admin), eq(usersTable.admin, 0))
       ))
       .orderBy(desc(usersTable.lastAccess))
       .limit(500)
@@ -239,7 +239,7 @@ router.get("/suggested", requireAuth, async (req, res) => {
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
-        or(isNull(usersTable.admin), lt(usersTable.admin, 2))
+        or(isNull(usersTable.admin), eq(usersTable.admin, 0))
       ))
       .orderBy(desc(usersTable.lastAccess))
       .limit(100)
@@ -275,7 +275,7 @@ router.get("/meet", requireAuth, async (req, res) => {
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
-        or(isNull(usersTable.admin), lt(usersTable.admin, 2))
+        or(isNull(usersTable.admin), eq(usersTable.admin, 0))
       ))
       .orderBy(sql.raw(isMysql ? "RAND()" : "RANDOM()"))
       .limit(200)
@@ -386,7 +386,7 @@ router.get("/public/:id", async (req, res) => {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(404).json({ error: "Not found" }); return }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!user) { res.status(404).json({ error: "Not found" }); return }
+    if (!user || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     let photo = user.photo || ''
     let photoThumb = user.photoThumb || ''
@@ -428,7 +428,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!user) { res.status(404).json({ error: "Not found" }); return }
+    if (!user || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     // Check if this user has an active boost
     const [activeBoost] = await db.select().from(profileBoostsTable)
@@ -559,6 +559,8 @@ router.get("/by-username/:username", async (req, res) => {
     }
 
     if (!user) { res.status(404).json({ error: "User not found" }); return }
+    const [staffUser] = await db.select({ admin: usersTable.admin }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1)
+    if ((staffUser?.admin ?? 0) > 0) { res.status(404).json({ error: "User not found" }); return }
     res.json({ id: user.id, name: user.name, username: user.username })
   } catch (err) {
     console.error("[by-username] username lookup failed for:", username, err)

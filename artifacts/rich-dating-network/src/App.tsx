@@ -84,6 +84,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     // Profile pages (/profile/:id and /@username) are public — Google can crawl them without auth
     if (!user && (isAuthRequired || isAdmin || isModerator)) setLocation("/login")
     else if (user && (location === "/" || location === "/login" || location === "/register") && !isSocialCompletion) setLocation("/discover")
+    else if (user && (user.admin ?? 0) === 1 && !isModerator) setLocation("/moderator")
     else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
     else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
     // If a logged-in user has no age set (birthday never filled — incomplete social profile),

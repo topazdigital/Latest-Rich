@@ -604,6 +604,18 @@ router.get("/moderator-payroll", requireAuth, requireAdmin, async (req, res) => 
       const moderatorId = Number(activity.userId || 0)
       if (moderatorId > 0) counts.set(moderatorId, (counts.get(moderatorId) || 0) + 1)
     }
+    const lifetimeReplyRows = await db.select({
+      userId: activityTable.userId,
+      count: count(),
+    }).from(activityTable).where(and(
+      eq(activityTable.type, "message"),
+      sql`${activityTable.title} LIKE 'Moderator reply as %'`,
+    )).groupBy(activityTable.userId)
+    const lifetimeCounts = new Map<number, number>()
+    for (const activity of lifetimeReplyRows) {
+      const moderatorId = Number(activity.userId || 0)
+      if (moderatorId > 0) lifetimeCounts.set(moderatorId, Number(activity.count || 0))
+    }
 
     const rows = moderators.map(moderator => {
       const messages = counts.get(moderator.id) || 0
@@ -613,17 +625,20 @@ router.get("/moderator-payroll", requireAuth, requireAdmin, async (req, res) => 
         email: moderator.email,
         role: (moderator.admin ?? 0) >= 2 ? "Admin" : "Moderator",
         messages,
+        messagesAllTime: lifetimeCounts.get(moderator.id) || 0,
         payout: Number((messages * rate).toFixed(2)),
       }
     })
 
     const totalMessages = rows.reduce((sum, row) => sum + row.messages, 0)
+    const totalMessagesAllTime = rows.reduce((sum, row) => sum + row.messagesAllTime, 0)
     res.json({
       from,
       to,
       rate,
       moderators: rows,
       totalMessages,
+      totalMessagesAllTime,
       totalPayout: Number((totalMessages * rate).toFixed(2)),
     })
   } catch (err: unknown) {

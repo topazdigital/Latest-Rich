@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'wouter'
-import { MessageSquare, Lock, Unlock, Send, RefreshCw, LogOut, Shield, Users, Clock, Search, ChevronLeft, Loader2, AlertCircle, Check, Bell, BellOff } from 'lucide-react'
+import { MessageSquare, Lock, Unlock, Send, RefreshCw, LogOut, Shield, Users, Clock, Search, ChevronLeft, Loader2, AlertCircle, Check, Bell, BellOff, Paperclip, X, Volume2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getStoredAuth, clearStoredAuth } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
@@ -129,6 +129,7 @@ interface Conversation {
 }
 interface Message {
   id: number; u1: number; u2: number; message: string; time: number; read: number
+  mediaUrl?: string; mediaType?: string
 }
 
 function timeAgo(ts: number): string {
@@ -216,11 +217,31 @@ function ConvItem({ conv, selected, myUserId, onClick }: {
   )
 }
 
+function ModeratorMediaBubble({ msg }: { msg: Message }) {
+  if (!msg.mediaUrl || !msg.mediaType) return null
+  if (msg.mediaType === "image") {
+    return <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="block">
+      <img src={msg.mediaUrl} alt="Attached photo" className="max-w-[240px] max-h-[320px] rounded-xl object-cover hover:opacity-90" />
+    </a>
+  }
+  if (msg.mediaType === "video") {
+    return <video src={msg.mediaUrl} controls className="max-w-[240px] max-h-[320px] rounded-xl bg-black" preload="metadata" />
+  }
+  if (msg.mediaType === "audio") {
+    return <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10">
+      <Volume2 size={15} />
+      <audio src={msg.mediaUrl} controls className="h-8 max-w-[180px]" preload="metadata" />
+    </div>
+  }
+  return null
+}
+
 function MessageBubble({ msg, fakeUserId, users, isLatest }: {
   msg: Message; fakeUserId: number; users: Record<string, ConvUser>; isLatest: boolean
 }) {
   const isByFake = msg.u1 === fakeUserId
   const sender = users[String(msg.u1)]
+  const hasMedia = !!msg.mediaUrl && !!msg.mediaType
   return (
     <div className={`flex gap-2 ${isByFake ? 'justify-end' : 'justify-start'}`}>
       {!isByFake && <Avatar photo={sender?.photo || ''} name={sender?.name || '?'} size={28} />}
@@ -233,7 +254,8 @@ function MessageBubble({ msg, fakeUserId, users, isLatest }: {
           ? 'bg-brand-500 text-white rounded-br-sm'
           : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
       }`}>
-        <p>{msg.message}</p>
+        {hasMedia && <ModeratorMediaBubble msg={msg} />}
+        {msg.message && <p>{msg.message}</p>}
         <div className="flex items-center justify-between gap-3">
           <p className={`text-[10px] mt-1 ${isByFake ? 'text-white/60' : 'text-gray-400'}`}>{timeAgo(msg.time)}</p>
           {isLatest && (
@@ -258,6 +280,9 @@ export default function ModeratorPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [msgUsers, setMsgUsers] = useState<Record<string, ConvUser>>({})
   const [replyText, setReplyText] = useState('')
+  const [pendingMedia, setPendingMedia] = useState<{ file: File; preview: string; type: string } | null>(null)
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loadingConvs, setLoadingConvs] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -415,26 +440,58 @@ export default function ModeratorPage() {
     finally { setLocking(false) }
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : ''
+    if (!type) { toast.error('Choose an image, video, or audio file'); return }
+    if (file.size > 50 * 1024 * 1024) { toast.error('File too large. Maximum 50 MB allowed.'); return }
+    const preview = URL.createObjectURL(file)
+    setPendingMedia(previous => {
+      if (previous) URL.revokeObjectURL(previous.preview)
+      return { file, preview, type }
+    })
+  }
+
   async function sendReply() {
-    if (!selectedConv || !replyText.trim()) return
+    if (!selectedConv || (!replyText.trim() && !pendingMedia)) return
     if (selectedConv.lock?.moderatorId !== myUserId) {
       toast.error('Lock this conversation first before replying')
       return
     }
     setSendingReply(true)
     try {
+      let mediaUrl = ''
+      let mediaType = ''
+      const mediaToSend = pendingMedia
+      if (mediaToSend) {
+        setUploadingMedia(true)
+        const formData = new FormData()
+        formData.append('media', mediaToSend.file)
+        const uploadResponse = await authFetch('/api/chat/upload', { method: 'POST', body: formData })
+        const uploadData = await uploadResponse.json()
+        if (!uploadResponse.ok) throw new Error(uploadData.error || 'Upload failed')
+        mediaUrl = uploadData.url
+        mediaType = uploadData.type
+        setUploadingMedia(false)
+      }
       const r = await authFetch(`/api/moderator/conversations/${selectedConv.key}/reply`, {
         method: 'POST',
-        body: JSON.stringify({ message: replyText.trim() }),
+        body: JSON.stringify({ message: replyText.trim(), mediaUrl, mediaType }),
       })
       const d = await r.json()
       if (!r.ok) { toast.error(d.error || 'Failed to send'); return }
       setMessages(prev => [...prev, d.message])
       setReplyText('')
+      if (mediaToSend) {
+        URL.revokeObjectURL(mediaToSend.preview)
+        setPendingMedia(null)
+      }
       await loadConversations()
       await loadStats()
-    } catch { toast.error('Failed to send') }
-    finally { setSendingReply(false) }
+    } catch (error: any) { toast.error(error.message || 'Failed to send') }
+    finally { setUploadingMedia(false); setSendingReply(false) }
   }
 
   function handleLogout() {
@@ -688,7 +745,7 @@ export default function ModeratorPage() {
             </div>
 
             {/* Reply box */}
-            <div className="bg-white border-t border-gray-200 p-3">
+              <div className="bg-white border-t border-gray-200 p-3">
               {!isLockedByMe && (
                 <div className="mb-2 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
                   <AlertCircle size={13} className="text-amber-500 shrink-0" />
@@ -699,7 +756,24 @@ export default function ModeratorPage() {
                   </span>
                 </div>
               )}
+              {pendingMedia && (
+                <div className="mb-2 relative inline-block">
+                  {pendingMedia.type === 'image' && <img src={pendingMedia.preview} alt="Attachment preview" className="h-20 w-20 object-cover rounded-xl border border-gray-200" />}
+                  {pendingMedia.type === 'video' && <video src={pendingMedia.preview} className="h-20 w-20 object-cover rounded-xl border border-gray-200 bg-black" />}
+                  {pendingMedia.type === 'audio' && <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2 text-xs text-gray-600"><Volume2 size={14} /> Audio ready</div>}
+                  <button onClick={() => { URL.revokeObjectURL(pendingMedia.preview); setPendingMedia(null) }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-red-500">
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
               <div className="flex items-center gap-2">
+                <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" className="hidden" onChange={handleFileChange} />
+                <button onClick={() => fileInputRef.current?.click()} disabled={!isLockedByMe || sendingReply}
+                  title="Attach photo, video, or audio"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                  <Paperclip size={16} />
+                </button>
                 <div className="flex-1 relative">
                   <div className="absolute left-3 top-2.5 flex items-center gap-1.5">
                     <Avatar photo={selectedConv.fakeUser.photo} name={selectedConv.fakeUser.name} size={18} />
@@ -716,9 +790,9 @@ export default function ModeratorPage() {
                   />
                 </div>
                 <button onClick={sendReply}
-                  disabled={!isLockedByMe || !replyText.trim() || sendingReply}
+                  disabled={!isLockedByMe || (!replyText.trim() && !pendingMedia) || sendingReply}
                   className="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-500 text-white hover:bg-brand-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-                  {sendingReply ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  {uploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>
               </div>
             </div>

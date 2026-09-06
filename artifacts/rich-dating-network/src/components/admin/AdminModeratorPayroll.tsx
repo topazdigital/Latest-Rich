@@ -9,6 +9,7 @@ interface PayrollRow {
   email: string
   role: string
   messages: number
+  messagesAllTime: number
   payout: number
 }
 
@@ -18,6 +19,7 @@ interface PayrollData {
   to: number
   moderators: PayrollRow[]
   totalMessages: number
+  totalMessagesAllTime: number
   totalPayout: number
 }
 
@@ -142,9 +144,10 @@ export default function AdminModeratorPayroll() {
         <div style={{ color: "#94a3b8", textAlign: "center", padding: "3rem" }}>Loading payroll…</div>
       ) : data && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
+           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
             {[
               { label: "Messages in period", value: data.totalMessages, color: "#60a5fa", icon: <Users size={16} /> },
+              { label: "All-time replies", value: data.totalMessagesAllTime, color: "#a78bfa", icon: <Users size={16} /> },
               { label: "Agreed rate", value: money(data.rate), color: "#22c55e", icon: <DollarSign size={16} /> },
               { label: "Total pay due", value: money(data.totalPayout), color: "#f59e0b", icon: <DollarSign size={16} /> },
             ].map(stat => (
@@ -158,11 +161,12 @@ export default function AdminModeratorPayroll() {
           <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: "1rem", overflow: "hidden" }}>
             <div style={{ padding: "0.9rem 1rem", borderBottom: "1px solid #1f2937", color: "#e2e8f0", fontSize: "0.82rem", fontWeight: 700 }}>Moderator accounts</div>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "560px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "650px" }}>
                 <thead><tr style={{ color: "#64748b", fontSize: "0.68rem", textAlign: "left" }}>
                   <th style={{ padding: "0.7rem 1rem" }}>Account</th>
                   <th style={{ padding: "0.7rem 1rem" }}>Role</th>
-                  <th style={{ padding: "0.7rem 1rem", textAlign: "right" }}>Messages sent</th>
+                  <th style={{ padding: "0.7rem 1rem", textAlign: "right" }}>In period</th>
+                  <th style={{ padding: "0.7rem 1rem", textAlign: "right" }}>All time</th>
                   <th style={{ padding: "0.7rem 1rem", textAlign: "right" }}>Pay due</th>
                 </tr></thead>
                 <tbody>{data.moderators.map(row => (
@@ -170,6 +174,7 @@ export default function AdminModeratorPayroll() {
                     <td style={{ padding: "0.75rem 1rem" }}><div style={{ fontWeight: 700 }}>{row.name}</div><div style={{ color: "#64748b", fontSize: "0.68rem" }}>{row.email}</div></td>
                     <td style={{ padding: "0.75rem 1rem" }}><span style={{ color: row.role === "Admin" ? "#f59e0b" : "#60a5fa", background: row.role === "Admin" ? "#451a03" : "#172554", padding: "0.2rem 0.45rem", borderRadius: "999px", fontSize: "0.65rem", fontWeight: 700 }}>{row.role}</span></td>
                     <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700 }}>{row.messages}</td>
+                    <td style={{ padding: "0.75rem 1rem", textAlign: "right", color: "#c4b5fd", fontWeight: 700 }}>{row.messagesAllTime}</td>
                     <td style={{ padding: "0.75rem 1rem", textAlign: "right", color: "#4ade80", fontWeight: 800 }}>{money(row.payout)}</td>
                   </tr>
                 ))}</tbody>
