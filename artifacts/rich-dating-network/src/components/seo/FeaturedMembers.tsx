@@ -17,6 +17,7 @@ interface Props {
   city?: string
   country?: string
   ethnicity?: string
+  language?: string
   heading?: string
   /** 1 = men only, 2 = women only, undefined = any */
   gender?: number
@@ -24,7 +25,7 @@ interface Props {
   jsonLdId?: string
 }
 
-export default function FeaturedMembers({ city, country, ethnicity, heading, gender, jsonLdId }: Props) {
+export default function FeaturedMembers({ city, country, ethnicity, language, heading, gender, jsonLdId }: Props) {
   const [members, setMembers] = useState<Member[]>([])
 
   useEffect(() => {
@@ -32,14 +33,14 @@ export default function FeaturedMembers({ city, country, ethnicity, heading, gen
     if (city) params.set('city', city)
     if (country) params.set('country', country)
     if (ethnicity) params.set('ethnicity', ethnicity)
+    if (language) params.set('language', language)
     if (gender) params.set('gender', String(gender))
-    params.set('fakeOnly', '1')
     params.set('limit', '6')
     fetch(`/api/users/public/members?${params}`)
       .then(r => r.ok ? r.json() : [])
       .then(data => setMembers(Array.isArray(data) ? data.slice(0, 6) : []))
       .catch(() => {})
-  }, [city, country, ethnicity, gender])
+  }, [city, country, ethnicity, language, gender])
 
   // ItemList JSON-LD — tells Google exactly which profiles appear on this page
   useEffect(() => {

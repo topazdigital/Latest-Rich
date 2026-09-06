@@ -1,5 +1,11 @@
 import { Link } from 'wouter'
-import { SEO_LANDING_PAGES } from '../../data/seoLandingPages'
+import {
+  getSeoLandingPage,
+  getSeoMatrixPageSlug,
+  SEO_LANDING_PAGES,
+  SEO_MATRIX_COMMUNITIES,
+  SEO_MATRIX_INTENTS,
+} from '../../data/seoLandingPages'
 
 interface PopularSearchesProps {
   /** Slug of the current page (if on a keyword landing page) — excluded from the list. */
@@ -10,7 +16,15 @@ interface PopularSearchesProps {
 }
 
 export default function PopularSearches({ excludeSlug, limit = 24, className = '' }: PopularSearchesProps) {
-  const pages = SEO_LANDING_PAGES.filter(p => p.slug !== excludeSlug).slice(0, limit)
+  const matrixPages = SEO_MATRIX_COMMUNITIES
+    .slice(0, 8)
+    .flatMap(community => SEO_MATRIX_INTENTS
+      .filter(intent => ['single-ladies', 'rich-men', 'sugar-daddies'].includes(intent.slug))
+      .map(intent => getSeoLandingPage(getSeoMatrixPageSlug(community.slug, intent.slug)))
+      .filter((page): page is NonNullable<typeof page> => !!page))
+  const pages = [...matrixPages, ...SEO_LANDING_PAGES]
+    .filter((page, index, all) => page.slug !== excludeSlug && all.findIndex(other => other.slug === page.slug) === index)
+    .slice(0, limit)
 
   return (
     <section className={`px-4 py-8 bg-gray-50 border-t border-gray-100 ${className}`}>

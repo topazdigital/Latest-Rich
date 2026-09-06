@@ -298,6 +298,7 @@ router.get("/public/members", async (req, res) => {
     const country = (req.query.country as string) || ""
     const city = (req.query.city as string) || ""
     const ethnicity = (req.query.ethnicity as string) || ""
+    const language = (req.query.language as string) || ""
 
     const fakeOnly = req.query.fakeOnly === '1'
 
@@ -309,11 +310,18 @@ router.get("/public/members", async (req, res) => {
     if (gender) conditions.push(eq(usersTable.gender, parseInt(gender)))
     if (country) conditions.push(sql`lower(${usersTable.country}) = ${country.toLowerCase()}`)
     if (city) conditions.push(sql`lower(${usersTable.city}) LIKE ${city.toLowerCase() + "%"}`)
-    if (ethnicity) {
+    if (ethnicity || language) {
+      const extendedConditions = []
+      if (ethnicity) {
+        extendedConditions.push(sql`lower(${userExtendedTable.ethnicity}) = ${ethnicity.toLowerCase()}`)
+      }
+      if (language) {
+        extendedConditions.push(sql`lower(${userExtendedTable.languages}) like ${`%${language.toLowerCase()}%`}`)
+      }
       const matchingProfiles = await db
         .select({ userId: userExtendedTable.userId })
         .from(userExtendedTable)
-        .where(sql`lower(${userExtendedTable.ethnicity}) = ${ethnicity.toLowerCase()}`)
+        .where(and(...extendedConditions))
       const matchingIds = matchingProfiles.map(row => row.userId)
       if (!matchingIds.length) {
         res.json([])

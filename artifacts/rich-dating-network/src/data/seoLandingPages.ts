@@ -9,6 +9,10 @@ export interface SeoLandingPage {
   city?: string
   category?: string
   ethnicity?: string
+  language?: string
+  community?: string
+  intent?: string
+  intentLabel?: string
   /** 1 = show men only, 2 = show women only, undefined = show any */
   gender?: number
 }
@@ -1263,6 +1267,163 @@ const ethnicityPages: SeoLandingPage[] = ETHNICITY_DEFS.map(def => {
   }
 })
 
+// ── Scalable community × intent matrix ───────────────────────────────────────
+// These definitions are deliberately separate from the editorial pages above.
+// Matrix URLs are resolved on demand and only submitted to search engines when
+// the API confirms that enough public profiles match the combination.
+export interface SeoMatrixCommunity {
+  slug: string
+  label: string
+  kind: 'ethnicity' | 'language'
+  value: string
+}
+
+export interface SeoMatrixIntent {
+  slug: string
+  label: string
+  gender?: number
+  category?: string
+  phrase: string
+}
+
+export const SEO_MATRIX_COMMUNITIES: SeoMatrixCommunity[] = [
+  { slug: 'kamba', label: 'Kamba', kind: 'ethnicity', value: 'Kamba' },
+  { slug: 'kikuyu', label: 'Kikuyu', kind: 'ethnicity', value: 'Kikuyu' },
+  { slug: 'luo', label: 'Luo', kind: 'ethnicity', value: 'Luo' },
+  { slug: 'luhya', label: 'Luhya', kind: 'ethnicity', value: 'Luhya' },
+  { slug: 'kalenjin', label: 'Kalenjin', kind: 'ethnicity', value: 'Kalenjin' },
+  { slug: 'kisii', label: 'Kisii', kind: 'ethnicity', value: 'Kisii' },
+  { slug: 'maasai', label: 'Maasai', kind: 'ethnicity', value: 'Maasai' },
+  { slug: 'meru', label: 'Meru', kind: 'ethnicity', value: 'Meru' },
+  { slug: 'somali', label: 'Somali', kind: 'ethnicity', value: 'Somali' },
+  { slug: 'swahili', label: 'Swahili', kind: 'ethnicity', value: 'Swahili' },
+  { slug: 'african', label: 'African', kind: 'ethnicity', value: 'Black/African' },
+  { slug: 'asian', label: 'Asian', kind: 'ethnicity', value: 'Asian' },
+  { slug: 'indian', label: 'Indian', kind: 'ethnicity', value: 'Indian' },
+  { slug: 'pakistani', label: 'Pakistani', kind: 'ethnicity', value: 'Pakistani' },
+  { slug: 'filipino', label: 'Filipino', kind: 'ethnicity', value: 'Filipino' },
+  { slug: 'arab', label: 'Arab', kind: 'ethnicity', value: 'Middle Eastern' },
+  { slug: 'hispanic', label: 'Hispanic and Latino', kind: 'ethnicity', value: 'Hispanic/Latino' },
+  { slug: 'mixed-heritage', label: 'mixed-heritage', kind: 'ethnicity', value: 'Mixed' },
+  { slug: 'east-african', label: 'East African', kind: 'ethnicity', value: 'East African' },
+  { slug: 'west-african', label: 'West African', kind: 'ethnicity', value: 'West African' },
+  { slug: 'nigerian', label: 'Nigerian', kind: 'ethnicity', value: 'Nigerian' },
+  { slug: 'kenyan', label: 'Kenyan', kind: 'ethnicity', value: 'Kenyan' },
+  { slug: 'ghanaian', label: 'Ghanaian', kind: 'ethnicity', value: 'Ghanaian' },
+  { slug: 'south-african', label: 'South African', kind: 'ethnicity', value: 'South African' },
+  { slug: 'caribbean', label: 'Caribbean', kind: 'ethnicity', value: 'Caribbean' },
+  { slug: 'european', label: 'European', kind: 'ethnicity', value: 'European' },
+  { slug: 'south-asian', label: 'South Asian', kind: 'ethnicity', value: 'South Asian' },
+  { slug: 'english-speaking', label: 'English-speaking', kind: 'language', value: 'English' },
+  { slug: 'swahili-speaking', label: 'Swahili-speaking', kind: 'language', value: 'Swahili' },
+  { slug: 'hindi-speaking', label: 'Hindi-speaking', kind: 'language', value: 'Hindi' },
+  { slug: 'urdu-speaking', label: 'Urdu-speaking', kind: 'language', value: 'Urdu' },
+  { slug: 'punjabi-speaking', label: 'Punjabi-speaking', kind: 'language', value: 'Punjabi' },
+  { slug: 'bengali-speaking', label: 'Bengali-speaking', kind: 'language', value: 'Bengali' },
+  { slug: 'arabic-speaking', label: 'Arabic-speaking', kind: 'language', value: 'Arabic' },
+  { slug: 'french-speaking', label: 'French-speaking', kind: 'language', value: 'French' },
+  { slug: 'spanish-speaking', label: 'Spanish-speaking', kind: 'language', value: 'Spanish' },
+  { slug: 'portuguese-speaking', label: 'Portuguese-speaking', kind: 'language', value: 'Portuguese' },
+  { slug: 'mandarin-speaking', label: 'Mandarin-speaking', kind: 'language', value: 'Mandarin' },
+  { slug: 'cantonese-speaking', label: 'Cantonese-speaking', kind: 'language', value: 'Cantonese' },
+  { slug: 'japanese-speaking', label: 'Japanese-speaking', kind: 'language', value: 'Japanese' },
+  { slug: 'korean-speaking', label: 'Korean-speaking', kind: 'language', value: 'Korean' },
+  { slug: 'german-speaking', label: 'German-speaking', kind: 'language', value: 'German' },
+  { slug: 'italian-speaking', label: 'Italian-speaking', kind: 'language', value: 'Italian' },
+  { slug: 'dutch-speaking', label: 'Dutch-speaking', kind: 'language', value: 'Dutch' },
+  { slug: 'russian-speaking', label: 'Russian-speaking', kind: 'language', value: 'Russian' },
+  { slug: 'turkish-speaking', label: 'Turkish-speaking', kind: 'language', value: 'Turkish' },
+  { slug: 'persian-speaking', label: 'Persian-speaking', kind: 'language', value: 'Persian' },
+  { slug: 'somali-speaking', label: 'Somali-speaking', kind: 'language', value: 'Somali' },
+  { slug: 'amharic-speaking', label: 'Amharic-speaking', kind: 'language', value: 'Amharic' },
+  { slug: 'yoruba-speaking', label: 'Yoruba-speaking', kind: 'language', value: 'Yoruba' },
+  { slug: 'igbo-speaking', label: 'Igbo-speaking', kind: 'language', value: 'Igbo' },
+  { slug: 'hausa-speaking', label: 'Hausa-speaking', kind: 'language', value: 'Hausa' },
+  { slug: 'zulu-speaking', label: 'Zulu-speaking', kind: 'language', value: 'Zulu' },
+  { slug: 'xhosa-speaking', label: 'Xhosa-speaking', kind: 'language', value: 'Xhosa' },
+  { slug: 'kikuyu-speaking', label: 'Kikuyu-speaking', kind: 'language', value: 'Kikuyu' },
+  { slug: 'luo-speaking', label: 'Luo-speaking', kind: 'language', value: 'Luo' },
+]
+
+export const SEO_MATRIX_INTENTS: SeoMatrixIntent[] = [
+  { slug: 'single-ladies', label: 'Single Ladies', gender: 2, phrase: 'single ladies' },
+  { slug: 'single-men', label: 'Single Men', gender: 1, phrase: 'single men' },
+  { slug: 'rich-men', label: 'Rich Men', gender: 1, category: 'rich-men', phrase: 'rich men' },
+  { slug: 'rich-women', label: 'Rich Women', gender: 2, category: 'rich-women', phrase: 'rich women' },
+  { slug: 'sugar-daddies', label: 'Sugar Daddies', gender: 1, category: 'sugar-daddy', phrase: 'sugar daddies' },
+  { slug: 'sugar-mummies', label: 'Sugar Mummies', gender: 2, category: 'sugar-mummy', phrase: 'sugar mummies' },
+  { slug: 'wealthy-singles', label: 'Wealthy Singles', category: 'rich-singles', phrase: 'wealthy singles' },
+  { slug: 'serious-dating', label: 'Serious Dating', phrase: 'serious dating' },
+  { slug: 'marriage-minded', label: 'Marriage-Minded Singles', phrase: 'marriage-minded singles' },
+  { slug: 'generous-men', label: 'Generous Men', gender: 1, category: 'generous-men', phrase: 'generous men' },
+  { slug: 'generous-women', label: 'Generous Women', gender: 2, phrase: 'generous women' },
+]
+
+interface SeoMatrixLocation {
+  slug: string
+  country?: string
+  city?: string
+}
+
+const matrixCountrySlugs = new Set(uniqueCountries.map(country => slugify(country)))
+const matrixCitySlugCounts = new Map<string, number>()
+for (const { city } of PLACES_LIST) {
+  const slug = slugify(city)
+  matrixCitySlugCounts.set(slug, (matrixCitySlugCounts.get(slug) ?? 0) + 1)
+}
+
+const matrixLocations: SeoMatrixLocation[] = [
+  ...uniqueCountries.map(country => ({ slug: countryKey(country), country })),
+  ...PLACES_LIST.map(({ city, country }) => {
+    const citySlug = slugify(city)
+    const needsCountry = (matrixCitySlugCounts.get(citySlug) ?? 0) > 1 || matrixCountrySlugs.has(citySlug)
+    return { slug: needsCountry ? `${citySlug}-${countryKey(country)}` : citySlug, city, country }
+  }),
+]
+
+const matrixLocationMap = new Map(matrixLocations.map(location => [location.slug, location]))
+
+export function getSeoMatrixPageSlug(community: string, intent: string, location?: SeoMatrixLocation) {
+  const base = `${community}-${intent}`
+  return location ? `${base}-${location.slug}` : base
+}
+
+function makeSeoMatrixPage(
+  community: SeoMatrixCommunity,
+  intent: SeoMatrixIntent,
+  location?: SeoMatrixLocation,
+): SeoLandingPage {
+  const locationLabel = location?.city
+    ? `${location.city}, ${location.country}`
+    : location?.country ?? 'Worldwide'
+  const subject = `${community.label} ${intent.phrase}`
+  const communityFilter = community.kind === 'language'
+    ? { language: community.value }
+    : { ethnicity: community.value }
+  return {
+    slug: getSeoMatrixPageSlug(community.slug, intent.slug, location),
+    h1: `${subject}${location ? ` in ${locationLabel}` : ''}`,
+    title: `${subject} ${location ? `in ${locationLabel} ` : ''}| Verified Matches — Rich Dating Network`,
+    description: `Meet verified ${subject}${location ? ` in ${locationLabel}` : ' worldwide'} on Rich Dating Network. Browse public profiles, connect respectfully, and join free.`,
+    keywords: [
+      `${subject}${location ? ` ${locationLabel}` : ''}`,
+      `${community.label} dating`,
+      `${intent.phrase} dating`,
+      `${community.label} singles`,
+      `meet ${community.label} ${intent.phrase}`,
+    ],
+    intro: `Looking for ${subject}${location ? ` in ${locationLabel}` : ''}? Rich Dating Network helps you discover public profiles who share your community and dating goals. Join free, browse respectfully, and make genuine connections.`,
+    community: community.slug,
+    intent: intent.slug,
+    intentLabel: intent.label,
+    country: location?.country,
+    city: location?.city,
+    gender: intent.gender,
+    category: intent.category,
+    ...communityFilter,
+  }
+}
+
 // ── Build slug lookup map for O(1) retrieval ───────────────────────────────
 
 const _slugMap = new Map<string, SeoLandingPage>()
@@ -1279,7 +1440,27 @@ for (const p of SEO_LANDING_PAGES) {
 }
 
 export function getSeoLandingPage(slug: string): SeoLandingPage | undefined {
-  return _slugMap.get(slug)
+  const editorialPage = _slugMap.get(slug)
+  if (editorialPage) return editorialPage
+
+  // Resolve matrix pages lazily so the route surface can scale without
+  // serializing every possible community × intent × location combination into
+  // the browser bundle.
+  const candidates = SEO_MATRIX_COMMUNITIES
+    .flatMap(community => SEO_MATRIX_INTENTS.map(intent => ({ community, intent })))
+    .sort((a, b) => {
+      const aLength = a.community.slug.length + a.intent.slug.length
+      const bLength = b.community.slug.length + b.intent.slug.length
+      return bLength - aLength
+    })
+  for (const { community, intent } of candidates) {
+    const base = getSeoMatrixPageSlug(community.slug, intent.slug)
+    if (slug === base) return makeSeoMatrixPage(community, intent)
+    if (!slug.startsWith(`${base}-`)) continue
+    const location = matrixLocationMap.get(slug.slice(base.length + 1))
+    if (location) return makeSeoMatrixPage(community, intent, location)
+  }
+  return undefined
 }
 
 export const CATEGORY_PREFIXES = CATEGORIES.map(c => c.prefix)

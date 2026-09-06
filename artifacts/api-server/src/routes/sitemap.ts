@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable } from "@workspace/db/schema"
-import { eq, and, isNotNull, ne, gt } from "drizzle-orm"
+import { usersTable, userExtendedTable } from "@workspace/db/schema"
+import { eq, and, isNotNull, isNull, ne, gt, or } from "drizzle-orm"
 
 const router = Router()
 
@@ -120,6 +120,121 @@ const ETHNICITY_SLUGS = [
   "asian-dating", "arab-dating", "hispanic-dating", "mixed-heritage-dating",
 ]
 
+// Matrix definitions mirror the browser route resolver. They are kept here
+// for sitemap generation so only combinations with real public profile
+// coverage are submitted to search engines.
+const SEO_MATRIX_COMMUNITIES = [
+  ["kamba", "ethnicity", "Kamba"], ["kikuyu", "ethnicity", "Kikuyu"],
+  ["luo", "ethnicity", "Luo"], ["luhya", "ethnicity", "Luhya"],
+  ["kalenjin", "ethnicity", "Kalenjin"], ["kisii", "ethnicity", "Kisii"],
+  ["maasai", "ethnicity", "Maasai"], ["meru", "ethnicity", "Meru"],
+  ["somali", "ethnicity", "Somali"], ["swahili", "ethnicity", "Swahili"],
+  ["african", "ethnicity", "Black/African"], ["asian", "ethnicity", "Asian"],
+  ["indian", "ethnicity", "Indian"], ["pakistani", "ethnicity", "Pakistani"],
+  ["filipino", "ethnicity", "Filipino"], ["arab", "ethnicity", "Middle Eastern"],
+  ["hispanic", "ethnicity", "Hispanic/Latino"], ["mixed-heritage", "ethnicity", "Mixed"],
+  ["east-african", "ethnicity", "East African"], ["west-african", "ethnicity", "West African"],
+  ["nigerian", "ethnicity", "Nigerian"], ["kenyan", "ethnicity", "Kenyan"],
+  ["ghanaian", "ethnicity", "Ghanaian"], ["south-african", "ethnicity", "South African"],
+  ["caribbean", "ethnicity", "Caribbean"], ["european", "ethnicity", "European"],
+  ["south-asian", "ethnicity", "South Asian"],
+  ["english-speaking", "language", "English"], ["swahili-speaking", "language", "Swahili"],
+  ["hindi-speaking", "language", "Hindi"], ["urdu-speaking", "language", "Urdu"],
+  ["punjabi-speaking", "language", "Punjabi"], ["bengali-speaking", "language", "Bengali"],
+  ["arabic-speaking", "language", "Arabic"], ["french-speaking", "language", "French"],
+  ["spanish-speaking", "language", "Spanish"], ["portuguese-speaking", "language", "Portuguese"],
+  ["mandarin-speaking", "language", "Mandarin"], ["cantonese-speaking", "language", "Cantonese"],
+  ["japanese-speaking", "language", "Japanese"], ["korean-speaking", "language", "Korean"],
+  ["german-speaking", "language", "German"], ["italian-speaking", "language", "Italian"],
+  ["dutch-speaking", "language", "Dutch"], ["russian-speaking", "language", "Russian"],
+  ["turkish-speaking", "language", "Turkish"], ["persian-speaking", "language", "Persian"],
+  ["somali-speaking", "language", "Somali"], ["amharic-speaking", "language", "Amharic"],
+  ["yoruba-speaking", "language", "Yoruba"], ["igbo-speaking", "language", "Igbo"],
+  ["hausa-speaking", "language", "Hausa"], ["zulu-speaking", "language", "Zulu"],
+  ["xhosa-speaking", "language", "Xhosa"], ["kikuyu-speaking", "language", "Kikuyu"],
+  ["luo-speaking", "language", "Luo"],
+] as const
+
+const SEO_MATRIX_INTENTS = [
+  ["single-ladies", 2], ["single-men", 1], ["rich-men", 1],
+  ["rich-women", 2], ["sugar-daddies", 1], ["sugar-mummies", 2],
+  ["wealthy-singles", undefined], ["serious-dating", undefined],
+  ["marriage-minded", undefined], ["generous-men", 1], ["generous-women", 2],
+] as const
+
+const MATRIX_MIN_PUBLIC_PROFILES = 3
+const MATRIX_SITEMAP_PAGE_SIZE = 45000
+type MatrixProfile = { gender: number | null; city: string | null; country: string | null; ethnicity: string | null; languages: string | null }
+let matrixSitemapCache: { expiresAt: number; urls: string[] } | null = null
+
+function matrixKey(community: string, intent: string, location = "") {
+  return `${community}|${intent}|${location}`
+}
+
+function matrixLocationSlug(city?: string | null, country?: string | null) {
+  if (!city) return country ? toSlug(country) : ""
+  const citySlug = toSlug(city)
+  return country ? `${citySlug}-${countryKey(country)}` : citySlug
+}
+
+function matrixCommunityMatches(profile: MatrixProfile, community: typeof SEO_MATRIX_COMMUNITIES[number]) {
+  const [, kind, value] = community
+  const source = kind === "language" ? profile.languages : profile.ethnicity
+  return !!source && source.toLowerCase().includes(value.toLowerCase())
+}
+
+async function getIndexableMatrixUrls() {
+  if (matrixSitemapCache && matrixSitemapCache.expiresAt > Date.now()) return matrixSitemapCache.urls
+
+  try {
+    const rows = await db
+      .select({
+        gender: usersTable.gender,
+        city: usersTable.city,
+        country: usersTable.country,
+        ethnicity: userExtendedTable.ethnicity,
+        languages: userExtendedTable.languages,
+      })
+      .from(usersTable)
+      .leftJoin(userExtendedTable, eq(usersTable.id, userExtendedTable.userId))
+      .where(and(
+        or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        isNotNull(usersTable.photo),
+        ne(usersTable.photo, ""),
+      ))
+
+    const counts = new Map<string, number>()
+    const increment = (key: string) => counts.set(key, (counts.get(key) ?? 0) + 1)
+    for (const profile of rows as MatrixProfile[]) {
+      for (const community of SEO_MATRIX_COMMUNITIES) {
+        if (!matrixCommunityMatches(profile, community)) continue
+        for (const [intent, gender] of SEO_MATRIX_INTENTS) {
+          if (gender !== undefined && Number(profile.gender) !== gender) continue
+          increment(matrixKey(community[0], intent))
+          if (profile.country) increment(matrixKey(community[0], intent, `country:${countryKey(profile.country)}`))
+          if (profile.city) increment(matrixKey(community[0], intent, `city:${matrixLocationSlug(profile.city, profile.country)}`))
+        }
+      }
+    }
+
+    const urls: string[] = []
+    for (const [key, count] of counts.entries()) {
+      if (count < MATRIX_MIN_PUBLIC_PROFILES) continue
+      const [community, intent, location] = key.split("|")
+      const suffix = location
+        ? location.replace(/^(country|city):/, "-")
+        : ""
+      urls.push(`${BASE}/${community}-${intent}${suffix}`)
+    }
+    const uniqueUrls = Array.from(new Set(urls))
+    matrixSitemapCache = { expiresAt: Date.now() + 15 * 60 * 1000, urls: uniqueUrls }
+    return uniqueUrls
+  } catch {
+    matrixSitemapCache = { expiresAt: Date.now() + 60 * 1000, urls: [] }
+    return []
+  }
+}
+
 const GENERIC_SLUGS = [
   "sugar-daddy","sugar-mummy","rich-men-dating","rich-women-dating",
   "millionaire-dating","cougar-dating","luxury-dating",
@@ -163,10 +278,14 @@ function sendXml(res: any, xml: string) {
 }
 
 // ── Sitemap Index ─────────────────────────────────────────────────────────────
-// Lists: 1 static sitemap + 10 per-category sitemaps + profile sitemaps
+// Lists: static/category sitemaps, profile sitemaps, and quality-gated matrix
+// sitemaps. Matrix files are split below Google's 50,000 URL limit.
 router.get("/sitemap-index.xml", async (_req, res) => {
   const mod = today()
   const children = ["sitemap-static.xml", ...CATEGORY_PREFIXES.map(p => `sitemap-${p}.xml`)]
+  const matrixUrls = await getIndexableMatrixUrls()
+  const matrixPageCount = Math.max(1, Math.ceil(matrixUrls.length / MATRIX_SITEMAP_PAGE_SIZE))
+  for (let i = 1; i <= matrixPageCount; i++) children.push(`sitemap-community-${i}.xml`)
 
   // Count how many profile + image sitemap pages we need
   let profilePageCount = 1
@@ -193,6 +312,16 @@ router.get("/sitemap-index.xml", async (_req, res) => {
     .join("\n")
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</sitemapindex>`
   sendXml(res, xml)
+})
+
+// Community/language/intent/location matrix URLs are only indexable when at
+// least MATRIX_MIN_PUBLIC_PROFILES matching public profiles exist.
+router.get("/sitemap-community-:page.xml", async (req, res) => {
+  const page = Math.max(1, parseInt(String(req.params.page || "1"), 10) || 1)
+  const urls = await getIndexableMatrixUrls()
+  const start = (page - 1) * MATRIX_SITEMAP_PAGE_SIZE
+  const pageUrls = urls.slice(start, start + MATRIX_SITEMAP_PAGE_SIZE)
+  sendXml(res, sitemapDoc(pageUrls.map(url => urlTag(url, "0.7", "daily", today()))))
 })
 
 // ── Static sitemap ────────────────────────────────────────────────────────────

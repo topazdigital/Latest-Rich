@@ -1,7 +1,16 @@
 import { useEffect } from 'react'
 import { Link } from 'wouter'
 import { Heart, Shield, Users, Check, ChevronRight, MapPin, Globe } from 'lucide-react'
-import { getSeoLandingPage, SEO_LANDING_PAGES, PLACES_LIST, CATEGORY_PREFIXES, CATEGORY_LABELS } from '../data/seoLandingPages'
+import {
+  getSeoLandingPage,
+  getSeoMatrixPageSlug,
+  SEO_LANDING_PAGES,
+  SEO_MATRIX_COMMUNITIES,
+  SEO_MATRIX_INTENTS,
+  PLACES_LIST,
+  CATEGORY_PREFIXES,
+  CATEGORY_LABELS,
+} from '../data/seoLandingPages'
 import NotFound from './not-found'
 import PopularSearches from '../components/common/PopularSearches'
 import FeaturedMembers from '../components/seo/FeaturedMembers'
@@ -87,6 +96,7 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
   const isCountryPage = !!page.country && !page.city
   const isCityPage = !!page.city && !!page.country
   const isEthnicityPage = !!page.ethnicity
+  const isMatrixPage = !!page.community && !!page.intent
 
   // Category prefix — stored in page.category for country/city pages
   const catPrefix = page.category && CATEGORY_PREFIXES.includes(page.category)
@@ -97,7 +107,11 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
   const pageGender = page.gender
 
   // Country hub slug for city pages (breadcrumb + related link)
-  const countryHubSlug = isCityPage && page.country ? `${catPrefix}-${slugify(page.country)}` : ''
+  const countryHubSlug = isCityPage && page.country
+    ? isMatrixPage
+      ? getSeoMatrixPageSlug(page.community!, page.intent!, { slug: slugify(page.country), country: page.country })
+      : `${catPrefix}-${slugify(page.country)}`
+    : ''
   const countryHubPage = countryHubSlug ? getSeoLandingPage(countryHubSlug) : null
 
   // For country hub pages: all cities in this country
@@ -115,7 +129,19 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
   const relatedEthnicity = isEthnicityPage
     ? SEO_LANDING_PAGES.filter(p => p.ethnicity && p.slug !== page.slug).slice(0, 8)
     : []
-  const relatedGeneric = !isCityPage && !isCountryPage && !isEthnicityPage
+  const relatedMatrix = isMatrixPage
+    ? [
+        ...SEO_MATRIX_INTENTS
+          .filter(intent => intent.slug !== page.intent)
+          .slice(0, 5)
+          .map(intent => getSeoLandingPage(getSeoMatrixPageSlug(page.community!, intent.slug))),
+        ...SEO_MATRIX_COMMUNITIES
+          .filter(community => community.slug !== page.community)
+          .slice(0, 5)
+          .map(community => getSeoLandingPage(getSeoMatrixPageSlug(community.slug, page.intent!))),
+      ].filter((p): p is NonNullable<typeof p> => !!p)
+    : []
+  const relatedGeneric = !isCityPage && !isCountryPage && !isEthnicityPage && !isMatrixPage
     ? SEO_LANDING_PAGES.filter(p => !p.city && !p.country && p.slug !== page.slug).slice(0, 6)
     : []
 
@@ -190,13 +216,23 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
               Browse by City in {page.country}
             </h2>
             <p className="text-gray-600 mb-6">
-              Choose your city below to find {CATEGORY_LABELS[catPrefix] ?? catPrefix} near you.
+              Choose your city below to find {page.intentLabel ?? CATEGORY_LABELS[catPrefix] ?? catPrefix} near you.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {countryCities.map(({ city }) => {
-                  const cityPage = SEO_LANDING_PAGES.find(
-                    p => p.city === city && p.country === page.country && p.category === catPrefix,
-                  )
+                  const cityPage = isMatrixPage
+                    ? getSeoLandingPage(getSeoMatrixPageSlug(
+                        page.community!,
+                        page.intent!,
+                        { slug: slugify(city), city, country: page.country! },
+                      )) ?? getSeoLandingPage(getSeoMatrixPageSlug(
+                        page.community!,
+                        page.intent!,
+                        { slug: `${slugify(city)}-${slugify(page.country!)}`, city, country: page.country! },
+                      ))
+                    : SEO_LANDING_PAGES.find(
+                        p => p.city === city && p.country === page.country && p.category === catPrefix,
+                      )
                   return (
                     <Link
                       key={city}
@@ -214,7 +250,7 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
             <div className="mt-8 pt-8 border-t border-gray-100">
               <h3 className="text-sm font-bold text-gray-900 mb-3">Also explore in {page.country}</h3>
               <div className="flex flex-wrap gap-2">
-                {CATEGORY_PREFIXES.filter(p => p !== catPrefix).map(p => (
+                  {CATEGORY_PREFIXES.filter(p => p !== catPrefix).map(p => (
                   <Link
                     key={p}
                     href={`/${p}-${slugify(page.country!)}`}
@@ -253,9 +289,12 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
             city={isCityPage ? page.city ?? undefined : undefined}
             country={page.country ?? undefined}
             ethnicity={page.ethnicity}
+            language={page.language}
             gender={pageGender}
             heading={
-              isCityPage
+              isMatrixPage
+                ? `Meet ${page.intentLabel ?? page.h1.replace(/\s+in\s+.*$/, '')}${page.city ? ` in ${page.city}` : page.country ? ` in ${page.country}` : ''}`
+                : isCityPage
                 ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.city}`
                 : isCountryPage
                   ? `Meet ${CATEGORY_LABELS[catPrefix] ?? 'Members'} in ${page.country}`
@@ -319,8 +358,21 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
           </div>
         )}
 
+        {isMatrixPage && relatedMatrix.length > 0 && (
+          <div className="mt-14">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Explore more searches</h3>
+            <div className="flex flex-col gap-2 text-sm">
+              {relatedMatrix.map(p => (
+                <Link key={p.slug} href={`/${p.slug}`} className="text-gray-500 hover:text-[#FF192C] transition-colors">
+                  {p.h1}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Generic pages: related links */}
-        {!isCityPage && !isCountryPage && relatedGeneric.length > 0 && (
+        {!isCityPage && !isCountryPage && !isMatrixPage && relatedGeneric.length > 0 && (
           <div className="mt-14">
             <h3 className="text-sm font-bold text-gray-900 mb-3">You Might Also Like</h3>
             <div className="flex flex-col gap-2 text-sm">
