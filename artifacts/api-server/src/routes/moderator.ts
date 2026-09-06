@@ -71,7 +71,9 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       LEFT JOIN messages lm ON lm.id = m.last_msg_id
       LEFT JOIN users sender ON sender.id = lm.u1
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-      ORDER BY m.last_time DESC
+       -- Put conversations waiting for a fake-user reply first across all pages.
+       -- Newest activity remains the tie-breaker within each group.
+       ORDER BY CASE WHEN sender.fake = 0 THEN 0 ELSE 1 END ASC, m.last_time DESC
       LIMIT ${limit} OFFSET ${offset}
     `))
 

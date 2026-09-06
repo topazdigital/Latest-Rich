@@ -280,7 +280,7 @@ export default function AdminChat() {
                 tab.key === "follow_up"   ? conversations.filter(c => c.lastSenderFake && c.lastMsgRead).length :
                 conversations.length
               return (
-                <button key={tab.key} onClick={() => setChatFilter(tab.key)} style={{
+                <button key={tab.key} onClick={() => { setChatFilter(tab.key); setPage(1) }} style={{
                   flex: 1, padding: "0.5rem 0.25rem", background: "transparent", border: "none",
                   borderBottom: chatFilter === tab.key ? `2px solid ${tab.color}` : "2px solid transparent",
                   color: chatFilter === tab.key ? "#fff" : "#475569",
