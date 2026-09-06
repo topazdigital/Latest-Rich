@@ -148,7 +148,7 @@ router.post("/reward", async (req: any, res) => {
       const currentExpiry = Math.max(now(), (await db.select({ premiumExpiry: usersTable.premiumExpiry })
         .from(usersTable).where(eq(usersTable.id, referrerId)).limit(1))[0]?.premiumExpiry || now())
       const newExpiry = currentExpiry + (tier.rewardAmount * 86400)
-      await db.update(usersTable).set({ premium: 1, premiumExpiry: newExpiry })
+      await db.update(usersTable).set({ premium: 1, premiumExpiry: newExpiry, premiumPriority: 1 })
         .where(eq(usersTable.id, referrerId))
     }
 

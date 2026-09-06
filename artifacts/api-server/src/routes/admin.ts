@@ -708,7 +708,7 @@ router.post("/users/:id/premium", requireAuth, requireAdmin, async (req, res) =>
     const { days } = req.body
     const daysNum = parseInt(days) || 30
     const expiry = daysNum > 0 ? now() + daysNum * 86400 : 0
-    await db.update(usersTable).set({ premium: daysNum > 0 ? 1 : 0, premiumExpiry: expiry }).where(eq(usersTable.id, id))
+    await db.update(usersTable).set({ premium: daysNum > 0 ? 1 : 0, premiumExpiry: expiry, premiumPriority: daysNum > 0 ? 1 : 0 }).where(eq(usersTable.id, id))
     await db.insert(activityTable).values({ type: "admin", userId: req.userId, title: daysNum > 0 ? "Premium granted" : "Premium revoked", message: `User id: ${id}, days: ${daysNum}`, time: now() })
     res.json({ success: true, premium: daysNum > 0 ? 1 : 0, premiumExpiry: expiry })
   } catch (err: unknown) {
@@ -911,7 +911,7 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
         desc.includes("3 month") ? 90 :
         desc.includes("month") || desc.includes("week") ? 30 :
         30
-      await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400 }).where(eq(usersTable.id, order.userId))
+      await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400, premiumPriority: 1 }).where(eq(usersTable.id, order.userId))
       await db.insert(notificationsTable).values({
         userId: order.userId, type: "premium", message: `Premium membership activated for ${days} days.`, time: now(), read: 0,
       } as any).catch(() => {})

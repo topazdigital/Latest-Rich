@@ -17,6 +17,12 @@ function safeUser(u: any) {
   return rest
 }
 
+function premiumRank(u: any): number {
+  const expiry = u.premiumExpiry || 0
+  const active = u.premium === 1 && (expiry === 0 || expiry > now())
+  return active ? (u.premiumPriority || 1) : 0
+}
+
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
@@ -176,11 +182,13 @@ router.get("/search", requireAuth, async (req, res) => {
       return true
     })
 
-    // Sort: boosted first, then nearby (same city → same country → worldwide), then by last access
+    // Sort: boosts first, then paid discovery priority, then nearby, then recent activity.
     users.sort((a, b) => {
       const aBoost = boostedIds.has(a.id) ? 0 : 1
       const bBoost = boostedIds.has(b.id) ? 0 : 1
       if (aBoost !== bBoost) return aBoost - bBoost
+      const priorityDiff = premiumRank(b) - premiumRank(a)
+      if (priorityDiff !== 0) return priorityDiff
       const aCity = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bCity = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
       return aCity - bCity
@@ -240,6 +248,8 @@ router.get("/suggested", requireAuth, async (req, res) => {
       const aBoost = boostedIds.has(a.id) ? 0 : 1
       const bBoost = boostedIds.has(b.id) ? 0 : 1
       if (aBoost !== bBoost) return aBoost - bBoost
+      const priorityDiff = premiumRank(b) - premiumRank(a)
+      if (priorityDiff !== 0) return priorityDiff
       const aScore = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
       const bScore = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
       return aScore - bScore

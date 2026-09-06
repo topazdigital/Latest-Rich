@@ -23,6 +23,7 @@ export const usersTable = pgTable("users", {
   emailVerified: integer("email_verified").default(0),
   premium: integer("premium").default(0),
   premiumExpiry: integer("premium_expiry").default(0),
+  premiumPriority: integer("premium_priority").default(0),
   credits: integer("credits").default(0),
   fake: integer("fake").default(0),
   admin: integer("admin").default(0),
@@ -141,6 +142,8 @@ export const ordersTable = pgTable("orders", {
   stripeSessionId: text("stripe_session_id").default(""),
   credits: integer("credits").default(0),
   packageId: integer("package_id").default(0),
+  premiumDays: integer("premium_days").default(0),
+  premiumPriority: integer("premium_priority").default(0),
   time: integer("time").default(0),
 })
 
@@ -289,6 +292,8 @@ export const customPaymentOrdersTable = pgTable("custom_payment_orders", {
   gatewayId: integer("gateway_id").notNull().references(() => customPaymentsTable.id, { onDelete: "cascade" }),
   type: text("type").default("credits"),
   packageId: integer("package_id").default(0),
+  premiumDays: integer("premium_days").default(0),
+  premiumPriority: integer("premium_priority").default(0),
   amount: real("amount").default(0),
   currency: text("currency").default("USD"),
   proof: text("proof").default(""),

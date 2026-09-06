@@ -24,6 +24,7 @@ export const usersTable = mysqlTable("users", {
   emailVerified: int("email_verified").default(0),
   premium: int("premium").default(0),
   premiumExpiry: int("premium_expiry").default(0),
+  premiumPriority: int("premium_priority").default(0),
   credits: int("credits").default(0),
   fake: int("fake").default(0),
   admin: int("admin").default(0),
@@ -142,6 +143,8 @@ export const ordersTable = mysqlTable("orders", {
   stripeSessionId: text("stripe_session_id").default(""),
   credits: int("credits").default(0),
   packageId: int("package_id").default(0),
+  premiumDays: int("premium_days").default(0),
+  premiumPriority: int("premium_priority").default(0),
   time: int("time").default(0),
 })
 
@@ -290,6 +293,8 @@ export const customPaymentOrdersTable = mysqlTable("custom_payment_orders", {
   gatewayId: int("gateway_id").notNull(),
   type: text("type").default("credits"),
   packageId: int("package_id").default(0),
+  premiumDays: int("premium_days").default(0),
+  premiumPriority: int("premium_priority").default(0),
   amount: float("amount").default(0),
   currency: text("currency").default("USD"),
   proof: text("proof").default(""),

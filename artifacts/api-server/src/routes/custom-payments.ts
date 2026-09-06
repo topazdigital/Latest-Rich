@@ -3,6 +3,7 @@ import { db, isMysql } from "@workspace/db"
 import { customPaymentsTable, customPaymentOrdersTable, usersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, desc, and, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -58,13 +59,6 @@ const CREDIT_PACKAGES: Record<number, { credits: number; price: number; name: st
   4: { credits: 1000, price: 29.99, name: "1000 Credits" },
 }
 
-const PREMIUM_PACKAGES: Record<number, { days: number; price: number; name: string }> = {
-  1: { days: 30, price: 9.99, name: "1 Month Premium" },
-  2: { days: 90, price: 24.99, name: "3 Months Premium" },
-  3: { days: 180, price: 39.99, name: "6 Months Premium" },
-  4: { days: 365, price: 59.99, name: "1 Year Premium" },
-}
-
 /* ─── Public: get gateways for user's country ─── */
 router.get("/gateways", requireAuth, async (req, res) => {
   try {
@@ -106,7 +100,7 @@ router.post("/submit", requireAuth, async (req, res) => {
       if (!cp) { res.status(400).json({ error: "Invalid package" }); return }
       pkg = cp; credits = cp.credits
     } else {
-      const pp = PREMIUM_PACKAGES[packageId]
+      const pp = await getPremiumPackage(packageId)
       if (!pp) { res.status(400).json({ error: "Invalid package" }); return }
       pkg = pp; premiumDays = pp.days
     }
@@ -117,7 +111,9 @@ router.post("/submit", requireAuth, async (req, res) => {
       gatewayId: parseInt(gatewayId),
       type,
       packageId: parseInt(packageId),
-      amount: amount || pkg.price,
+      premiumDays,
+      premiumPriority: type === "premium" ? (await getPremiumPackage(parseInt(packageId)))?.priority || 0 : 0,
+      amount: pkg.price,
       currency: currency || "USD",
       proof,
       status: "pending",
@@ -254,8 +250,19 @@ router.post("/admin/orders/:id/approve", requireAuth, requireAdmin, async (req, 
         if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, order.userId))
       }
     } else if (order.type === "premium") {
-      const pkg = PREMIUM_PACKAGES[order.packageId ?? 0]
-      if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+      const pkg = (await getPremiumPackages())[order.packageId ?? 0]
+      if (order.premiumDays || pkg) {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
+        if (user) {
+          const currentTime = now()
+          const currentExpiry = user.premium && (user.premiumExpiry || 0) > currentTime ? (user.premiumExpiry || 0) : currentTime
+          await db.update(usersTable).set({
+            premium: 1,
+            premiumExpiry: currentExpiry + (order.premiumDays || pkg!.days) * 86400,
+            premiumPriority: Math.max(user.premiumPriority || 0, order.premiumPriority || pkg!.priority),
+          }).where(eq(usersTable.id, order.userId))
+        }
+      }
     }
 
     res.json({ success: true })

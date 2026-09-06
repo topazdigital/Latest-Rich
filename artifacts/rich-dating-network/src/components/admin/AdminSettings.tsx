@@ -120,10 +120,10 @@ const EMAIL_FIELDS = [
 ]
 
 const DEFAULT_PACKAGES = [
-  { name: "1 Month", days: 30, price: 9.99, popular: 0, description: "Flexible monthly plan", active: 1 },
-  { name: "3 Months", days: 90, price: 24.99, popular: 1, description: "Save 17%", active: 1 },
-  { name: "6 Months", days: 180, price: 39.99, popular: 0, description: "Save 33%", active: 1 },
-  { name: "1 Year", days: 365, price: 59.99, popular: 0, description: "Best value — Save 50%", active: 1 },
+  { name: "1 Month", days: 30, price: 9.99, popular: 0, description: "Flexible monthly plan", active: 1, priority: 1 },
+  { name: "3 Months", days: 90, price: 24.99, popular: 1, description: "Save 17%", active: 1, priority: 2 },
+  { name: "6 Months", days: 180, price: 39.99, popular: 0, description: "Save 33%", active: 1, priority: 3 },
+  { name: "1 Year", days: 365, price: 59.99, popular: 0, description: "Best value — Save 50%", active: 1, priority: 4 },
 ]
 
 const DEFAULT_CREDIT_PACKAGES = [
@@ -133,7 +133,7 @@ const DEFAULT_CREDIT_PACKAGES = [
   { credits: 1000, price: 29.99, popular: 0, description: "Best Value", active: 1 },
 ]
 
-interface PremiumPkg { name: string; days: number; price: number; popular: number; description: string; active: number }
+interface PremiumPkg { name: string; days: number; price: number; popular: number; description: string; active: number; priority: number }
 interface CreditPkg { credits: number; price: number; popular: number; description: string; active: number }
 
 export default function AdminSettings() {
@@ -302,7 +302,7 @@ export default function AdminSettings() {
   }
 
   function addPkg() {
-    setPackages(prev => [...prev, { name: "New Plan", days: 30, price: 9.99, popular: 0, description: "", active: 1 }])
+    setPackages(prev => [...prev, { name: "New Plan", days: 30, price: 9.99, popular: 0, description: "", active: 1, priority: prev.length + 1 }])
   }
 
   function removePkg(i: number) {
@@ -567,8 +567,8 @@ export default function AdminSettings() {
           ) : (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                <p className="text-gray-600 text-xs leading-relaxed">
-                  <strong className="text-gray-600">Premium unlocks:</strong> Sharing contact info (phone, email, social handles, links) in chat, seeing profile visitors, VIP badge, priority placement, and more.
+                 <p className="text-gray-600 text-xs leading-relaxed">
+                   <strong className="text-gray-600">Every plan unlocks:</strong> contact sharing, profile visitors, unlimited likes, read receipts, and a VIP badge. <strong>Priority level</strong> controls how prominently a premium member appears in discovery; higher levels can be used for longer or more valuable plans.
                 </p>
               </div>
 
@@ -618,6 +618,13 @@ export default function AdminSettings() {
                       <input value={pkg.description} onChange={e => updatePkg(i, 'description', e.target.value)}
                         className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
                         placeholder="e.g. Save 17%" />
+                    </div>
+                    <div>
+                      <label className="text-gray-600 text-xs mb-1 block font-medium">Priority Level</label>
+                      <input type="number" value={pkg.priority || i + 1} onChange={e => updatePkg(i, 'priority', parseInt(e.target.value) || 1)}
+                        className="w-full bg-white text-white px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-yellow-500"
+                        placeholder="1" min="1" />
+                      <p className="text-gray-500 text-[10px] mt-1">Higher levels appear first in discovery.</p>
                     </div>
                   </div>
                 </div>

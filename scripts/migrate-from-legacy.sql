@@ -501,6 +501,8 @@ CREATE TABLE IF NOT EXISTS `custom_payment_orders` (
   `gateway_id` int(11) NOT NULL,
   `type` text DEFAULT 'credits',
   `package_id` int(11) DEFAULT 0,
+  `premium_days` int(11) DEFAULT 0,
+  `premium_priority` int(11) DEFAULT 0,
   `amount` float DEFAULT 0,
   `currency` text DEFAULT 'USD',
   `proof` text DEFAULT '',
@@ -512,6 +514,22 @@ CREATE TABLE IF NOT EXISTS `custom_payment_orders` (
   `reviewed_at` int(11) DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Existing custom payment orders need the same package snapshot fields so
+-- pending manual approvals keep the terms selected at submission time.
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'custom_payment_orders' AND COLUMN_NAME = 'premium_days'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `custom_payment_orders` ADD COLUMN `premium_days` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'custom_payment_orders' AND COLUMN_NAME = 'premium_priority'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `custom_payment_orders` ADD COLUMN `premium_priority` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS `chat_locks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -596,6 +614,7 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `country_code` varchar(12) DEFAULT '',
   ADD COLUMN IF NOT EXISTS `email_verified` tinyint(1) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `premium_expiry` int(11) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `premium_priority` int(11) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `online` tinyint(1) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `last_daily_bonus` int(11) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `profile_complete` tinyint(1) DEFAULT 0,
@@ -668,6 +687,22 @@ SET @col_exists = (
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'package_id'
 );
 SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `orders` ADD COLUMN `package_id` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- orders.premium_days and orders.premium_priority preserve the exact
+-- entitlement purchased even if an admin later edits a package.
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'premium_days'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `orders` ADD COLUMN `premium_days` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'premium_priority'
+);
+SET @sql_add = IF(@col_exists = 0, 'ALTER TABLE `orders` ADD COLUMN `premium_priority` int(11) DEFAULT 0', 'SELECT 1');
 PREPARE stmt FROM @sql_add; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- orders.amount_usd (stores USD-equivalent of the order amount — added for Paystack/PayHero/PayMongo)

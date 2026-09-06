@@ -3,16 +3,10 @@ import { db } from "@workspace/db"
 import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
-
-const PREMIUM_PACKAGES: Record<number, { days: number; price: number; name: string }> = {
-  1: { days: 30, price: 9.99, name: "1 Month Premium" },
-  2: { days: 90, price: 24.99, name: "3 Months Premium" },
-  3: { days: 180, price: 39.99, name: "6 Months Premium" },
-  4: { days: 365, price: 59.99, name: "1 Year Premium" },
-}
 
 // Fallback credit packages used only when DB config is unavailable
 const DEFAULT_CREDIT_PACKAGES: Record<number, { credits: number; price: number; name: string }> = {
@@ -132,7 +126,7 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
     const { packageId, type } = req.body
     let lineItem: { name: string; amount: number }
     if (type === "premium") {
-      const pkg = PREMIUM_PACKAGES[packageId]
+      const pkg = await getPremiumPackage(packageId)
       if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
       lineItem = { name: pkg.name, amount: Math.round(pkg.price * 100) }
     } else {
@@ -150,7 +144,8 @@ router.post("/stripe/checkout", requireAuth, async (req, res) => {
       cancel_url: `${baseUrl}/${type}?cancelled=1`,
       metadata: { userId: String(req.userId), type, packageId: String(packageId) },
     })
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: lineItem.amount / 100, amountUsd: lineItem.amount / 100, currency: "USD", type, description: lineItem.name, status: "pending", stripeSessionId: session.id, time: now() })
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: lineItem.amount / 100, amountUsd: lineItem.amount / 100, currency: "USD", type, description: lineItem.name, status: "pending", stripeSessionId: session.id, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
     res.json({ url: session.url })
   } catch (err: any) {
     console.error("Stripe checkout error:", err)
@@ -175,8 +170,12 @@ router.get("/stripe/success", async (req, res) => {
       if (type === "starter") {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(userId))).limit(1)
         if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, user.id))
-      } else if (type !== "event") {
-        await fulfillOrder(parseInt(userId), type, parseInt(packageId || "0"), "USD")
+       } else if (type !== "event") {
+         if (type === "premium" && existingOrder) {
+           await fulfillOrderFromRecord(existingOrder)
+         } else {
+           await fulfillOrder(parseInt(userId), type, parseInt(packageId || "0"), "USD")
+         }
       }
       await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(session_id)))
     }
@@ -216,7 +215,7 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     description = pkg.name
     creditsToAward = pkg.credits
   } else {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     const kesToUsdRate = Number(await getConfig("kes_rate") || "130")
     amount = Math.round(pkg.price * kesToUsdRate)
@@ -257,9 +256,11 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     }
     const kesRateNum = Number(await getConfig("kes_rate") || "130")
     const kesAmountUsd = (Number.isFinite(kesRateNum) && kesRateNum > 0) ? parseFloat((amount / kesRateNum).toFixed(2)) : 0
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
     await db.insert(ordersTable).values({
       userId: req.userId!, amount, amountUsd: kesAmountUsd,
-      currency: "KES", type, description,
+      currency: "KES", type, description, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0,
+      premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0,
       status: "pending", stripeSessionId: ref, credits: creditsToAward, time: now(),
     })
     res.json({ success: true, reference: ref, checkoutRequestId: data.CheckoutRequestID, message: "STK push sent to your phone. Enter your M-Pesa PIN to complete." })
@@ -417,8 +418,8 @@ router.post("/payhero/callback", async (req, res) => {
           }
         }
       } else if (order.type === "premium") {
-        const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
-        if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+        const pkg = Object.values(await getPremiumPackages()).find(p => p.name === order.description || `${p.name} Premium` === order.description)
+        if (order.premiumDays || pkg) await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
       }
     }
   }
@@ -475,8 +476,8 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
           }
         }
       } else if (freshOrder.type === "premium") {
-        const pkg = Object.values(PREMIUM_PACKAGES).find(p => p.name === freshOrder.description)
-        if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, freshOrder.userId))
+         const pkg = Object.values(await getPremiumPackages()).find(p => p.name === freshOrder.description || `${p.name} Premium` === freshOrder.description)
+         if (freshOrder.premiumDays || pkg) await activatePremium(freshOrder.userId, { days: freshOrder.premiumDays || pkg!.days, priority: freshOrder.premiumPriority || pkg!.priority })
       }
       res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
       return
@@ -536,7 +537,7 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents (USD: cents)
     description = pkg.name; credits = pkg.credits
   } else {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * rate * 100)
     description = pkg.name
@@ -554,7 +555,8 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     const amountUsdPaystack = currency === "USD"
       ? parseFloat((amount / 100).toFixed(2))
       : (Number.isFinite(rate) && rate > 0) ? parseFloat((amount / 100 / rate).toFixed(2)) : 0
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, time: now() })
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
     res.json({ url: data.data.authorization_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Paystack error" })
@@ -574,7 +576,11 @@ router.get("/paystack/verify", async (req, res) => {
       const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, String(ref))).limit(1)
       if (order && order.status === "pending") {
         await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(ref)))
-        await fulfillOrder(order.userId, order.type || "credits", parseInt(String(pkg || 0)), order.currency || "USD")
+         if (order.type === "premium") {
+           await fulfillOrderFromRecord(order)
+         } else {
+           await fulfillOrder(order.userId, order.type || "credits", parseInt(String(pkg || 0)), order.currency || "USD")
+         }
       }
       return res.redirect("/credits?success=1")
     }
@@ -603,7 +609,7 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     amount = Math.round(pkg.price * phpRate * 100) // centavos
     description = pkg.name
   } else {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * phpRate * 100)
     description = pkg.name
@@ -634,7 +640,8 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     const data = await response.json() as any
     if (data.errors) { res.status(400).json({ error: data.errors[0]?.detail || "PayMongo error" }); return }
     const phpAmountUsd = (Number.isFinite(phpRate) && phpRate > 0) ? parseFloat((amount / 100 / phpRate).toFixed(2)) : 0
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: phpAmountUsd, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, time: now() })
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: phpAmountUsd, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
     res.json({ url: data.data?.attributes?.checkout_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "PayMongo error" })
@@ -670,7 +677,7 @@ router.post("/intasend/checkout", requireAuth, async (req, res) => {
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name; credits = pkg.credits
   } else if (type === "premium") {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name
   }
@@ -701,9 +708,11 @@ router.post("/intasend/checkout", requireAuth, async (req, res) => {
       const msg = data.error || data.detail || `IntaSend error (${response.status})`
       res.status(400).json({ error: msg }); return
     }
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
     await db.insert(ordersTable).values({
       userId: req.userId!, amount, amountUsd: amount, currency: "USD", type, description,
-      status: "pending", stripeSessionId: ref, credits, packageId: parseInt(packageId) || 0, time: now(),
+      status: "pending", stripeSessionId: ref, credits, packageId: parseInt(packageId) || 0,
+      premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now(),
     })
     res.json({ url: data.url })
   } catch (err: any) {
@@ -825,7 +834,7 @@ router.post("/pesapal/checkout", requireAuth, async (req, res) => {
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name; credits = pkg.credits
   } else if (type === "premium") {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = pkg.price; description = pkg.name
   }
@@ -858,9 +867,11 @@ router.post("/pesapal/checkout", requireAuth, async (req, res) => {
     if (!response.ok || data.error) {
       res.status(400).json({ error: data.message || data.error || `Pesapal error (${response.status})` }); return
     }
+    const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
     await db.insert(ordersTable).values({
       userId: req.userId!, amount, amountUsd: amount, currency: "USD", type, description,
-      status: "pending", stripeSessionId: ref, credits, time: now(),
+      status: "pending", stripeSessionId: ref, credits, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0,
+      premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now(),
     })
     res.json({ url: data.redirect_url })
   } catch (err: any) {
@@ -976,7 +987,7 @@ router.post("/paddle/checkout", requireAuth, async (req, res) => {
     description = pkg.name
     credits = pkg.credits
   } else if (type === "premium") {
-    const pkg = PREMIUM_PACKAGES[packageId]
+    const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * 100)
     description = pkg.name
@@ -1109,8 +1120,8 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
     if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, userId))
   } else if (type === "premium") {
-    const pkg = PREMIUM_PACKAGES[packageId]
-    if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, userId))
+    const pkg = await getPremiumPackage(packageId)
+    if (pkg) await activatePremium(userId, pkg)
   } else if (type === "credits") {
     const pkgs = await getCreditPackages()
     const pkg = pkgs[packageId]
@@ -1121,9 +1132,23 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
   }
 }
 
+async function activatePremium(userId: number, pkg: { days: number; priority: number }) {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+  if (!user) return
+  const currentTime = now()
+  const currentExpiry = user.premium && (user.premiumExpiry || 0) > currentTime
+    ? (user.premiumExpiry || 0)
+    : currentTime
+  await db.update(usersTable).set({
+    premium: 1,
+    premiumExpiry: currentExpiry + pkg.days * 86400,
+    premiumPriority: Math.max(user.premiumPriority || 0, pkg.priority),
+  }).where(eq(usersTable.id, userId))
+}
+
 // Fulfills an order using data already stored on the order row itself (safe for webhook paths
 // where packageId is known but cannot be re-derived from request params).
-async function fulfillOrderFromRecord(order: { userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null }) {
+async function fulfillOrderFromRecord(order: { userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null; premiumDays: number | null; premiumPriority: number | null }) {
   const type = order.type || "credits"
   if (type === "starter") {
     const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
@@ -1136,9 +1161,11 @@ async function fulfillOrderFromRecord(order: { userId: number; type: string | nu
     }
   } else if (type === "premium") {
     // Try packageId first, fall back to description match
-    const pkgById = order.packageId ? PREMIUM_PACKAGES[order.packageId] : null
-    const pkg = pkgById || Object.values(PREMIUM_PACKAGES).find(p => p.name === order.description)
-    if (pkg) await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + pkg.days * 86400 }).where(eq(usersTable.id, order.userId))
+    const pkgById = order.packageId ? (await getPremiumPackages())[order.packageId] : null
+    const pkg = pkgById || Object.values(await getPremiumPackages()).find(p => p.name === order.description || `${p.name} Premium` === order.description)
+    if (order.premiumDays || pkg) {
+      await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
+    }
   }
 }
 

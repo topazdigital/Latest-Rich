@@ -44,6 +44,14 @@ export default function PremiumPage({
   const [localLoading, setLocalLoading] = useState(false)
   const isPremium = user?.premium === 1
   const premiumExpiry = user?.premiumExpiry ? new Date(user.premiumExpiry * 1000) : null
+  const premiumPriority = Math.max(1, user?.premiumPriority || 1)
+  const tierBenefits = premiumPriority >= 4
+    ? ['Top discovery placement', '5 daily Superlikes', 'Free monthly gift', 'Priority support']
+    : premiumPriority >= 3
+      ? ['Enhanced discovery placement', '3 daily Superlikes', 'Free monthly gift']
+      : premiumPriority >= 2
+        ? ['Priority discovery placement', '2 daily Superlikes']
+        : ['Standard premium access']
 
   const provider = paymentMethod?.provider || 'paystack'
   const country = paymentMethod?.country || ''
@@ -99,13 +107,25 @@ export default function PremiumPage({
               <Crown size={40} className="text-yellow-400" />
             </div>
             <h1 className="text-3xl font-black text-white mb-2">You're VIP! 👑</h1>
-            <p className="text-white/60 mb-6">You have full premium access with all exclusive features unlocked.</p>
+            <p className="text-white/60 mb-3">You have premium access with your plan&apos;s benefits unlocked.</p>
+            <div className="inline-flex items-center gap-2 bg-amber-400/15 border border-amber-300/30 rounded-full px-4 py-2 mb-5">
+              <Star size={14} className="text-yellow-400" />
+              <span className="text-yellow-200 text-sm font-semibold">Priority level {premiumPriority}</span>
+            </div>
             {premiumExpiry && (
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-2xl px-5 py-3 mb-6">
                 <Shield size={16} className="text-yellow-400" />
                 <span className="text-white/80 text-sm">Active until <strong className="text-white">{premiumExpiry.toLocaleDateString()}</strong></span>
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {tierBenefits.map((benefit) => (
+                <div key={benefit} className="flex items-center gap-2 bg-white/10 rounded-2xl p-3 text-left">
+                  <Check size={15} className="text-yellow-400 flex-shrink-0" />
+                  <span className="text-white/80 text-xs font-medium">{benefit}</span>
+                </div>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-3 mt-6">
               {features.filter(f => f.premium).slice(0, 4).map((f, i) => (
                 <div key={i} className="flex items-center gap-2.5 bg-white/10 rounded-2xl p-3">
@@ -216,6 +236,7 @@ export default function PremiumPage({
                   <div className="text-2xl font-black text-brand-500 my-2">
                     {useCard ? `$${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `$${pkg.price}`}
                   </div>
+                  <div className="text-xs font-semibold text-amber-600">Priority level {pkg.priority || pkg.id}</div>
                   {formatLocalPrice && country && !useCard && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
                   )}
@@ -279,7 +300,8 @@ export default function PremiumPage({
                     transition: 'all 0.15s',
                   }}>
                     <p style={{ fontWeight: 800, color: '#111827', fontSize: '0.95rem' }}>{pkg.name}</p>
-                    <p style={{ color: '#FF192C', fontWeight: 700, fontSize: '0.85rem' }}>${pkg.price}</p>
+                     <p style={{ color: '#FF192C', fontWeight: 700, fontSize: '0.85rem' }}>${pkg.price}</p>
+                     <p style={{ color: '#b45309', fontWeight: 700, fontSize: '0.72rem' }}>Priority level {pkg.priority || pkg.id}</p>
                     <p style={{ color: '#6b7280', fontSize: '0.72rem' }}>{pkg.description}</p>
                   </div>
                 ))}
