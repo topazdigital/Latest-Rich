@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
 import { useAuth } from '../../hooks/useAuth'
+import { getSeoLandingPage } from '../../data/seoLandingPages'
 
 const COUNTRY_SEO: Record<string, {
   siteTitle: string
@@ -146,6 +147,8 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   if (path === '/credits') return `Credits & Payments | Rich Dating Network`
   if (path === '/boost') return `Boost Your Profile | Rich Dating Network`
   if (path === '/home') return `Your Matches${loc ? ` in ${loc}` : ''} | Rich Dating Network`
+  if (path === '/members') return `Browse Wealthy Singles Worldwide | Rich Dating Network`
+  if (path === '/locations') return `Find Wealthy Singles Near You | Rich Dating Network`
   if (path === '/settings') return `Settings | Rich Dating Network`
   if (path === '/referrals') return `Referrals | Rich Dating Network`
   if (path === '/contact') return `Contact Us | Rich Dating Network`
@@ -166,6 +169,19 @@ function buildDescription(countryCode: string, city: string): string {
   return seoData.description
 }
 
+function getRouteSeoPage(path: string) {
+  if (!path.startsWith('/') || path.split('/').length !== 2) return null
+  return getSeoLandingPage(path.slice(1))
+}
+
+function isIndexablePath(path: string): boolean {
+  if (path === '/' || path === '/members' || path === '/locations' ||
+      path === '/terms' || path === '/privacy' || path === '/contact') return true
+  if (path === '/profile' || path === '/admin' || path === '/moderator') return false
+  if (path.startsWith('/profile/') || path.startsWith('/@')) return true
+  return !!getRouteSeoPage(path)
+}
+
 export default function SEOHead() {
   const [location] = useLocation()
   const { user } = useAuth()
@@ -174,19 +190,21 @@ export default function SEOHead() {
   const seoData = COUNTRY_SEO[countryCode] || COUNTRY_SEO.DEFAULT
 
   useEffect(() => {
-    const title = buildTitle(location, countryCode, userCity)
+    const routePage = getRouteSeoPage(location)
+    const title = routePage?.title || buildTitle(location, countryCode, userCity)
     document.title = title
 
-    const description = buildDescription(countryCode, userCity)
-    const allKeywords = [
+    const description = routePage?.description || buildDescription(countryCode, userCity)
+    const allKeywords = routePage?.keywords.join(', ') || [
       ...seoData.keywords,
       ...seoData.ageGroups,
       ...(userCity ? [`dating in ${userCity}`, `singles in ${userCity}`, `wealthy singles ${userCity}`] : []),
     ].join(', ')
+    const indexable = isIndexablePath(location)
 
     upsertMeta('description', description)
     upsertMeta('keywords', allKeywords)
-    upsertMeta('robots', 'index, follow')
+    upsertMeta('robots', indexable ? 'index, follow, max-image-preview:large' : 'noindex, nofollow')
     upsertMeta('author', 'Rich Dating Network')
     upsertMeta('geo.region', countryCode !== 'DEFAULT' ? countryCode : '')
     if (userCity) upsertMeta('geo.placename', userCity)
@@ -205,6 +223,7 @@ export default function SEOHead() {
     upsertMeta('twitter:title', title)
     upsertMeta('twitter:description', description)
     upsertMeta('twitter:image', 'https://richdatingnetwork.com/opengraph.jpg')
+    upsertMeta('twitter:image:alt', 'Rich Dating Network', false)
 
     // Canonical
     upsertLink('canonical', `https://richdatingnetwork.com${location}`)

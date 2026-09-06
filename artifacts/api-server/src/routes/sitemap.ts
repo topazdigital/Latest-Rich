@@ -253,7 +253,7 @@ const GENERIC_SLUGS = [
   "runs-girls-dating","wealthier-dating",
 ]
 
-const STATIC_PAGES = ["/","/login","/register","/members","/locations","/terms","/privacy","/contact"]
+const STATIC_PAGES = ["/","/members","/locations","/terms","/privacy","/contact"]
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/['']/g, "").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")

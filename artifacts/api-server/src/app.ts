@@ -60,13 +60,42 @@ Disallow: /chat
 Disallow: /notifications
 Disallow: /settings
 Disallow: /home
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /discover
+Disallow: /meet
 Disallow: /likes
 Disallow: /visitors
 Disallow: /gifts
 Disallow: /boost
+Disallow: /premium
+Disallow: /credits
+Disallow: /referrals
+Disallow: /ref/
+Disallow: /profile
 
-Sitemap: https://richdatingnetwork.com/sitemap.xml
+Sitemap: https://richdatingnetwork.com/sitemap-index.xml
 `)
+})
+
+// Keep authenticated and account-only pages out of search indexes even when a
+// crawler does not execute the React app's client-side metadata updates.
+const SEO_NOINDEX_PATHS = [
+  "/admin", "/moderator", "/login", "/register", "/forgot-password",
+  "/reset-password", "/verify-email", "/home", "/discover", "/meet",
+  "/chat", "/profile", "/notifications", "/settings", "/premium",
+  "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals", "/ref/",
+]
+app.use((req, res, next) => {
+  const pathName = req.path
+  const noindex = SEO_NOINDEX_PATHS.some(prefix =>
+    pathName === prefix || pathName.startsWith(`${prefix}/`)
+  )
+  if (noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow")
+  next()
 })
 
 // ── SEO: sitemap.xml ─────────────────────────────────────────────────────────
