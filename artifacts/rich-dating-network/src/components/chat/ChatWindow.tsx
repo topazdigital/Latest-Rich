@@ -242,7 +242,17 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   // WS: error
   useWSEvent('error', (msg) => {
     if (msg.code === 'insufficient_credits') {
-      toast.error('Not enough credits! Buy more to continue chatting.')
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-red-200 p-4 flex items-start gap-3`}>
+          <div className="text-2xl">💳</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-900 text-sm mb-1">You’re out of chat credits</div>
+            <p className="text-xs text-gray-500 mb-2">Top up in seconds and continue your conversation.</p>
+            <a href="/credits" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Get credits</a>
+          </div>
+        </div>
+      ), { duration: 6000 })
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
     } else if (msg.code === 'contact_info_blocked') {
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
@@ -392,7 +402,17 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       if (!res.ok) {
         const data = await res.json()
         if (data.creditsNeeded) {
-          toast.error(`Need ${data.creditsNeeded} credits. You have ${data.creditsHave}.`, { duration: 4000 })
+          toast.custom((t) => (
+            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-red-200 p-4 flex items-start gap-3`}>
+              <div className="text-2xl">💳</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-900 text-sm mb-1">You need more chat credits</div>
+                <p className="text-xs text-gray-500 mb-2">You have {data.creditsHave || 0}; this message needs {data.creditsNeeded}.</p>
+                <a href="/credits" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Top up now</a>
+              </div>
+            </div>
+          ), { duration: 6000 })
         } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
           toast.custom((t) => (
             <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>

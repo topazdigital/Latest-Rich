@@ -105,7 +105,18 @@ router.get("/method", requireAuth, async (req, res) => {
     intasend: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (IntaSend)", currencies: ["USD", "EUR", "GBP", "KES"] },
     pesapal: { name: "Credit / Debit Card", icon: "💳", description: "Pay securely with Visa or Mastercard (Pesapal)", currencies: ["USD", "EUR", "GBP", "KES"] },
   }
-  res.json({ provider, country: resolvedCode, ...methods[provider] })
+  const localRateDefaults: Record<string, number> = {
+    KES: 130, TZS: 2500, UGX: 3700, RWF: 1300, NGN: 1600, GHS: 12, ZAR: 19, PHP: 56,
+  }
+  const providerCurrency: Record<string, string> = {
+    payhero: "KES", paymongo: "PHP", paystack: resolvedCode === "NG" ? "NGN" : resolvedCode === "GH" ? "GHS" : resolvedCode === "ZA" ? "ZAR" : "USD",
+  }
+  const currency = providerCurrency[provider] || "USD"
+  const configuredRate = Number(await getConfig(`${currency.toLowerCase()}_rate`))
+  const rate = Number.isFinite(configuredRate) && configuredRate > 0
+    ? configuredRate
+    : localRateDefaults[currency] || 1
+  res.json({ provider, country: resolvedCode, currency, rate, ...methods[provider] })
 })
 
 /* ─── STRIPE ─── */

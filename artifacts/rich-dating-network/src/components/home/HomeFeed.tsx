@@ -61,6 +61,36 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
 
             <DailyHighlights />
 
+            {user?.countryCode?.toUpperCase() === 'KE' && (user?.credits || 0) <= 3 && (
+              <div style={{
+                background: 'linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%)',
+                border: '1px solid #a7f3d0',
+                borderRadius: '1.1rem',
+                padding: '0.9rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}>
+                <div style={{ fontSize: '1.6rem' }}>🇰🇪</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 800, color: '#065f46', fontSize: '0.86rem' }}>Top up with M-Pesa</p>
+                  <p style={{ color: '#047857', fontSize: '0.74rem' }}>Continue chatting with a quick local payment.</p>
+                </div>
+                <Link href="/credits" style={{
+                  background: '#059669',
+                  color: '#fff',
+                  borderRadius: '0.7rem',
+                  padding: '0.55rem 0.7rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                }}>
+                  Get credits
+                </Link>
+              </div>
+            )}
+
             {/* Welcome banner */}
             <div style={{
               background: 'linear-gradient(135deg, #FF192C 0%, #ff5f6b 100%)',

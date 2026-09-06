@@ -18,14 +18,15 @@ const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string;
   paymongo: { name: 'GCash / Maya / Card', icon: '📲', color: '#7c3aed', instruction: 'You will be redirected to choose GCash, Maya, or Credit Card.' },
 }
 
-function formatLocalPrice(usdPrice: number, provider: string, userCountry: string): string {
+function formatLocalPrice(usdPrice: number, provider: string, userCountry: string, configuredRate?: number): string {
   const rates: Record<string, [number, string]> = {
     KE: [130, 'KES'], TZ: [2500, 'TZS'], UG: [3700, 'UGX'], RW: [1300, 'RWF'],
     NG: [1600, 'NGN'], GH: [12, 'GHS'], ZA: [19, 'ZAR'], PH: [56, 'PHP'],
   }
   const entry = rates[userCountry?.toUpperCase()]
   if (!entry) return `${usdPrice}`
-  const [rate, currency] = entry
+  const [fallbackRate, currency] = entry
+  const rate = provider === 'payhero' && configuredRate && configuredRate > 0 ? configuredRate : fallbackRate
   return `${currency} ${Math.round(usdPrice * rate).toLocaleString()}`
 }
 
@@ -60,7 +61,9 @@ export default function CreditsPageWrapper() {
     fetch('/api/credits/packages').then(r => r.json()).then((d: any[]) => {
       if (Array.isArray(d) && d.length > 0) {
         const mapped = d.filter(p => p.active !== 0).map((p, i) => ({
-          id: i + 1,
+          // Keep the server-owned package ID. Re-numbering here can charge for
+          // a different package when an admin disables a package in the middle.
+          id: p.id,
           credits: p.credits,
           usdPrice: p.price,
           popular: !!p.popular,
@@ -365,7 +368,7 @@ export default function CreditsPageWrapper() {
                   <span style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 700 }}> credits</span>
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: '0.75rem', fontWeight: 700 }}>
-                  {useCard ? `$${pkg.usdPrice}` : formatLocalPrice(pkg.usdPrice, effectiveProvider, paymentMethod?.country || '')}
+                  {useCard ? `$${pkg.usdPrice}` : formatLocalPrice(pkg.usdPrice, effectiveProvider, paymentMethod?.country || '', paymentMethod?.rate)}
                   {effectiveProvider === 'payhero' && <span style={{ color: '#6b7280' }}> ≈ ${pkg.usdPrice}</span>}
                 </div>
                 <button style={{
@@ -460,7 +463,7 @@ export default function CreditsPageWrapper() {
             <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📱</div>
             <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827', marginBottom: '0.35rem' }}>Pay with M-Pesa</h2>
             <p style={{ color: '#374151', fontSize: '0.85rem', fontWeight: 600 }}>
-              {starterMode ? '3 credits · $1 trial' : `${pkg!.credits} credits · ${formatLocalPrice(pkg!.usdPrice, provider, paymentMethod?.country || '')}`}
+              {starterMode ? `3 credits · ${paymentMethod?.currency === 'KES' ? `KES ${Math.round(1 * (paymentMethod?.rate || 130)).toLocaleString()}` : '$1'} trial` : `${pkg!.credits} credits · ${formatLocalPrice(pkg!.usdPrice, provider, paymentMethod?.country || '', paymentMethod?.rate)}`}
             </p>
           </div>
           <div style={{ marginBottom: '1rem' }}>
