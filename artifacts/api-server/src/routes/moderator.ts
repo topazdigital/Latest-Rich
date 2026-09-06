@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db, isMysql } from "@workspace/db"
 import { usersTable, messagesTable, chatLocksTable, activityTable, pushSubscriptionsTable } from "@workspace/db/schema"
-import { eq, sql, and, or, desc, inArray } from "drizzle-orm"
+import { eq, sql, and, or, desc, inArray, count } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send as wsSend } from "../lib/websocket"
 
@@ -467,7 +467,19 @@ router.get("/stats", requireAuth, requireModerator, async (req, res) => {
     `)) as unknown) as any[]
     const totalConversations = Number((convCountResult[0] as any)?.count || 0)
 
-    res.json({ activeLocks, totalConversations })
+    // Moderator replies are also written to the activity log with the
+    // authenticated moderator's user ID. This keeps payroll attribution
+    // separate from the fake user's visible sender ID.
+    const [sentRow] = await db.select({ count: count() })
+      .from(activityTable)
+      .where(and(
+        eq(activityTable.type, "message"),
+        eq(activityTable.userId, req.userId!),
+        sql`${activityTable.title} LIKE 'Moderator reply as %'`,
+      ))
+    const messagesSent = Number(sentRow?.count || 0)
+
+    res.json({ activeLocks, totalConversations, messagesSent })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }

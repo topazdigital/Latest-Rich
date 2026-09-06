@@ -19,6 +19,7 @@ import AdminEmailCampaigns from "../components/admin/AdminEmailCampaigns"
 import AdminChat from "../components/admin/AdminChat"
 import AdminContactMessages from "../components/admin/AdminContactMessages"
 import AdminFeedback from "../components/admin/AdminFeedback"
+import AdminModeratorPayroll from "../components/admin/AdminModeratorPayroll"
 
 type MenuItem = { key: string; label: string; icon: string }
 type MenuGroup = { group: string; icon: string; items: MenuItem[] }
@@ -57,6 +58,7 @@ const MENU: MenuEntry[] = [
       { key: "custom-payments", label: "Manual Gateways",   icon: "🏦" },
       { key: "boost",           label: "Boost Config",      icon: "⚡" },
       { key: "orders",          label: "Orders / Revenue",  icon: "💰" },
+      { key: "moderator-payroll", label: "Moderator Payroll", icon: "💵" },
     ],
   },
   {
@@ -352,6 +354,7 @@ export default function AdminPage() {
           {tab === "email-campaigns" && <AdminEmailCampaigns />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
+          {tab === "moderator-payroll" && <AdminModeratorPayroll />}
           {tab === "settings" && <AdminSettings />}
         </main>
       </div>

@@ -6,7 +6,7 @@ import {
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
   chatLocksTable, userExtendedTable
 } from "@workspace/db/schema"
-import { eq, desc, sql, and, ne, gte, count, SQL, or, isNull, inArray } from "drizzle-orm"
+import { eq, desc, sql, and, ne, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
@@ -562,6 +562,70 @@ router.put("/config", requireAuth, requireAdmin, async (req, res) => {
       }
     }
     res.json({ success: true })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+// Moderator payroll summary. Replies are attributed through the moderator
+// account recorded in activity.user_id when /moderator/.../reply is used.
+router.get("/moderator-payroll", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const current = new Date()
+    const defaultFromDate = new Date(current.getFullYear(), current.getMonth(), 1)
+    const defaultFrom = Math.floor(defaultFromDate.getTime() / 1000)
+    const defaultTo = Math.floor(current.getTime() / 1000)
+    const requestedFrom = Number(req.query.from)
+    const requestedTo = Number(req.query.to)
+    const from = Number.isFinite(requestedFrom) && requestedFrom > 0 ? requestedFrom : defaultFrom
+    const to = Number.isFinite(requestedTo) && requestedTo >= from ? requestedTo : defaultTo
+
+    const configuredRate = parseFloat(await getConfig("moderator_pay_per_message"))
+    const rate = Number.isFinite(configuredRate) && configuredRate >= 0 ? configuredRate : 0
+    const moderators = await db.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      admin: usersTable.admin,
+    }).from(usersTable).where(gte(usersTable.admin, 1)).orderBy(usersTable.name)
+
+    const replyActivities = await db.select({
+      userId: activityTable.userId,
+    }).from(activityTable).where(and(
+      eq(activityTable.type, "message"),
+      sql`${activityTable.title} LIKE 'Moderator reply as %'`,
+      gte(activityTable.time, from),
+      lte(activityTable.time, to),
+    ))
+
+    const counts = new Map<number, number>()
+    for (const activity of replyActivities) {
+      const moderatorId = Number(activity.userId || 0)
+      if (moderatorId > 0) counts.set(moderatorId, (counts.get(moderatorId) || 0) + 1)
+    }
+
+    const rows = moderators.map(moderator => {
+      const messages = counts.get(moderator.id) || 0
+      return {
+        id: moderator.id,
+        name: moderator.name,
+        email: moderator.email,
+        role: (moderator.admin ?? 0) >= 2 ? "Admin" : "Moderator",
+        messages,
+        payout: Number((messages * rate).toFixed(2)),
+      }
+    })
+
+    const totalMessages = rows.reduce((sum, row) => sum + row.messages, 0)
+    res.json({
+      from,
+      to,
+      rate,
+      moderators: rows,
+      totalMessages,
+      totalPayout: Number((totalMessages * rate).toFixed(2)),
+    })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })

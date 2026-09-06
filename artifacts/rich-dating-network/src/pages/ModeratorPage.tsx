@@ -124,6 +124,8 @@ interface Conversation {
   lastTime: number
   msgCount: number
   lock: ConvLock | null
+  lastSenderFake: boolean
+  lastMsgRead: boolean
 }
 interface Message {
   id: number; u1: number; u2: number; message: string; time: number; read: number
@@ -162,9 +164,16 @@ function ConvItem({ conv, selected, myUserId, onClick }: {
 }) {
   const isLockedByMe = conv.lock?.moderatorId === myUserId
   const isLockedByOther = conv.lock && conv.lock.moderatorId !== myUserId
+  const needsReply = !conv.lastSenderFake
+  const followUp = conv.lastSenderFake && conv.lastMsgRead
   return (
     <button onClick={onClick}
-      className={`w-full text-left px-3 py-3 flex items-start gap-3 border-b border-gray-100 transition-colors ${selected ? 'bg-brand-50 border-l-2 border-l-brand-500' : 'hover:bg-gray-50'}`}>
+      className={`w-full text-left px-3 py-3 flex items-start gap-3 border-b border-gray-100 border-l-4 transition-colors ${
+        selected ? 'bg-brand-50 border-l-brand-500' :
+        needsReply ? 'bg-red-50 border-l-red-500 hover:bg-red-100' :
+        followUp ? 'bg-green-50 border-l-green-500 hover:bg-green-100' :
+        'border-l-transparent hover:bg-gray-50'
+      }`}>
       <div className="relative shrink-0">
         <Avatar photo={conv.fakeUser.photo} name={conv.fakeUser.name} size={38} />
         <div className="absolute -bottom-1 -right-1">
@@ -176,8 +185,20 @@ function ConvItem({ conv, selected, myUserId, onClick }: {
           <span className="text-xs font-semibold text-gray-900 truncate">{conv.fakeUser.name} → {conv.realUser.name}</span>
           <span className="text-[10px] text-gray-400 shrink-0">{timeAgo(conv.lastTime)}</span>
         </div>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{conv.lastMessage || '—'}</p>
+        <p className={`text-xs truncate mt-0.5 ${needsReply ? 'text-red-700 font-medium' : followUp ? 'text-green-700' : 'text-gray-500'}`}>
+          {conv.lastMessage || '—'}
+        </p>
         <div className="flex items-center gap-1 mt-1">
+          {needsReply && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Reply needed
+            </span>
+          )}
+          {followUp && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
+              <Check size={8} /> Follow up
+            </span>
+          )}
           {isLockedByMe && (
             <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
               <Lock size={8} /> Locked by you
@@ -195,19 +216,32 @@ function ConvItem({ conv, selected, myUserId, onClick }: {
   )
 }
 
-function MessageBubble({ msg, fakeUserId, users }: { msg: Message; fakeUserId: number; users: Record<string, ConvUser> }) {
+function MessageBubble({ msg, fakeUserId, users, isLatest }: {
+  msg: Message; fakeUserId: number; users: Record<string, ConvUser>; isLatest: boolean
+}) {
   const isByFake = msg.u1 === fakeUserId
   const sender = users[String(msg.u1)]
   return (
     <div className={`flex gap-2 ${isByFake ? 'justify-end' : 'justify-start'}`}>
       {!isByFake && <Avatar photo={sender?.photo || ''} name={sender?.name || '?'} size={28} />}
       <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-        isByFake
+        isLatest && !isByFake
+          ? 'bg-red-50 border-2 border-red-300 text-red-950 rounded-bl-sm'
+          : isLatest && isByFake
+          ? 'bg-green-500 border-2 border-green-300 text-white rounded-br-sm'
+          : isByFake
           ? 'bg-brand-500 text-white rounded-br-sm'
           : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
       }`}>
         <p>{msg.message}</p>
-        <p className={`text-[10px] mt-1 ${isByFake ? 'text-white/60' : 'text-gray-400'}`}>{timeAgo(msg.time)}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className={`text-[10px] mt-1 ${isByFake ? 'text-white/60' : 'text-gray-400'}`}>{timeAgo(msg.time)}</p>
+          {isLatest && (
+            <span className={`text-[10px] mt-1 font-bold ${isByFake ? 'text-white/80' : 'text-red-700'}`}>
+              {isByFake ? 'Waiting for user' : 'Needs reply'}
+            </span>
+          )}
+        </div>
       </div>
       {isByFake && <Avatar photo={sender?.photo || ''} name={sender?.name || '?'} size={28} />}
     </div>
@@ -231,7 +265,7 @@ export default function ModeratorPage() {
   const [sendingReply, setSendingReply] = useState(false)
   const [locking, setLocking] = useState(false)
   const [search, setSearch] = useState('')
-  const [stats, setStats] = useState({ activeLocks: 0, totalConversations: 0 })
+  const [stats, setStats] = useState({ activeLocks: 0, totalConversations: 0, messagesSent: 0 })
   const [filter, setFilter] = useState<'all' | 'mine' | 'available'>('all')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -398,6 +432,7 @@ export default function ModeratorPage() {
       setMessages(prev => [...prev, d.message])
       setReplyText('')
       await loadConversations()
+      await loadStats()
     } catch { toast.error('Failed to send') }
     finally { setSendingReply(false) }
   }
@@ -466,7 +501,7 @@ export default function ModeratorPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="bg-gray-50 rounded-xl p-2 text-center">
               <div className="text-lg font-bold text-gray-900">{stats.totalConversations}</div>
               <div className="text-[10px] text-gray-500">Total Chats</div>
@@ -474,6 +509,10 @@ export default function ModeratorPage() {
             <div className="bg-orange-50 rounded-xl p-2 text-center">
               <div className="text-lg font-bold text-orange-600">{stats.activeLocks}</div>
               <div className="text-[10px] text-orange-500">Active Locks</div>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-2 text-center">
+              <div className="text-lg font-bold text-blue-600">{stats.messagesSent}</div>
+              <div className="text-[10px] text-blue-500">Messages Sent</div>
             </div>
           </div>
 
@@ -529,7 +568,7 @@ export default function ModeratorPage() {
         ) : (
           <>
             {/* Chat header */}
-            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+              <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
               <button onClick={() => setSelectedConv(null)} className="lg:hidden p-1 text-gray-400 hover:text-gray-600">
                 <ChevronLeft size={20} />
               </button>
@@ -543,6 +582,19 @@ export default function ModeratorPage() {
                   <p className="text-sm font-bold text-gray-900 truncate">{selectedConv.fakeUser.name}</p>
                   <p className="text-xs text-gray-400">chatting with <strong className="text-gray-600">{selectedConv.realUser.name}</strong></p>
                 </div>
+                <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold shrink-0 ${
+                  !selectedConv.lastSenderFake
+                    ? 'text-red-700 bg-red-100 border border-red-200'
+                    : selectedConv.lastMsgRead
+                    ? 'text-green-700 bg-green-100 border border-green-200'
+                    : 'text-gray-500 bg-gray-100 border border-gray-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    !selectedConv.lastSenderFake ? 'bg-red-500' :
+                    selectedConv.lastMsgRead ? 'bg-green-500' : 'bg-gray-400'
+                  }`} />
+                  {!selectedConv.lastSenderFake ? 'Reply needed' : selectedConv.lastMsgRead ? 'Follow up' : 'Waiting for user'}
+                </span>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -627,8 +679,8 @@ export default function ModeratorPage() {
                       </button>
                     </div>
                   )}
-                  {messages.map(msg => (
-                    <MessageBubble key={msg.id} msg={msg} fakeUserId={selectedConv.fakeUser.id} users={msgUsers} />
+                   {messages.map((msg, index) => (
+                     <MessageBubble key={msg.id} msg={msg} fakeUserId={selectedConv.fakeUser.id} users={msgUsers} isLatest={index === messages.length - 1} />
                   ))}
                 </>
               )}
