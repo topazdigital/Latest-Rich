@@ -35,6 +35,13 @@ function extractRows(result: any): any[] {
   return Array.isArray(result) ? result : []
 }
 
+function databaseErrorMessage(err: any): string {
+  return err?.cause?.sqlMessage || err?.cause?.message || err?.message || "Database query failed"
+}
+
+const messageTimeColumn = sql.raw(isMysql ? "`time`" : `"time"`)
+const messageReadColumn = sql.raw(isMysql ? "lm.`read`" : `lm."read"`)
+
 async function cleanExpiredLocks() {
   try {
     await db.delete(chatLocksTable).where(sql`${chatLocksTable.expiresAt} < ${now()}`)
@@ -61,14 +68,14 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
         u2t.id AS u2_id, COALESCE(u2t.name,'') AS u2_name, COALESCE(u2t.photo,'') AS u2_photo, u2t.fake AS u2_fake,
         COALESCE(lm.message,'') AS last_message,
         lm.u1 AS last_msg_sender,
-        COALESCE(lm.read, 0) AS last_msg_read,
+        COALESCE(${messageReadColumn}, 0) AS last_msg_read,
         CASE WHEN sender.fake = 1 THEN 1 ELSE 0 END AS last_sender_fake
       FROM (
         SELECT
           LEAST(u1, u2) AS uid1,
           GREATEST(u1, u2) AS uid2,
           MAX(id) AS last_msg_id,
-          MAX(time) AS last_time,
+          MAX(${messageTimeColumn}) AS last_time,
           COUNT(*) AS msg_count
         FROM messages
         GROUP BY LEAST(u1, u2), GREATEST(u1, u2)
@@ -145,7 +152,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
     res.json({ conversations, total, page, pages: Math.ceil(total / limit) })
   } catch (err: any) {
     console.error("Moderator conversations error:", err)
-    res.status(500).json({ error: err.message || "Server error" })
+    res.status(500).json({ error: databaseErrorMessage(err) })
   }
 })
 
@@ -179,7 +186,7 @@ router.post("/conversations/:key/lock", requireAuth, requireModerator, async (re
     }
     res.json({ success: true, expiresAt })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: databaseErrorMessage(err) })
   }
 })
 
@@ -195,7 +202,7 @@ router.post("/conversations/:key/unlock", requireAuth, requireModerator, async (
     await db.delete(chatLocksTable).where(eq(chatLocksTable.conversationKey, key))
     res.json({ success: true })
   } catch (err: any) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: databaseErrorMessage(err) })
   }
 })
 

@@ -20,5 +20,13 @@ The database layer in `lib/db/src/index.ts` auto-detects by inspecting `DATABASE
 - `onDuplicateKeyUpdate` is MySQL-only. PostgreSQL uses `onConflictDoUpdate`. The codebase must use whichever matches the active schema dialect — or, since routes always run against the same DB as configured, just use the correct one for each environment.
 - Legacy password column is `pass` (old PHP site), mapped in Drizzle as `legacyPass: text("pass")`. Auth falls back to it automatically. Do NOT add a separate `legacyPass` MySQL column.
 
+## Production disk-space warning
+
+MySQL aggregate queries for moderator conversations can fail with HTTP 500 when the DirectAdmin server cannot create temporary files. A deployment can otherwise appear successful if the migration command's failure is ignored, leaving schema work incomplete.
+
+**Why:** A production deploy reported `ERROR 1021 (HY000) ... No space left on device` during a temporary-table operation, followed by moderator conversation query failures.
+
+**How to apply:** When moderator queries fail after deployment, check `df -h` and MySQL/PM2 logs before changing data. Do not delete or restore message data to address a disk-space error; free space safely, then rerun the migration/deploy.
+
 **Why:**
 The original PHP site at richdatingnetwork.com ran on DirectAdmin + MySQL. The new Node.js app shares that MySQL database for production, but was developed on Replit which provides PostgreSQL. Both environments must work.
