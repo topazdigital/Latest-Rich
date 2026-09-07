@@ -124,7 +124,14 @@ if [ -n "$DB_PASS" ]; then
   MYSQL_CMD="mysql -u${DB_USER} -p${DB_PASS} -h${DB_HOST} -P${DB_PORT} ${DB_NAME}"
 fi
 
-$MYSQL_CMD < scripts/migrate-from-legacy.sql && echo "      Migration + schema sync OK ✓" || echo "      Migration warning (check output above)"
+if ! $MYSQL_CMD < scripts/migrate-from-legacy.sql; then
+  echo ""
+  echo "  ✗ ERROR: Database migration failed."
+  echo "  Deployment stopped before photo import, build, or PM2 restart."
+  echo "  Check the MySQL error above (for example, free disk space) and re-run deploy.sh."
+  exit 1
+fi
+echo "      Migration + schema sync OK ✓"
 
 echo "      Linking legacy photos to user profiles..."
 node scripts/import-legacy-photos.mjs && echo "      Photo import OK ✓" || echo "      Photo import warning (non-fatal)"
