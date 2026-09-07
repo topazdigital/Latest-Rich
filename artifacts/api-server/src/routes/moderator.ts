@@ -27,6 +27,14 @@ function convKey(a: number, b: number): string {
   return `${Math.min(a, b)}_${Math.max(a, b)}`
 }
 
+// Drizzle's MySQL adapter returns rows for db.execute(), while some
+// mysql2 call sites can still expose the native [rows, fields] tuple.
+// Keep raw SELECT handling tolerant of both shapes.
+function extractRows(result: any): any[] {
+  if (isMysql && Array.isArray(result) && Array.isArray(result[0])) return result[0]
+  return Array.isArray(result) ? result : []
+}
+
 async function cleanExpiredLocks() {
   try {
     await db.delete(chatLocksTable).where(sql`${chatLocksTable.expiresAt} < ${now()}`)
@@ -45,12 +53,6 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
     const page = Math.max(1, parseInt(String(req.query.page || "1")))
     const limit = 50
     const offset = (page - 1) * limit
-
-    // Helper: Drizzle mysql2 driver wraps SELECT results as [rows, fields] — extract rows only
-    function extractRows(result: any): any[] {
-      if (isMysql && Array.isArray(result) && Array.isArray(result[0])) return result[0]
-      return Array.isArray(result) ? result : []
-    }
 
     const rows = extractRows(await db.execute(sql`
       SELECT
@@ -94,7 +96,7 @@ router.get("/conversations", requireAuth, requireModerator, async (req, res) => 
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
     `))
 
-    const total = Number((countRaw[0] as any)?.cnt || (countRaw[0] as any)?.count || 0)
+    const total = Number((countRaw[0] as any)?.cnt ?? (countRaw[0] as any)?.count ?? 0)
 
     const locks = await db.select().from(chatLocksTable)
     const lockMap = new Map(locks.map(l => [l.conversationKey, l]))
@@ -455,7 +457,7 @@ router.get("/unread-count", requireAuth, requireModerator, async (req, res) => {
       WHERE ((u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1))
       AND sender.fake = 0
     `)
-    const rows: any[] = isMysql && Array.isArray((raw as any)[0]) ? (raw as any)[0] : (raw as any)
+    const rows = extractRows(raw)
     const count = Number(rows[0]?.cnt ?? rows[0]?.count ?? 0)
     res.json({ count })
   } catch (err: any) {
@@ -468,22 +470,21 @@ router.get("/stats", requireAuth, requireModerator, async (req, res) => {
   try {
     await cleanExpiredLocks()
 
-    const lockCountResult = ((await db.execute(sql`SELECT COUNT(*) AS count FROM chat_locks`)) as unknown) as any[]
-    const activeLocks = Number((lockCountResult[0] as any)?.count || 0)
+    const lockCountResult = extractRows(await db.execute(sql`SELECT COUNT(*) AS cnt FROM chat_locks`))
+    const activeLocks = Number((lockCountResult[0] as any)?.cnt ?? (lockCountResult[0] as any)?.count ?? 0)
 
-    const convCountResult = ((await db.execute(sql`
-      WITH pairs AS (
+    const convCountResult = extractRows(await db.execute(sql`
+      SELECT COUNT(*) AS count
+      FROM (
         SELECT LEAST(u1, u2) AS uid1, GREATEST(u1, u2) AS uid2
         FROM messages
         GROUP BY LEAST(u1, u2), GREATEST(u1, u2)
-      )
-      SELECT COUNT(*) AS count
-      FROM pairs
+      ) pairs
       JOIN users u1t ON u1t.id = pairs.uid1
       JOIN users u2t ON u2t.id = pairs.uid2
       WHERE (u1t.fake = 1 AND u2t.fake = 0) OR (u1t.fake = 0 AND u2t.fake = 1)
-    `)) as unknown) as any[]
-    const totalConversations = Number((convCountResult[0] as any)?.count || 0)
+    `))
+    const totalConversations = Number((convCountResult[0] as any)?.count ?? (convCountResult[0] as any)?.cnt ?? 0)
 
     // Moderator replies are also written to the activity log with the
     // authenticated moderator's user ID. This keeps payroll attribution

@@ -296,6 +296,7 @@ export default function ModeratorPage() {
   const [sendingReply, setSendingReply] = useState(false)
   const [locking, setLocking] = useState(false)
   const [search, setSearch] = useState('')
+  const [conversationError, setConversationError] = useState<string | null>(null)
   const [stats, setStats] = useState({ activeLocks: 0, totalConversations: 0, messagesSent: 0 })
   const [filter, setFilter] = useState<'all' | 'mine' | 'available'>('all')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -311,10 +312,16 @@ export default function ModeratorPage() {
   const loadConversations = useCallback(async () => {
     try {
       const r = await authFetch('/api/moderator/conversations')
-      if (!r.ok) return
       const d = await r.json()
+      if (!r.ok) {
+        setConversationError(d.error || `Could not load conversations (${r.status})`)
+        return
+      }
+      setConversationError(null)
       setConversations(d.conversations || [])
-    } catch {}
+    } catch {
+      setConversationError('Could not reach the conversation service. Please try again.')
+    }
   }, [])
 
   const loadStats = useCallback(async () => {
@@ -606,6 +613,18 @@ export default function ModeratorPage() {
           </div>
 
           {/* Search */}
+          {conversationError && (
+            <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">Conversations could not be loaded</p>
+                  <p className="mt-0.5">{conversationError}</p>
+                </div>
+                <button onClick={() => { loadConversations(); loadStats() }} className="font-semibold underline">Retry</button>
+              </div>
+            </div>
+          )}
           <div className="relative mb-2">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -630,7 +649,7 @@ export default function ModeratorPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 size={20} className="animate-spin text-brand-500" />
             </div>
-          ) : filteredConvs.length === 0 ? (
+          ) : conversationError ? null : filteredConvs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
               <MessageSquare size={32} className="text-gray-200 mb-2" />
               <p className="text-xs text-gray-400">{search ? 'No matches found' : 'No conversations yet'}</p>

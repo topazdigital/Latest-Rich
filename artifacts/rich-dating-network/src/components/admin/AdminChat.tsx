@@ -51,6 +51,7 @@ export default function AdminChat() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [conversationError, setConversationError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [mobileShowChat, setMobileShowChat] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -142,9 +143,18 @@ export default function AdminChat() {
     try {
       const r = await authFetch(`/api/moderator/conversations?page=${page}`)
       const d = await r.json()
+      if (!r.ok) {
+        setConversationError(d.error || `Could not load conversations (${r.status})`)
+        if (!silent) setLoading(false)
+        return
+      }
+      setConversationError(null)
       setConversations(d.conversations || [])
       setTotal(d.total || 0)
-    } catch { if (!silent) toast.error("Failed to load conversations") }
+    } catch {
+      setConversationError("Could not reach the conversation service. Please try again.")
+      if (!silent) toast.error("Failed to load conversations")
+    }
     if (!silent) setLoading(false)
   }, [page])
 
@@ -293,7 +303,16 @@ export default function AdminChat() {
             })}
           </div>
 
-          {(() => {
+          {conversationError ? (
+            <div style={{ padding: "2rem 1rem", color: "#fca5a5", textAlign: "center", fontSize: "0.78rem" }}>
+              <MessageSquare size={32} style={{ margin: "0 auto 0.75rem", color: "#ef4444" }} />
+              <p style={{ fontWeight: 700, color: "#fecaca" }}>Conversations could not be loaded</p>
+              <p style={{ marginTop: "0.35rem", color: "#94a3b8" }}>{conversationError}</p>
+              <button onClick={() => loadConversations()} style={{ ...S.btn("#7c3aed"), margin: "0.9rem auto 0" }}>
+                <RefreshCw size={12} /> Retry
+              </button>
+            </div>
+          ) : (() => {
             const visible = conversations.filter(c =>
               chatFilter === "needs_reply" ? !c.lastSenderFake :
               chatFilter === "follow_up"   ? c.lastSenderFake && c.lastMsgRead :
