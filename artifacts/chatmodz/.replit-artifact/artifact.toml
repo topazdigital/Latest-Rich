@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/chatmodz/"
+title = "Chatmodz"
+description = "A secure multi-site chat operator platform for dating-site administrators and approved operators."
+version = "1.0.0"
+id = "artifacts/chatmodz"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/chatmodz/" ]
+localPort = 25549
+
+[services.development]
+run = "pnpm --filter @workspace/chatmodz run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/chatmodz", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/chatmodz/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25549"
+BASE_PATH = "/chatmodz/"
