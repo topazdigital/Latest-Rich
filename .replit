@@ -22,7 +22,7 @@ args = "API Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Rich Dating Network"
+args = "Chatmodz Preview"
 
 [[workflows.workflow]]
 name = "API Server"
@@ -47,6 +47,18 @@ outputType = "webview"
 task = "shell.exec"
 args = "PORT=5000 pnpm --filter @workspace/rich-dating-network run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Chatmodz Preview"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "BASE_PATH=/chatmodz/ PORT=5000 CHATMODZ_API_PORT=8081 pnpm --filter @workspace/chatmodz run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
