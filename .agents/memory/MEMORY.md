@@ -2,7 +2,8 @@
 - [Production vs dev database](production-db.md) — production=MySQL, Replit dev=PostgreSQL; code auto-detects; never remove PG support
 - [MySQL only — never PostgreSQL](mysql-only.md) — user explicitly demands MySQL always; never provision PG, never run drizzle-kit push for this project
 - [Production deploy command](production-deploy.md) — always use absolute path: bash /home/admin/domains/test.richdatingnetwork.com/public_html/deploy.sh
-- [GitHub auto-push](github-autopush.md) — always run `bash scripts/push-to-github.sh` at end of every task; GITHUB_TOKEN secret already set
+- [GitHub auto-push](github-autopush.md) — use the combined deploy script only when production deployment is requested; direct GitHub push for code-only work
+- [Chatmodz preview database](chatmodz-preview.md) — preview uses an isolated local MySQL instance; hosted deployments must provide Chatmodz's own MySQL URL
 - [Artifact preview ports](artifact-preview-ports.md) — generated artifact workflows may serve on an internal port different from the configured 5000 preview port
 - [Workflow config preservation](workflow-config-preservation.md) — preserve the full .replit when validating workflow changes; metadata updates can remove existing settings
 - [Imported workspace dependencies](imported-workspace-deps.md) — scoped installs can bootstrap runtime packages when a full frozen install hits the package firewall on unused codegen tools
