@@ -3,13 +3,18 @@ import { Link, Route, Router, Switch, useLocation, useParams } from "wouter";
 import {
   Activity,
   AlertTriangle,
+  ArrowUpRight,
   BarChart3,
   Bell,
+  BookOpen,
+  Check,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
   Clock3,
+  Headphones,
   Inbox,
+  Layers3,
   LockKeyhole,
   LogIn,
   LogOut,
@@ -20,6 +25,8 @@ import {
   Search,
   Send,
   ShieldCheck,
+  Sparkles,
+  Target,
   UnlockKeyhole,
   UserRound,
   Volume2,
@@ -241,22 +248,100 @@ function Toast({ message }: { message: string }) {
 }
 
 function LandingPage() {
-  return <div className="landing-page">
-    <header className="landing-nav"><Logo /><div className="landing-nav-actions"><Link href="/apply" className="button ghost">Apply to operate</Link><Link href="/login" className="button primary"><LogIn size={14} /> Operator sign in</Link></div></header>
-    <main className="landing-main">
-      <section className="landing-hero">
-        <div className="eyebrow">Private conversation operations</div>
-        <h1>Better conversations.<br /><em>One focused desk.</em></h1>
-        <p>Chatmodz gives trained conversation operators a secure, distraction-free workspace for thoughtful replies across connected dating communities.</p>
-        <div className="landing-actions"><Link href="/login" className="button amber">Open operator desk <ChevronRight size={15} /></Link><span className="landing-note"><ShieldCheck size={14} /> Source identities stay hidden from operators</span></div>
+  return <div className="landing-page public-site">
+    <header className="public-nav">
+      <Logo />
+      <nav className="public-nav-links" aria-label="Main navigation">
+        <a href="#the-work">The work</a>
+        <a href="#support">Support</a>
+        <a href="#trust">Our standard</a>
+      </nav>
+      <div className="public-nav-actions">
+        <Link href="/login" className="public-signin"><LogIn size={14} /> Sign in</Link>
+        <Link href="/apply" className="button public-nav-cta">Apply to operate <ArrowUpRight size={14} /></Link>
+      </div>
+    </header>
+
+    <main>
+      <section className="public-hero">
+        <div className="public-hero-copy">
+          <div className="public-eyebrow"><span className="eyebrow-mark" /> A professional conversation practice</div>
+          <h1>Make room for <em>meaningful</em> replies.</h1>
+          <p>Chatmodz is a focused workspace for people who know how to listen, write with care, and show up consistently. Bring your judgment. We’ll bring the structure.</p>
+          <div className="public-hero-actions">
+            <Link href="/apply" className="button public-primary-cta">Start your application <ArrowUpRight size={16} /></Link>
+            <a href="#the-work" className="public-text-link">See how it works <ChevronRight size={15} /></a>
+          </div>
+          <div className="public-proof"><span className="proof-dots"><i /><i /><i /></span><span>For thoughtful people who take conversation seriously.</span></div>
+        </div>
+        <div className="public-hero-art" aria-label="An abstract view of the Chatmodz conversation workspace">
+          <div className="art-aurora" />
+          <div className="art-orbit orbit-one" />
+          <div className="art-orbit orbit-two" />
+          <div className="art-core"><span className="core-pulse" /><span className="core-label">chatmodz</span><small>presence / precision / care</small></div>
+          <div className="art-note note-top"><Sparkles size={14} /><span>Stay curious</span><b>01</b></div>
+          <div className="art-note note-bottom"><span className="note-status" /> Your attention is the craft <ArrowUpRight size={13} /></div>
+          <div className="art-caption">THE OPERATOR DESK <span>01—03</span></div>
+        </div>
       </section>
-      <section className="landing-grid">
-        <article><div className="landing-icon"><Inbox size={18} /></div><h2>One live queue</h2><p>See only the conversations that need attention, with real member and managed-profile context.</p></article>
-        <article><div className="landing-icon teal-icon"><LockKeyhole size={18} /></div><h2>Protected by design</h2><p>Conversation locks, short sessions, audit trails, and role-based access keep the desk accountable.</p></article>
-        <article><div className="landing-icon"><Activity size={18} /></div><h2>Delivery you can trust</h2><p>Replies, media, notifications, and delivery activity are handled through authenticated site adapters.</p></article>
+
+      <section className="public-signal-bar" id="trust">
+        <div><span className="signal-kicker">The Chatmodz standard</span><strong>Clear enough to trust.<br />Human enough to matter.</strong></div>
+        <div className="signal-item"><Target size={18} /><span><b>Good judgment</b><small>Context before response</small></span></div>
+        <div className="signal-item"><ShieldCheck size={18} /><span><b>Quiet confidence</b><small>Professional boundaries</small></span></div>
+        <div className="signal-item"><Layers3 size={18} /><span><b>Steady rhythm</b><small>Quality over noise</small></span></div>
+      </section>
+
+      <section className="public-section public-work" id="the-work">
+        <div className="public-section-intro">
+          <div className="public-eyebrow">01 / The work</div>
+          <h2>The work is simple to understand. <em>Hard to do well.</em></h2>
+          <p>Every reply is a small act of attention. You read between the lines, find the human note, and answer in a way that keeps the conversation moving.</p>
+        </div>
+        <div className="work-steps">
+          <article className="work-step work-step-active"><span className="step-number">01</span><div><h3>Listen first</h3><p>Take in the whole message, not just the last line. Notice tone, pace, and what is not being said.</p></div><ArrowUpRight size={18} /></article>
+          <article className="work-step"><span className="step-number">02</span><div><h3>Find the thread</h3><p>Use your own judgment to make a reply feel natural, specific, and worth answering.</p></div><ArrowUpRight size={18} /></article>
+          <article className="work-step"><span className="step-number">03</span><div><h3>Leave it better</h3><p>Small moments compound. A considered response can change the energy of an entire exchange.</p></div><ArrowUpRight size={18} /></article>
+        </div>
+      </section>
+
+      <section className="public-section public-support" id="support">
+        <div className="support-heading"><div className="public-eyebrow light-eyebrow">02 / How we support you</div><h2>Good operators are grown, not guessed.</h2><p>You bring the instinct. Our team helps you turn it into a repeatable professional practice.</p></div>
+        <div className="support-grid">
+          <article><div className="support-icon"><BookOpen size={19} /></div><h3>Learn the rhythm</h3><p>Start with clear training, practical examples, and a way to build confidence before you work independently.</p><a href="#apply" className="support-link">Training, without the theatre <ArrowUpRight size={14} /></a></article>
+          <article><div className="support-icon"><Headphones size={19} /></div><h3>Get a real human answer</h3><p>Questions are part of the job. Reach a responsive team when you need a second perspective or a little calibration.</p><a href="#apply" className="support-link">Support when it counts <ArrowUpRight size={14} /></a></article>
+          <article><div className="support-icon"><Check size={19} /></div><h3>Keep your standards high</h3><p>Simple guidance and thoughtful review help you stay consistent without turning your voice into a script.</p><a href="#apply" className="support-link">A standard you can own <ArrowUpRight size={14} /></a></article>
+        </div>
+      </section>
+
+      <section className="public-section public-fit" id="apply">
+        <div className="fit-stamp"><span>CHATMODZ</span><strong>For the<br /><em>naturally<br />attentive.</em></strong><small>EST. FOR THE HUMAN TOUCH</small></div>
+        <div className="fit-copy">
+          <div className="public-eyebrow">03 / Is this you?</div>
+          <h2>You notice the detail that changes everything.</h2>
+          <p>Chatmodz is a good fit if you are a calm communicator, a quick study, and someone who would rather make one strong impression than ten loud ones.</p>
+          <ul><li><Check size={15} /> You write like a person, not a template.</li><li><Check size={15} /> You can hold a boundary without losing warmth.</li><li><Check size={15} /> You care about consistency and follow-through.</li></ul>
+          <Link href="/apply" className="button fit-cta">Tell us how you work <ArrowUpRight size={16} /></Link>
+        </div>
+      </section>
+
+      <section className="public-faq">
+        <div className="public-eyebrow">A few useful answers</div>
+        <div className="faq-list">
+          <details open><summary>What kind of person thrives here? <ChevronRight size={16} /></summary><p>Someone observant, emotionally intelligent, and comfortable making a thoughtful call. You do not need to sound polished on day one; you do need to care about getting better.</p></details>
+          <details><summary>What happens after I apply? <ChevronRight size={16} /></summary><p>Our team reviews your application and reaches out with the next steps when there is a fit. The process is personal, clear, and designed to respect your time.</p></details>
+          <details><summary>Will I be trained? <ChevronRight size={16} /></summary><p>Yes. Approved operators receive guided training, practical context, and access to support as they build their rhythm.</p></details>
+        </div>
+      </section>
+
+      <section className="public-final-cta">
+        <div className="public-eyebrow light-eyebrow">Your next good conversation starts here</div>
+        <h2>Bring your attention.<br /><em>We’ll bring the desk.</em></h2>
+        <Link href="/apply" className="button public-final-button">Apply to operate <ArrowUpRight size={16} /></Link>
       </section>
     </main>
-    <footer className="landing-footer"><span>Chatmodz operations desk</span><span>Built for privacy, clarity, and consistency.</span></footer>
+
+    <footer className="public-footer"><div><Logo /><span>Conversation, with intention.</span></div><div className="public-footer-links"><Link href="/login">Operator sign in</Link><Link href="/apply">Application</Link><a href="#trust">Our standard</a></div><small>© Chatmodz operations desk</small></footer>
   </div>;
 }
 

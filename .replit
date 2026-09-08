@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "python-base-3.13"]
 
 [deployment]
 router = "application"
@@ -80,6 +80,11 @@ LOG_LEVEL = "info"
 NODE_ENV = "development"
 APP_URL = "https://cada19a6-680b-468c-81a1-f4c0ba582af9-00-3d5hb8jolzgeu.worf.replit.dev"
 JWT_SECRET = "61e3b2e814dd111c19de9c137f1a4e806983e8e678e5561297176fde028f6cfa7af82178116e4472c36499372296e5717c6d6d48ea74b78be23ae2388f5e9de4"
+CHATMODZ_ADMIN_EMAIL = "admin@chatmodz.local"
+CHATMODZ_ADMIN_NAME = "Chatmodz Administrator"
+CHATMODZ_API_PORT = "8081"
+CHATMODZ_DATABASE_URL = "mysql://root@127.0.0.1:3307/chatmodz_preview"
 
 [nix]
 channel = "stable-25_05"
+packages = ["mariadb"]
