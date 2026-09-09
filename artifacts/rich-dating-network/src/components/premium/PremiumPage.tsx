@@ -42,7 +42,7 @@ export default function PremiumPage({
   const { token } = useAuth()
   const [, setLocation] = useLocation()
   const [localLoading, setLocalLoading] = useState(false)
-  const isPremium = user?.premium === 1
+  const isPremium = user?.premium === 1 && (!user?.premiumExpiry || user.premiumExpiry * 1000 > Date.now())
   const premiumExpiry = user?.premiumExpiry ? new Date(user.premiumExpiry * 1000) : null
   const premiumPriority = Math.max(1, user?.premiumPriority || 1)
   const tierBenefits = premiumPriority >= 4
@@ -98,16 +98,16 @@ export default function PremiumPage({
   const displaySelected = selectedPkg || localSelected
   const displayLoading = loading || localLoading
 
-  if (isPremium) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a0a0e, #3d0d1a, #7a1226)' }}>
-          <div className="p-8 md:p-12 text-center">
-            <div className="w-20 h-20 rounded-full bg-yellow-400/20 flex items-center justify-center mx-auto mb-6">
-              <Crown size={40} className="text-yellow-400" />
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      {isPremium && (
+        <div className="rounded-3xl overflow-hidden mb-8" style={{ background: 'linear-gradient(135deg, #1a0a0e, #3d0d1a, #7a1226)' }}>
+          <div className="p-8 md:p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mx-auto mb-5">
+              <Crown size={34} className="text-yellow-400" />
             </div>
             <h1 className="text-3xl font-black text-white mb-2">You're VIP! 👑</h1>
-            <p className="text-white/60 mb-3">You have premium access with your plan&apos;s benefits unlocked.</p>
+            <p className="text-white/60 mb-3">Your current plan is active. Extend your membership or upgrade to a higher priority tier below.</p>
             <div className="inline-flex items-center gap-2 bg-amber-400/15 border border-amber-300/30 rounded-full px-4 py-2 mb-5">
               <Star size={14} className="text-yellow-400" />
               <span className="text-yellow-200 text-sm font-semibold">Priority level {premiumPriority}</span>
@@ -118,7 +118,7 @@ export default function PremiumPage({
                 <span className="text-white/80 text-sm">Active until <strong className="text-white">{premiumExpiry.toLocaleDateString()}</strong></span>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-3">
               {tierBenefits.map((benefit) => (
                 <div key={benefit} className="flex items-center gap-2 bg-white/10 rounded-2xl p-3 text-left">
                   <Check size={15} className="text-yellow-400 flex-shrink-0" />
@@ -126,29 +126,21 @@ export default function PremiumPage({
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              {features.filter(f => f.premium).slice(0, 4).map((f, i) => (
-                <div key={i} className="flex items-center gap-2.5 bg-white/10 rounded-2xl p-3">
-                  <div className="text-yellow-400">{f.icon}</div>
-                  <span className="text-white/80 text-sm font-medium">{f.t}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
-      </div>
-    )
-  }
+      )}
 
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-4 py-2 rounded-full mb-4">
           <Crown size={14} /> Exclusive Access
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">Unlock Premium 👑</h1>
-        <p className="text-gray-500 max-w-md mx-auto">Share your contact details, see who visited you, and unlock the full dating experience</p>
+        <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">{isPremium ? 'Manage Premium 👑' : 'Unlock Premium 👑'}</h1>
+        <p className="text-gray-500 max-w-md mx-auto">
+          {isPremium
+            ? 'Choose a plan to extend your access or move up to a higher priority level.'
+            : 'Share your contact details, see who visited you, and unlock the full dating experience'}
+        </p>
       </div>
 
       {/* Why Premium callout */}
@@ -157,9 +149,11 @@ export default function PremiumPage({
           <Lock size={18} className="text-white" />
         </div>
         <div>
-          <div className="font-bold text-gray-900 text-sm mb-1">Why Premium?</div>
+          <div className="font-bold text-gray-900 text-sm mb-1">{isPremium ? 'Want more visibility?' : 'Why Premium?'}</div>
           <p className="text-gray-600 text-sm leading-relaxed">
-            To protect all members, contact info (phones, social handles, emails, links) can only be shared in chat by <strong>Priority 2 Premium members or higher</strong>. Choose at least the 2-week plan to unlock contact sharing.
+            {isPremium
+              ? <>Upgrade to a higher priority level to appear more prominently in discovery, or choose any plan to add more time to your current access.</>
+              : <>To protect all members, contact info (phones, social handles, emails, links) can only be shared in chat by <strong>Priority 2 Premium members or higher</strong>. Choose at least the 2-week plan to unlock contact sharing.</>}
           </p>
         </div>
       </div>
@@ -232,6 +226,11 @@ export default function PremiumPage({
                       Most Popular
                     </div>
                   )}
+                   {isPremium && (pkg.priority || pkg.id) === premiumPriority && (
+                     <div className="absolute -top-3 right-2 bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
+                       Current level
+                     </div>
+                   )}
                   <div className="font-bold text-gray-900 text-sm mb-1 mt-1">{pkg.name}</div>
                   <div className="text-2xl font-black text-brand-500 my-2">
                     {useCard ? `$${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `$${pkg.price}`}
@@ -257,7 +256,11 @@ export default function PremiumPage({
             className="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-3 transition-all disabled:opacity-50 shadow-xl shadow-brand-500/20 mb-3"
             style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>
             {displayLoading ? <Loader2 size={20} className="animate-spin" /> : <Crown size={20} />}
-            {displaySelected ? `Get ${displaySelected.name} — ${useCard ? `$${displaySelected.price}` : formatLocalPrice ? formatLocalPrice(displaySelected.price, effectiveProvider || provider, country) : `$${displaySelected.price}`}` : 'Select a plan'}
+             {displaySelected
+               ? `${isPremium
+                 ? (displaySelected.priority || displaySelected.id) > premiumPriority ? 'Upgrade to' : 'Extend with'
+                 : 'Get'} ${displaySelected.name} — ${useCard ? `$${displaySelected.price}` : formatLocalPrice ? formatLocalPrice(displaySelected.price, effectiveProvider || provider, country) : `$${displaySelected.price}`}`
+               : 'Select a plan'}
           </button>
           <p className="text-center text-xs text-gray-400 mb-8">Secure payment · Instant activation</p>
         </>
