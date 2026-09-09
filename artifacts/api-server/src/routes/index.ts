@@ -30,6 +30,7 @@ import contactRouter from "./contact"
 import contactMessagesRouter from "./contact-messages"
 import pushRouter from "./push"
 import engagementRouter from "./engagement"
+import chatmodzRouter from "./chatmodz"
 
 const router: IRouter = Router()
 
@@ -60,6 +61,7 @@ router.use("/verification", verificationRouter)
 router.use("/referrals", referralsRouter)
 router.use("/push", pushRouter)
 router.use("/engagement", engagementRouter)
+router.use("/chatmodz", chatmodzRouter)
 router.use("/admin/email-campaigns", emailCampaignsRouter)
 router.use("/admin/contact-messages", contactMessagesRouter)
 router.use("/", contactRouter)

@@ -8,6 +8,7 @@ import { containsContactInfo, CONTACT_INFO_CHAT_ERROR, canShareContactInfo } fro
 import multer from "multer"
 import path from "path"
 import fs from "fs"
+import { queueChatmodzMessage } from "../lib/chatmodz"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -216,6 +217,11 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     res.json({ ...msg, credits: updatedSender?.credits })
+    if (sender.fake !== 1 && recipient?.fake === 1 && msg?.id) {
+      queueChatmodzMessage(Number(msg.id)).catch(error => {
+        console.error("[Chatmodz] Could not queue member message", error)
+      })
+    }
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Failed to send" })

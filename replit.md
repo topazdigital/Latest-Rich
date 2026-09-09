@@ -30,12 +30,14 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 - `artifacts/rich-dating-network/src/pages/` — page components
 - `artifacts/rich-dating-network/src/components/admin/` — admin panel components
 - `artifacts/api-server/src/lib/fake-message-scheduler.ts` — auto fake message logic
+- `artifacts/api-server/src/lib/chatmodz.ts` — signed Chatmodz delivery queue and retries
 
 ## Architecture decisions
 
 - **Role system**: `users.admin` column is a level: 0=user, 1=moderator, 2=admin. Admin panel (`/admin`) requires `admin >= 2`. Moderator panel (`/moderator`) requires `admin >= 1`.
 - **Chat locking**: `chat_locks` table ensures only one moderator handles a fake↔real conversation at a time. Locks expire after 10 minutes of inactivity and auto-extend on reply.
 - **Fake users**: Marked with `users.fake = 1`. Auto messages are scheduled via the fake message scheduler. Moderators reply to real users *as* fake users through the moderator panel.
+- **Chatmodz bridge**: Real-member messages sent to fake profiles are signed and queued for `https://chatmodz.com/api/chatmodz/integrations/site_one/messages`. Chatmodz operator replies return through `/api/chatmodz/replies`, are signature-verified, and are inserted as messages from the managed profile. The shared secret is read from `SITE_ONE_SECRET` by default.
 - **Phone storage**: Full international format stored (e.g., `+254712345678`). Country code auto-detected on registration from IP geolocation.
 - **Location autocomplete**: `/api/location/autocomplete` — public endpoint, no auth required. Searches local city list + Nominatim fallback. `authFetch` used in component (gracefully handles no-token).
 
@@ -61,6 +63,7 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 - **Production site**: `richdatingnetwork.com` — deploy by SSHing into the server and running `bash /home/admin/domains/richdatingnetwork.com/public_html/deploy.sh`
 - After editing DB schema in **Replit dev**: run `pnpm --filter @workspace/db run push` (PostgreSQL only). For **production MySQL**, schema changes are applied via `scripts/migrate-from-legacy.sql` — add new `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements there. Never run drizzle-kit push on the production server — it hangs interactively on legacy tables.
 - API server must be restarted after route changes (esbuild rebuild)
+- Chatmodz production setup requires the same `SITE_ONE_SECRET` in the Rich Dating Network API environment and the Chatmodz API environment. Set the Chatmodz connected site's reply endpoint to `https://richdatingnetwork.com/api/chatmodz/replies`. Apply the `chatmodz_deliveries` table from `scripts/migrate-from-legacy.sql` before relying on production delivery retries.
 - Vite proxies `/api` → `http://localhost:8080` (configured in `artifacts/rich-dating-network/vite.config.ts`)
 - The `admin` column repurposed: old PHP site had admin=1 for admins, new system uses admin=2 for admins and admin=1 for moderators — existing admin users need their level bumped to 2 after import
 - `authFetch` in frontend adds auth token if available, falls back to regular fetch if not — safe to use on public endpoints

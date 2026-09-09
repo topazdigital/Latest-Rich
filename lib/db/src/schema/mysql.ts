@@ -1,4 +1,4 @@
-import { mysqlTable, int, text, float, boolean, varchar, serial, bigint } from "drizzle-orm/mysql-core"
+import { mysqlTable, int, text, float, boolean, varchar, serial, bigint, uniqueIndex } from "drizzle-orm/mysql-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -313,6 +313,22 @@ export const chatLocksTable = mysqlTable("chat_locks", {
   lockedAt: int("locked_at").default(0),
   expiresAt: int("expires_at").default(0),
 })
+
+export const chatmodzDeliveriesTable = mysqlTable("chatmodz_deliveries", {
+  id: serial("id").primaryKey(),
+  direction: varchar("direction", { length: 30 }).notNull(),
+  externalEventId: varchar("external_event_id", { length: 255 }).notNull(),
+  conversationId: varchar("conversation_id", { length: 255 }).notNull(),
+  messageId: int("message_id").default(0),
+  status: varchar("status", { length: 20 }).default("pending"),
+  attempts: int("attempts").default(0),
+  nextAttemptAt: int("next_attempt_at").default(0),
+  lastError: text("last_error").default(""),
+  createdAt: int("created_at").default(0),
+  deliveredAt: int("delivered_at").default(0),
+}, table => ({
+  directionEventUnique: uniqueIndex("chatmodz_delivery_direction_event_uq").on(table.direction, table.externalEventId),
+}))
 
 export const pushSubscriptionsTable = mysqlTable("push_subscriptions", {
   id: serial("id").primaryKey(),

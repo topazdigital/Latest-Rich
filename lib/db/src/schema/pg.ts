@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, real, boolean } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, integer, real, boolean, uniqueIndex } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -312,6 +312,22 @@ export const chatLocksTable = pgTable("chat_locks", {
   lockedAt: integer("locked_at").default(0),
   expiresAt: integer("expires_at").default(0),
 })
+
+export const chatmodzDeliveriesTable = pgTable("chatmodz_deliveries", {
+  id: serial("id").primaryKey(),
+  direction: text("direction").notNull(),
+  externalEventId: text("external_event_id").notNull(),
+  conversationId: text("conversation_id").notNull(),
+  messageId: integer("message_id").default(0),
+  status: text("status").default("pending"),
+  attempts: integer("attempts").default(0),
+  nextAttemptAt: integer("next_attempt_at").default(0),
+  lastError: text("last_error").default(""),
+  createdAt: integer("created_at").default(0),
+  deliveredAt: integer("delivered_at").default(0),
+}, table => ({
+  directionEventUnique: uniqueIndex("chatmodz_delivery_direction_event_uq").on(table.direction, table.externalEventId),
+}))
 
 export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),

@@ -31,7 +31,11 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify(req, _res, buffer) {
+    ;(req as any).rawBody = Buffer.from(buffer)
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

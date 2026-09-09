@@ -541,6 +541,27 @@ CREATE TABLE IF NOT EXISTS `chat_locks` (
   UNIQUE KEY `conversation_key` (`conversation_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------------------------------------------------------------------------
+-- CHATMODZ INTEGRATION DELIVERIES
+--     Tracks signed member events and operator replies for retry/idempotency.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `chatmodz_deliveries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `direction` varchar(30) NOT NULL,
+  `external_event_id` varchar(255) NOT NULL,
+  `conversation_id` varchar(255) NOT NULL,
+  `message_id` int(11) NOT NULL DEFAULT 0,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `next_attempt_at` int(11) NOT NULL DEFAULT 0,
+  `last_error` text DEFAULT '',
+  `created_at` int(11) NOT NULL DEFAULT 0,
+  `delivered_at` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `chatmodz_delivery_direction_event_uq` (`direction`, `external_event_id`),
+  KEY `chatmodz_delivery_pending_idx` (`direction`, `status`, `next_attempt_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `push_subscriptions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,

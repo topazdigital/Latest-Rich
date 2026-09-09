@@ -8,6 +8,7 @@ import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
 import { connectVideoCall, endVideoCall, billVideoCall } from "../routes/video-calls"
 import { canShareContactInfo, containsContactInfo } from "./contact-filter"
+import { queueChatmodzMessage } from "./chatmodz"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -130,6 +131,11 @@ async function handleMessage(fromUserId: number, msg: any) {
       // If a real user messaged a fake user, push-notify moderators
       const [toUser] = await db.select({ fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, toUserId)).limit(1)
       if (fromUser.fake !== 1 && toUser?.fake === 1) {
+        if (savedMsg?.id) {
+          queueChatmodzMessage(Number(savedMsg.id)).catch(error => {
+            console.error("[Chatmodz] Could not queue WebSocket member message", error)
+          })
+        }
         import("./push").then(({ sendPushToModerators }) => {
           sendPushToModerators({
             title: "💬 New message needs reply",

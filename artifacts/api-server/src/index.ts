@@ -6,6 +6,7 @@ import { startPaymentReconciler } from "./lib/payment-reconciler"
 import { startFakeOnlineSimulator } from "./lib/fake-message-scheduler"
 import { runMigrations } from "./lib/db-migrate"
 import { sendReengagementEmails } from "./lib/reengagement"
+import { startChatmodzDeliveryWorker } from "./lib/chatmodz"
 
 const rawPort = process.env["PORT"]
 
@@ -28,6 +29,7 @@ setupWebSocket(server)
 runMigrations().then(() => {
   server.listen(port, () => {
     logger.info({ port }, "Server listening with WebSocket support")
+    startChatmodzDeliveryWorker()
     startPaymentReconciler()
     startFakeOnlineSimulator()
     setTimeout(() => { sendReengagementEmails().catch(() => {}) }, 20_000)
