@@ -7,10 +7,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
 import FeedbackPrompt from '../engagement/FeedbackPrompt'
 import PaidVideoCallModal from '../common/PaidVideoCallModal'
+import { CONTACT_INFO_PATTERN, canShareContactInfo } from '../../lib/contact-info'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
-
-const CONTACT_INFO_PATTERN = /(\b[\w._%+-]+@[\w.-]+\.[a-z]{2,}\b|\b\d[\d\s().-]{6,}\d\b|\b(instagram|whatsapp|telegram|snapchat|facebook|twitter|tiktok|wechat|line|viber|signal)\b|@\w{3,}|https?:\/\/|www\.)/i
 
 interface Message {
   id: number
@@ -92,10 +91,12 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [activeCall, setActiveCall] = useState<{ sessionId: number; peer: any } | null>(null)
   const [startingCall, setStartingCall] = useState(false)
+  const [contactInfoBlocked, setContactInfoBlocked] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
+  const lastAttemptedTextRef = useRef('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { token } = useAuth()
   const { connected, send } = useWebSocket()
@@ -256,6 +257,8 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
     } else if (msg.code === 'contact_info_blocked') {
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
+      setContactInfoBlocked(true)
+      if (lastAttemptedTextRef.current) setInput(lastAttemptedTextRef.current)
       toast.custom((t) => (
         <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
           <div className="text-2xl">👑</div>
@@ -329,6 +332,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
     const text = overrideText ?? input.trim()
     if ((!text && !pendingMedia) || sending || uploadingMedia) return
     setSending(true)
+    if (text) lastAttemptedTextRef.current = text
 
     // Stop typing
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
@@ -414,6 +418,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             </div>
           ), { duration: 6000 })
         } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
+          setContactInfoBlocked(true)
           toast.custom((t) => (
             <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
               <div className="text-2xl">👑</div>
@@ -433,6 +438,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
       } else {
         const data = await res.json()
         setMessages(prev => prev.map(m => (m as any)._tempId === tempId ? { ...data, read: 0 } : m))
+        setContactInfoBlocked(false)
         if (data.credits !== undefined) setCredits(data.credits)
         const myMessageCount = messages.filter(message => message.u1 === me.id).length + 1
         if (myMessageCount >= 5) {
@@ -730,10 +736,10 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <Link href="/credits" className="text-xs font-semibold text-brand-500 hover:underline">Buy more</Link>
           </div>
         )}
-        {me.premium !== 1 && CONTACT_INFO_PATTERN.test(input) && (
-          <div className="mb-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
-            <span className="text-xs text-amber-700">👑 Contact info requires Premium to send</span>
-            <Link href="/premium" className="text-xs font-bold text-brand-500 hover:underline">Upgrade</Link>
+        {!canShareContactInfo(me) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
+          <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
+            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">Upgrade to share</Link>
           </div>
         )}
         <div className="flex gap-2 items-end">
@@ -765,7 +771,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2">
             <textarea
               value={input}
-              onChange={e => { setInput(e.target.value); handleTyping() }}
+              onChange={e => { setInput(e.target.value); setContactInfoBlocked(false); handleTyping() }}
               onKeyDown={handleKeyDown}
               placeholder={pendingMedia ? `Add a caption...` : `Message ${other.name}...`}
               rows={1}

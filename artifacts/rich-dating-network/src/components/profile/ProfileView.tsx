@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { INTERESTS } from '../settings/SettingsPage'
 import { ScrollToTopButton } from '../ui/ScrollToTopButton'
+import { CONTACT_INFO_PATTERN, canShareContactInfo } from '../../lib/contact-info'
 
 interface Props {
   user: any; photos: any[]; isOwnProfile: boolean;
@@ -77,13 +78,14 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
   const [blocked, setBlocked] = useState(false)
   const [msgText, setMsgText] = useState('')
   const [sending, setSending] = useState(false)
+  const [contactInfoBlocked, setContactInfoBlocked] = useState(false)
   const [showQuick, setShowQuick] = useState(false)
   const [stories, setStories] = useState<any[]>([])
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
   const [liveLastAccess, setLiveLastAccess] = useState(user.lastAccess)
   const msgRef = useRef<HTMLInputElement>(null)
   const [, setLocation] = useLocation()
-  const { token } = useAuth()
+  const { token, user: currentUser } = useAuth()
 
   useEffect(() => {
     if (!user?.id) return
@@ -174,6 +176,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
         toast.error(`Not enough credits (need ${data.creditsNeeded})`)
         setLocation('/credits')
       } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
+        setContactInfoBlocked(true)
         toast.error('A Priority 2 Premium plan or higher is required to share contact info')
       } else {
         toast.error(data.error || 'Failed to send')
@@ -272,12 +275,18 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
           <div className="px-4 pt-3 pb-3 space-y-2.5">
             {/* Message input */}
             <div className="relative">
+              {!canShareContactInfo(currentUser) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(msgText)) && (
+                <div role="alert" className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-sm">
+                  <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
+                  <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">Upgrade to share</Link>
+                </div>
+              )}
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
                 <input
                   ref={msgRef}
                   type="text"
                   value={msgText}
-                  onChange={e => setMsgText(e.target.value)}
+                  onChange={e => { setMsgText(e.target.value); setContactInfoBlocked(false) }}
                   onKeyDown={e => e.key === 'Enter' && sendMessage()}
                   placeholder={`Message ${user.name}…`}
                   className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400 min-w-0"
