@@ -338,28 +338,15 @@ router.get("/offers", async (_req, res) => {
 
 router.post("/checkout", requireAuth, async (req, res) => {
   const kind = String(req.body?.kind || "")
+  // Event tickets use the same provider-aware payment flow as credits and
+  // premium. Keep this endpoint for the $1 starter offer only.
+  if (kind === "event") {
+    return res.status(400).json({ error: "Event tickets must use the configured payment method" })
+  }
   let name = "3 Credit Starter Trial"
   let amount = 100
   let metadata: Record<string, string> = { userId: String(req.userId), type: "starter", packageId: "0" }
-  if (kind === "event") {
-    const eventId = Number(req.body?.eventId)
-    const [event] = await db.select().from(engagementEventsTable).where(and(eq(engagementEventsTable.id, eventId), eq(engagementEventsTable.active, 1))).limit(1)
-    if (!event) return res.status(404).json({ error: "Event not found" })
-    const [existingAttendance] = await db.select().from(eventAttendeesTable)
-      .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.userId, req.userId!))).limit(1)
-    if (existingAttendance?.status === "going") return res.status(409).json({ error: "You are already attending this event" })
-    const going = await db.select().from(eventAttendeesTable)
-      .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.status, "going")))
-    if (Number(event.capacity || 0) > 0 && going.length >= Number(event.capacity)) {
-      return res.status(409).json({ error: "This event is full" })
-    }
-    if (Number(event.registrationDeadline || 0) > 0 && Number(event.registrationDeadline) < now()) {
-      return res.status(409).json({ error: "Registration for this event has closed" })
-    }
-    name = event.title
-    amount = Math.round(Number(event.ticketPrice || 1) * 100)
-    metadata = { userId: String(req.userId), type: "event", packageId: String(event.id) }
-  } else if (kind !== "starter") {
+  if (kind !== "starter") {
     return res.status(400).json({ error: "Unknown offer" })
   }
   const stripeKey = process.env.STRIPE_SECRET_KEY || await getConfig("stripe_secret_key")

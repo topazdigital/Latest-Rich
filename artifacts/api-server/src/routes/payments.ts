@@ -39,6 +39,34 @@ async function getCreditPackages(): Promise<Record<number, { credits: number; pr
   }
 }
 
+async function getEventPayment(eventId: number, userId: number): Promise<
+  | { event: any }
+  | { error: string; status: number }
+> {
+  const [event] = await db.select().from(engagementEventsTable)
+    .where(and(eq(engagementEventsTable.id, eventId), eq(engagementEventsTable.active, 1)))
+    .limit(1)
+  if (!event) return { error: "Event not found", status: 404 }
+
+  const [existingAttendance] = await db.select().from(eventAttendeesTable)
+    .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.userId, userId)))
+    .limit(1)
+  if (existingAttendance?.status === "going" && existingAttendance.paid === 1) {
+    return { error: "You are already attending this event", status: 409 }
+  }
+
+  const going = await db.select().from(eventAttendeesTable)
+    .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.status, "going")))
+  if (Number(event.capacity || 0) > 0 && going.length >= Number(event.capacity) && existingAttendance?.status !== "going") {
+    return { error: "This event is full", status: 409 }
+  }
+  if (Number(event.registrationDeadline || 0) > 0 && Number(event.registrationDeadline) < now()) {
+    return { error: "Registration for this event has closed", status: 409 }
+  }
+
+  return { event }
+}
+
 // Countries that use each provider
 const PAYHERO_COUNTRIES = ["KE", "TZ", "UG", "RW", "ET"]
 const PAYSTACK_COUNTRIES = ["NG", "GH", "ZA", "EG"]
@@ -216,6 +244,12 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     amount = Math.round(pkg.price * kesToUsdRate)
     description = pkg.name
     creditsToAward = pkg.credits
+  } else if (type === "event") {
+    const result = await getEventPayment(Number(packageId), req.userId!)
+    if ("error" in result) { res.status(result.status).json({ error: result.error }); return }
+    const kesToUsdRate = Number(await getConfig("kes_rate") || "130")
+    amount = Math.round(Number(result.event.ticketPrice || 1) * kesToUsdRate)
+    description = result.event.title
   } else {
     const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
@@ -261,7 +295,7 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
     await db.insert(ordersTable).values({
       userId: req.userId!, amount, amountUsd: kesAmountUsd,
-      currency: "KES", type, description, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0,
+      currency: "KES", type, description, packageId: (type === "premium" || type === "event") ? parseInt(String(packageId)) || 0 : 0,
       premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0,
       status: "pending", stripeSessionId: ref, credits: creditsToAward, time: now(),
     })
@@ -422,6 +456,8 @@ router.post("/payhero/callback", async (req, res) => {
       } else if (order.type === "premium") {
         const pkg = Object.values(await getPremiumPackages()).find(p => p.name === order.description || `${p.name} Premium` === order.description)
         if (order.premiumDays || pkg) await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
+      } else if (order.type === "event") {
+        await fulfillEventAttendance(order.userId, order.packageId || 0, order.id || 0)
       }
     }
   }
@@ -480,6 +516,8 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
       } else if (freshOrder.type === "premium") {
          const pkg = Object.values(await getPremiumPackages()).find(p => p.name === freshOrder.description || `${p.name} Premium` === freshOrder.description)
          if (freshOrder.premiumDays || pkg) await activatePremium(freshOrder.userId, { days: freshOrder.premiumDays || pkg!.days, priority: freshOrder.premiumPriority || pkg!.priority })
+      } else if (freshOrder.type === "event") {
+        await fulfillEventAttendance(freshOrder.userId, freshOrder.packageId || 0, freshOrder.id || 0)
       }
       res.json({ ...data, orderStatus: "completed", finalStatus: "completed" })
       return
@@ -529,7 +567,7 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
 
   const creditPkgsPaystack = await getCreditPackages()
   let amount = 0, description = "", credits = 0
-  if (type === "starter") {
+    if (type === "starter") {
     amount = Math.round(1 * rate * 100) // $1 trial
     description = "3 Credits Trial"
     credits = 3
@@ -538,6 +576,11 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * rate * 100) // kobo/pesewas/cents (USD: cents)
     description = pkg.name; credits = pkg.credits
+    } else if (type === "event") {
+      const result = await getEventPayment(Number(packageId), req.userId!)
+      if ("error" in result) { res.status(result.status).json({ error: result.error }); return }
+      amount = Math.round(Number(result.event.ticketPrice || 1) * rate * 100)
+      description = result.event.title
   } else {
     const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
@@ -558,7 +601,7 @@ router.post("/paystack/initiate", requireAuth, async (req, res) => {
       ? parseFloat((amount / 100).toFixed(2))
       : (Number.isFinite(rate) && rate > 0) ? parseFloat((amount / 100 / rate).toFixed(2)) : 0
     const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amountUsdPaystack, currency, type, description, status: "pending", stripeSessionId: ref, credits, packageId: (type === "premium" || type === "event") ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
     res.json({ url: data.data.authorization_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Paystack error" })
@@ -584,10 +627,10 @@ router.get("/paystack/verify", async (req, res) => {
            await fulfillOrder(order.userId, order.type || "credits", parseInt(String(pkg || 0)), order.currency || "USD")
          }
       }
-      return res.redirect("/credits?success=1")
+      return res.redirect(type === "event" ? `/events/${pkg}?success=1` : "/credits?success=1")
     }
-    res.redirect("/credits?error=payment_failed")
-  } catch { res.redirect("/credits?error=server") }
+    res.redirect(type === "event" ? `/events/${pkg}?error=payment_failed` : "/credits?error=payment_failed")
+  } catch { res.redirect(type === "event" ? `/events/${pkg}?error=server` : "/credits?error=server") }
 })
 
 /* ─── PAYMONGO (Philippines - GCash, Maya, Credit Cards) ─── */
@@ -602,7 +645,7 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
 
   const creditPkgsPaymongo = await getCreditPackages()
   let amount = 0, description = ""
-  if (type === "starter") {
+    if (type === "starter") {
     amount = Math.round(1 * phpRate * 100) // $1 trial → centavos
     description = "3 Credits Trial"
   } else if (type === "credits") {
@@ -610,6 +653,11 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
     amount = Math.round(pkg.price * phpRate * 100) // centavos
     description = pkg.name
+    } else if (type === "event") {
+      const result = await getEventPayment(Number(packageId), req.userId!)
+      if ("error" in result) { res.status(result.status).json({ error: result.error }); return }
+      amount = Math.round(Number(result.event.ticketPrice || 1) * phpRate * 100)
+      description = result.event.title
   } else {
     const pkg = await getPremiumPackage(packageId)
     if (!pkg) { res.status(400).json({ error: "Invalid package" }); return }
@@ -643,7 +691,7 @@ router.post("/paymongo/initiate", requireAuth, async (req, res) => {
     if (data.errors) { res.status(400).json({ error: data.errors[0]?.detail || "PayMongo error" }); return }
     const phpAmountUsd = (Number.isFinite(phpRate) && phpRate > 0) ? parseFloat((amount / 100 / phpRate).toFixed(2)) : 0
     const selectedPremium = type === "premium" ? await getPremiumPackage(parseInt(String(packageId)) || 0) : undefined
-    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: phpAmountUsd, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, packageId: type === "premium" ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
+    await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: phpAmountUsd, currency: "PHP", type, description, status: "pending", stripeSessionId: ref, packageId: (type === "premium" || type === "event") ? parseInt(String(packageId)) || 0 : 0, premiumDays: selectedPremium?.days || 0, premiumPriority: selectedPremium?.priority || 0, time: now() })
     res.json({ url: data.data?.attributes?.checkout_url, reference: ref })
   } catch (err: any) {
     res.status(500).json({ error: err.message || "PayMongo error" })
@@ -657,7 +705,7 @@ router.get("/paymongo/success", async (req, res) => {
     await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(ref)))
     await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || 0)), "PHP")
   }
-  res.redirect("/credits?success=1")
+  res.redirect(type === "event" ? `/events/${pkg}?success=1` : "/credits?success=1")
 })
 
 /* ─── INTASEND (International Visa/Mastercard — default for all other countries) ─── */

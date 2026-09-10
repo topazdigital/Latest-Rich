@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { db, isMysql } from "@workspace/db"
-import { customPaymentsTable, customPaymentOrdersTable, usersTable, siteConfigTable } from "@workspace/db/schema"
+import { customPaymentsTable, customPaymentOrdersTable, engagementEventsTable, eventAttendeesTable, usersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, desc, and, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
@@ -85,9 +85,9 @@ router.post("/submit", requireAuth, async (req, res) => {
     const [gw] = await db.select().from(customPaymentsTable).where(eq(customPaymentsTable.id, parseInt(gatewayId))).limit(1)
     if (!gw || gw.status !== 1) { res.status(400).json({ error: "Invalid gateway" }); return }
 
-    // type: 1 = Credits Only, 2 = Premium Only, 3 = Credits & Premium
+    // type: 1 = Credits Only, 2 = Premium Only, 3 = Credits & Premium/Events
     const gwType = gw.type ?? 1
-    if ((type === "credits" && gwType === 2) || (type === "premium" && gwType === 1)) {
+    if ((type === "credits" && gwType === 2) || ((type === "premium" || type === "event") && gwType === 1) || (type === "event" && gwType !== 3)) {
       res.status(400).json({ error: "This payment method does not support that purchase type" }); return
     }
 
@@ -99,10 +99,32 @@ router.post("/submit", requireAuth, async (req, res) => {
       const cp = CREDIT_PACKAGES[packageId]
       if (!cp) { res.status(400).json({ error: "Invalid package" }); return }
       pkg = cp; credits = cp.credits
-    } else {
+    } else if (type === "premium") {
       const pp = await getPremiumPackage(packageId)
       if (!pp) { res.status(400).json({ error: "Invalid package" }); return }
       pkg = pp; premiumDays = pp.days
+    } else if (type === "event") {
+      const [event] = await db.select().from(engagementEventsTable)
+        .where(and(eq(engagementEventsTable.id, parseInt(packageId)), eq(engagementEventsTable.active, 1)))
+        .limit(1)
+      if (!event) { res.status(400).json({ error: "Invalid event" }); return }
+      const [existing] = await db.select().from(eventAttendeesTable)
+        .where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.userId, req.userId!)))
+        .limit(1)
+      if (existing?.status === "going" && existing.paid === 1) {
+        res.status(409).json({ error: "You are already attending this event" }); return
+      }
+      const going = await db.select().from(eventAttendeesTable)
+        .where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.status, "going")))
+      if (Number(event.capacity || 0) > 0 && going.length >= Number(event.capacity) && existing?.status !== "going") {
+        res.status(409).json({ error: "This event is full" }); return
+      }
+      if (Number(event.registrationDeadline || 0) > 0 && Number(event.registrationDeadline) < now()) {
+        res.status(409).json({ error: "Registration for this event has closed" }); return
+      }
+      pkg = { name: event.title, price: Number(event.ticketPrice || 1) }
+    } else {
+      res.status(400).json({ error: "Invalid purchase type" }); return
     }
 
     const orderTime = now()
@@ -261,6 +283,22 @@ router.post("/admin/orders/:id/approve", requireAuth, requireAdmin, async (req, 
             premiumExpiry: currentExpiry + (order.premiumDays || pkg!.days) * 86400,
             premiumPriority: Math.max(user.premiumPriority || 0, order.premiumPriority || pkg!.priority),
           }).where(eq(usersTable.id, order.userId))
+        }
+      }
+    } else if (order.type === "event") {
+      const [event] = await db.select().from(engagementEventsTable)
+        .where(eq(engagementEventsTable.id, order.packageId ?? 0)).limit(1)
+      if (event) {
+        const [existing] = await db.select().from(eventAttendeesTable)
+          .where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.userId, order.userId))).limit(1)
+        if (!(existing?.status === "going" && existing.paid === 1)) {
+          const going = await db.select().from(eventAttendeesTable)
+            .where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.status, "going")))
+          const capacity = Number(event.capacity || 0)
+          const status = capacity > 0 && going.length >= capacity && existing?.status !== "going" ? "waitlisted" : "going"
+          const values = { status, paid: 1, orderId: order.id, createdAt: existing?.createdAt || now(), cancelledAt: 0 }
+          if (existing) await db.update(eventAttendeesTable).set(values as any).where(eq(eventAttendeesTable.id, existing.id))
+          else await db.insert(eventAttendeesTable).values({ eventId: event.id, userId: order.userId, ...values } as any)
         }
       }
     }

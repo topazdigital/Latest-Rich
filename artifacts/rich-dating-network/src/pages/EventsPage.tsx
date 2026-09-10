@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation } from "wouter"
-import { ArrowLeft, Calendar, CheckCircle2, Clock3, CreditCard, Loader2, MapPin, Users } from "lucide-react"
+import { ArrowLeft, Calendar, CheckCircle2, Clock3, CreditCard, Loader2, MapPin, Upload, Users } from "lucide-react"
 import toast from "react-hot-toast"
 import { authFetch } from "../lib/auth"
 import { getPhotoUrl } from "../lib/utils"
+import { useAuth } from "../hooks/useAuth"
 
 type EventRecord = {
   id: number
@@ -53,6 +54,12 @@ function localPrice(event: EventRecord) {
     currency: event.currency || "USD",
     maximumFractionDigits: 0,
   }).format(event.localPrice || event.priceUsd)
+}
+
+const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string }> = {
+  payhero: { name: "M-Pesa", icon: "📱", color: "#00a651" },
+  paystack: { name: "Card / Bank Transfer", icon: "🏦", color: "#00c3f7" },
+  paymongo: { name: "GCash / Maya / Card", icon: "📲", color: "#7c3aed" },
 }
 
 function AttendeePreview({ event }: { event: EventRecord }) {
@@ -118,6 +125,7 @@ function EventCard({ event }: { event: EventRecord }) {
 }
 
 export default function EventsPage({ params }: Props) {
+  const { user, token, refreshUser } = useAuth()
   const eventId = Number(params?.id || 0)
   const [, setLocation] = useLocation()
   const [events, setEvents] = useState<EventRecord[]>([])
@@ -125,6 +133,71 @@ export default function EventsPage({ params }: Props) {
   const [event, setEvent] = useState<EventRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<any>(null)
+  const [customGateways, setCustomGateways] = useState<any[]>([])
+  const [activePaymentTab, setActivePaymentTab] = useState<"auto" | "manual">("auto")
+  const [selectedGateway, setSelectedGateway] = useState<any>(null)
+  const [proof, setProof] = useState("")
+  const [phone, setPhone] = useState("")
+  const [useCard, setUseCard] = useState(false)
+  const [paymentStep, setPaymentStep] = useState<"idle" | "phone" | "polling">("idle")
+  const [countdown, setCountdown] = useState(90)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function refreshEventDetails() {
+    if (!eventId) return
+    const res = await authFetch(`/api/engagement/events/${eventId}`)
+    if (res.ok) setEvent(await res.json())
+  }
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
+    }
+  }, [])
+
+  const pollMpesaStatus = useCallback((reference: string) => {
+    setPaymentStep("polling")
+    setCountdown(90)
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((current) => {
+        if (current <= 1) {
+          stopPolling()
+          setPaymentStep("idle")
+          toast.error("The M-Pesa request timed out. Please try again.")
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await authFetch(`/api/payments/payhero/status/${reference}`)
+        const data = await res.json()
+        if (data.finalStatus === "completed" || data.orderStatus === "completed") {
+          stopPolling()
+          setPaymentStep("idle")
+          toast.success("Payment received! Your event place is confirmed.")
+          await refreshUser()
+          await refreshEventDetails()
+        } else if (data.finalStatus === "cancelled" || data.finalStatus === "failed") {
+          stopPolling()
+          setPaymentStep("idle")
+          toast.error(data.finalStatus === "cancelled" ? "Payment cancelled." : "Payment failed. Please try again.")
+        }
+      } catch {
+        // Keep polling through a temporary network error.
+      }
+    }, 4000)
+  }, [refreshUser, stopPolling])
+
+  useEffect(() => () => stopPolling(), [stopPolling])
 
   useEffect(() => {
     let cancelled = false
@@ -148,30 +221,103 @@ export default function EventsPage({ params }: Props) {
   }, [eventId])
 
   useEffect(() => {
+    if (!token) return
+    authFetch("/api/payments/method").then((res) => res.json()).then(setPaymentMethod).catch(() => {})
+    authFetch("/api/custom-payments/gateways").then((res) => res.json())
+      .then((data) => setCustomGateways(Array.isArray(data) ? data : [])).catch(() => {})
+  }, [token])
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get("success")) toast.success("Payment received. Your event place is confirmed.")
     if (params.get("cancelled")) toast("Checkout cancelled", { icon: "↩️" })
   }, [])
 
   const title = useMemo(() => eventId ? (event?.title || "Event details") : "Meet in person", [eventId, event?.title])
+  const provider = paymentMethod?.provider || "paystack"
+  const hasLocalMethod = provider === "payhero" || provider === "paymongo"
+  const effectiveProvider = hasLocalMethod && useCard ? "paystack" : provider
+  const providerInfo = PROVIDER_INFO[effectiveProvider] || PROVIDER_INFO.paystack
+  const manualGateways = customGateways.filter((gateway) => gateway.type === 3 || gateway.type == null)
 
-  async function startCheckout(target: EventRecord) {
+  async function startCheckout(target: EventRecord, skipPhoneStep = false) {
+    const price = Number(target.priceUsd || target.ticketPrice || 0)
+    if (price <= 0) {
+      setActionLoading(true)
+      try {
+        const res = await authFetch(`/api/engagement/events/${target.id}/attend`, { method: "POST" })
+        const data = await res.json()
+        if (!res.ok) { toast.error(data.error || "Could not reserve your place"); return }
+        toast.success("Your place is reserved.")
+        await refreshEventDetails()
+      } catch {
+        toast.error("Could not reserve your place")
+      } finally {
+        setActionLoading(false)
+      }
+      return
+    }
+
+    if (activePaymentTab === "manual") {
+      await submitManualPayment(target)
+      return
+    }
+
+    if (effectiveProvider === "payhero" && !useCard && !skipPhoneStep) {
+      setPaymentStep("phone")
+      return
+    }
+
     setActionLoading(true)
     try {
-      const res = await authFetch("/api/engagement/checkout", {
+      const endpoint = effectiveProvider === "payhero"
+        ? "/api/payments/payhero/initiate"
+        : effectiveProvider === "paymongo"
+          ? "/api/payments/paymongo/initiate"
+          : "/api/payments/paystack/initiate"
+      const body: Record<string, any> = { packageId: target.id, type: "event" }
+      if (effectiveProvider === "payhero") body.phone = phone
+      else if (effectiveProvider === "paymongo") body.paymentMethod = "gcash"
+      else body.email = user?.email
+      const res = await authFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "event", eventId: target.id }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Could not start checkout")
-        return
-      }
+      if (!res.ok) { toast.error(data.error || "Could not start checkout"); return }
       if (data.url) window.location.assign(data.url)
-      else toast.error("Payment provider did not return a checkout link")
+      else if (data.reference) {
+        toast.success(data.message || "Request sent! Check your phone.")
+        pollMpesaStatus(data.reference)
+      } else toast.error("Payment provider did not return a checkout link")
     } catch {
       toast.error("Could not start checkout")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function submitManualPayment(target: EventRecord) {
+    if (!selectedGateway || !proof.trim()) {
+      toast.error("Select a payment method and enter your payment proof")
+      return
+    }
+    setActionLoading(true)
+    try {
+      const res = await authFetch("/api/custom-payments/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gatewayId: selectedGateway.id, type: "event", packageId: target.id, proof }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "Submission failed"); return }
+      toast.success(`Payment submitted! It will be reviewed within ${data.reviewTime} hour(s).`)
+      setProof("")
+      setSelectedGateway(null)
+      setActivePaymentTab("auto")
+    } catch {
+      toast.error("Could not submit payment proof")
     } finally {
       setActionLoading(false)
     }
@@ -250,10 +396,90 @@ export default function EventsPage({ params }: Props) {
                     <button onClick={() => cancelAttendance(event)} disabled={actionLoading} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60">{actionLoading ? "Updating…" : "Leave waitlist"}</button>
                   </div>
                 ) : (
-                  <button onClick={() => startCheckout(event)} disabled={actionLoading || event.remaining === 0} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50">
-                    {actionLoading ? <Loader2 size={17} className="animate-spin" /> : <CreditCard size={17} />}
-                    {event.remaining === 0 ? "Event is full" : "Buy ticket"}
-                  </button>
+                  <div className="space-y-4">
+                    {manualGateways.length > 0 && (
+                      <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+                        <button onClick={() => setActivePaymentTab("auto")} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${activePaymentTab === "auto" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>
+                          {providerInfo.icon} {providerInfo.name}
+                        </button>
+                        <button onClick={() => setActivePaymentTab("manual")} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${activePaymentTab === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>
+                          🏦 Manual transfer
+                        </button>
+                      </div>
+                    )}
+
+                    {activePaymentTab === "auto" ? (
+                      <>
+                        {hasLocalMethod && (
+                          <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+                            <button onClick={() => setUseCard(false)} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${!useCard ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>
+                              {PROVIDER_INFO[provider]?.icon} {PROVIDER_INFO[provider]?.name}
+                            </button>
+                            <button onClick={() => setUseCard(true)} className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${useCard ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>
+                              💳 Pay by card
+                            </button>
+                          </div>
+                        )}
+                        {paymentStep === "phone" ? (
+                          <div className="space-y-3 rounded-2xl bg-white p-1">
+                            <div className="text-center">
+                              <div className="text-3xl">📱</div>
+                              <p className="mt-1 text-sm font-black text-gray-900">Pay with M-Pesa</p>
+                              <p className="mt-1 text-xs text-gray-500">Enter your phone number and we will send an STK push.</p>
+                            </div>
+                            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 0712345678" className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-rose-400" />
+                            <div className="flex gap-2">
+                              <button onClick={() => setPaymentStep("idle")} className="flex-1 rounded-xl border border-gray-200 px-3 py-3 text-xs font-bold text-gray-600">Back</button>
+                              <button onClick={() => startCheckout(event, true)} disabled={!phone.trim() || actionLoading} className="flex-[2] rounded-xl bg-emerald-600 px-3 py-3 text-xs font-black text-white disabled:opacity-50">
+                                {actionLoading ? "Sending…" : "Send M-Pesa request"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : paymentStep === "polling" ? (
+                          <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+                            <div className="text-3xl">📲</div>
+                            <p className="mt-1 text-sm font-black text-emerald-900">Check your phone</p>
+                            <p className="mt-1 text-xs leading-5 text-emerald-800">Enter your M-Pesa PIN to complete payment.</p>
+                            <p className="mt-2 text-xs text-emerald-700">Waiting… {countdown}s</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold" style={{ color: providerInfo.color }}>
+                              <span>{providerInfo.icon}</span> Paying with {providerInfo.name}
+                            </div>
+                            <button onClick={() => startCheckout(event)} disabled={actionLoading || event.remaining === 0} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50">
+                              {actionLoading ? <Loader2 size={17} className="animate-spin" /> : <CreditCard size={17} />}
+                              {event.remaining === 0 ? "Event is full" : "Pay and reserve your place"}
+                            </button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Select payment method</p>
+                        {manualGateways.map((gateway) => (
+                          <button key={gateway.id} onClick={() => setSelectedGateway(gateway)} className={`flex w-full items-start gap-3 rounded-xl border-2 p-3 text-left ${selectedGateway?.id === gateway.id ? "border-rose-500 bg-rose-50" : "border-gray-200 bg-white"}`}>
+                            <span className="text-xl">{gateway.logo || "💳"}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-bold text-gray-900">{gateway.name}</span>
+                              {gateway.description && <span className="mt-1 block text-xs leading-4 text-gray-500">{gateway.description}</span>}
+                              <span className="mt-1 block text-[11px] text-gray-400">Review within {gateway.reviewTime}h</span>
+                            </span>
+                            {selectedGateway?.id === gateway.id && <span className="font-black text-rose-600">✓</span>}
+                          </button>
+                        ))}
+                        {selectedGateway && (
+                          <>
+                            <textarea value={proof} onChange={(e) => setProof(e.target.value)} rows={3} placeholder={selectedGateway.proofLabel || "Enter transaction ID or payment proof"} className="w-full resize-none rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-rose-400" />
+                            <button onClick={() => startCheckout(event)} disabled={actionLoading || !proof.trim()} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3.5 text-sm font-black text-white disabled:opacity-50">
+                              {actionLoading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+                              Submit payment proof
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <p className="mt-4 text-center text-xs leading-5 text-gray-500">Secure checkout. Your place is only confirmed after the payment provider confirms payment.</p>
               </aside>

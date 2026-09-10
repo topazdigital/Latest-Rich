@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { authFetch } from '../lib/auth'
+import { useLocation } from 'wouter'
 import { Loader2, Upload, CheckCircle, XCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -32,6 +33,7 @@ function formatLocalPrice(usdPrice: number, provider: string, userCountry: strin
 
 export default function CreditsPageWrapper() {
   const { user, token, refreshUser } = useAuth()
+  const [, setLocation] = useLocation()
   const [packages, setPackages] = useState(FALLBACK_PACKAGES)
   const [orders, setOrders] = useState<any[]>([])
   const [paymentMethod, setPaymentMethod] = useState<any>(null)
@@ -79,18 +81,7 @@ export default function CreditsPageWrapper() {
 
   async function buyOffer(kind: 'starter' | 'event', eventId?: number) {
     if (kind === 'event') {
-      setOfferLoading(`event-${eventId}`)
-      try {
-        const res = await authFetch('/api/engagement/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind, eventId }),
-        })
-        const data = await res.json()
-        if (!res.ok) { toast.error(data.error || 'Offer unavailable'); return }
-        if (data.url) window.location.href = data.url
-      } catch { toast.error('Could not start checkout') }
-      finally { setOfferLoading(null) }
+      setLocation(`/events/${eventId}`)
       return
     }
 
