@@ -220,7 +220,9 @@ export default function AdminUsers() {
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-bold text-gray-900 group-hover:text-rose-600">{u.name}{u.age ? `, ${u.age}` : ""}</span>
                   <span className="block truncate text-[11px] text-gray-500">{[u.city, u.country].filter(Boolean).join(", ") || "Location not set"}</span>
-                  <span className="block text-[10px] font-semibold text-rose-500">{relativeTime(String(u.created)) || "Recently joined"}</span>
+                  <span className={`block text-[10px] font-semibold ${relativeTime(String(u.created))?.cls || "text-rose-500"}`}>
+                    {relativeTime(String(u.created))?.label || "Recently joined"}
+                  </span>
                 </span>
               </button>
             ))}
