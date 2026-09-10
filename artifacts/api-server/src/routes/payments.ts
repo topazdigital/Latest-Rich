@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db } from "@workspace/db"
+import { db, engagementEventsTable, eventAttendeesTable } from "@workspace/db"
 import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
@@ -170,7 +170,9 @@ router.get("/stripe/success", async (req, res) => {
       if (type === "starter") {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(userId))).limit(1)
         if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, user.id))
-       } else if (type !== "event") {
+       } else if (type === "event") {
+         await fulfillEventAttendance(parseInt(userId), parseInt(packageId || "0"), existingOrder?.id || 0)
+       } else {
          if (type === "premium" && existingOrder) {
            await fulfillOrderFromRecord(existingOrder)
          } else {
@@ -179,7 +181,7 @@ router.get("/stripe/success", async (req, res) => {
       }
       await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(session_id)))
     }
-    res.redirect(`/credits?success=1`)
+     res.redirect(type === "event" ? `/events/${packageId}?success=1` : `/credits?success=1`)
   } catch (err) {
     console.error("Stripe success error:", err)
     res.redirect("/credits?error=server")
@@ -1041,7 +1043,11 @@ router.post("/paddle/webhook", async (req, res) => {
           .where(and(eq(ordersTable.stripeSessionId, ref), eq(ordersTable.status, "pending")))
         const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
         if (confirmed?.status === "completed") {
-          await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
+          if (String(type || "") === "event") {
+            await fulfillEventAttendance(parseInt(userId), parseInt(packageId || "0"), confirmed.id)
+          } else {
+            await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
+          }
         }
       }
     }
@@ -1129,6 +1135,8 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
       if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + pkg.credits }).where(eq(usersTable.id, userId))
     }
+  } else if (type === "event") {
+    await fulfillEventAttendance(userId, packageId, 0)
   }
 }
 
@@ -1148,7 +1156,7 @@ async function activatePremium(userId: number, pkg: { days: number; priority: nu
 
 // Fulfills an order using data already stored on the order row itself (safe for webhook paths
 // where packageId is known but cannot be re-derived from request params).
-async function fulfillOrderFromRecord(order: { userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null; premiumDays: number | null; premiumPriority: number | null }) {
+async function fulfillOrderFromRecord(order: { id?: number; userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null; premiumDays: number | null; premiumPriority: number | null }) {
   const type = order.type || "credits"
   if (type === "starter") {
     const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
@@ -1166,7 +1174,26 @@ async function fulfillOrderFromRecord(order: { userId: number; type: string | nu
     if (order.premiumDays || pkg) {
       await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
     }
+  } else if (type === "event") {
+    await fulfillEventAttendance(order.userId, order.packageId || 0, order.id || 0)
   }
+}
+
+async function fulfillEventAttendance(userId: number, eventId: number, orderId: number) {
+  if (!userId || !eventId) return
+  const [event] = await db.select().from(engagementEventsTable)
+    .where(eq(engagementEventsTable.id, eventId)).limit(1)
+  if (!event) return
+  const [existing] = await db.select().from(eventAttendeesTable)
+    .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.userId, userId))).limit(1)
+  if (existing?.status === "going" && existing.paid === 1) return
+  const going = await db.select().from(eventAttendeesTable)
+    .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.status, "going")))
+  const capacity = Number(event.capacity || 0)
+  const status = capacity > 0 && going.length >= capacity && existing?.status !== "going" ? "waitlisted" : "going"
+  const values = { status, paid: 1, orderId, createdAt: existing?.createdAt || now(), cancelledAt: 0 }
+  if (existing) await db.update(eventAttendeesTable).set(values as any).where(eq(eventAttendeesTable.id, existing.id))
+  else await db.insert(eventAttendeesTable).values({ eventId, userId, ...values } as any)
 }
 
 export default router

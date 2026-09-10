@@ -25,20 +25,39 @@ export async function runMigrations() {
       "CREATE TABLE IF NOT EXISTS engagement_daily (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, user_id int NOT NULL, day_key varchar(20) NOT NULL, match_user_id int NOT NULL DEFAULT 0, liked_reveal_until int NOT NULL DEFAULT 0, streak_days int NOT NULL DEFAULT 1, reward_credits int NOT NULL DEFAULT 0, created_at int NOT NULL DEFAULT 0)",
       "CREATE TABLE IF NOT EXISTS engagement_reactions (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, from_id int NOT NULL, to_id int NOT NULL, type varchar(20) NOT NULL, time int NOT NULL DEFAULT 0)",
       "CREATE TABLE IF NOT EXISTS engagement_feedback (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, user_id int NOT NULL, rating int NOT NULL, comment text, prompt varchar(255), trigger varchar(50), status varchar(20) NOT NULL DEFAULT 'new', admin_note text, created_at int NOT NULL DEFAULT 0, resolved_at int NOT NULL DEFAULT 0)",
-      "CREATE TABLE IF NOT EXISTS engagement_events (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255) NOT NULL, description text, image text, ticket_price decimal(10,2) NOT NULL DEFAULT 1.00, active tinyint NOT NULL DEFAULT 1, starts_at int NOT NULL DEFAULT 0, capacity int NOT NULL DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS engagement_events (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255) NOT NULL, description text, image text, ticket_price decimal(10,2) NOT NULL DEFAULT 1.00, active tinyint NOT NULL DEFAULT 1, starts_at int NOT NULL DEFAULT 0, end_time int NOT NULL DEFAULT 0, location text NOT NULL, timezone varchar(80) NOT NULL DEFAULT 'Africa/Nairobi', registration_deadline int NOT NULL DEFAULT 0, capacity int NOT NULL DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS event_attendees (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, event_id int NOT NULL, user_id int NOT NULL, status varchar(20) NOT NULL DEFAULT 'going', paid tinyint NOT NULL DEFAULT 0, order_id int NOT NULL DEFAULT 0, created_at int NOT NULL DEFAULT 0, cancelled_at int NOT NULL DEFAULT 0, UNIQUE KEY event_attendees_event_user_uq (event_id, user_id), KEY event_attendees_event_status_idx (event_id, status))",
       "CREATE TABLE IF NOT EXISTS video_call_sessions (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, caller_id int NOT NULL, callee_id int NOT NULL, status varchar(20) NOT NULL DEFAULT 'ringing', created_at int NOT NULL DEFAULT 0, connected_at int NOT NULL DEFAULT 0, ended_at int NOT NULL DEFAULT 0, billed_minutes int NOT NULL DEFAULT 0, credits_charged int NOT NULL DEFAULT 0, end_reason varchar(80) NOT NULL DEFAULT '')",
       "CREATE TABLE IF NOT EXISTS chatmodz_deliveries (id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, direction varchar(30) NOT NULL, external_event_id varchar(255) NOT NULL, conversation_id varchar(255) NOT NULL, message_id int NOT NULL DEFAULT 0, status varchar(20) NOT NULL DEFAULT 'pending', attempts int NOT NULL DEFAULT 0, next_attempt_at int NOT NULL DEFAULT 0, last_error text, created_at int NOT NULL DEFAULT 0, delivered_at int NOT NULL DEFAULT 0, UNIQUE KEY chatmodz_delivery_direction_event_uq (direction, external_event_id), KEY chatmodz_delivery_pending_idx (direction, status, next_attempt_at))",
     ] : [
       "CREATE TABLE IF NOT EXISTS engagement_daily (id serial PRIMARY KEY, user_id integer NOT NULL, day_key text NOT NULL, match_user_id integer DEFAULT 0, liked_reveal_until integer DEFAULT 0, streak_days integer DEFAULT 1, reward_credits integer DEFAULT 0, created_at integer DEFAULT 0)",
       "CREATE TABLE IF NOT EXISTS engagement_reactions (id serial PRIMARY KEY, from_id integer NOT NULL, to_id integer NOT NULL, type text NOT NULL, time integer DEFAULT 0)",
       "CREATE TABLE IF NOT EXISTS engagement_feedback (id serial PRIMARY KEY, user_id integer NOT NULL, rating integer NOT NULL, comment text, prompt text, trigger text, status text DEFAULT 'new', admin_note text, created_at integer DEFAULT 0, resolved_at integer DEFAULT 0)",
-      "CREATE TABLE IF NOT EXISTS engagement_events (id serial PRIMARY KEY, title text NOT NULL, description text, image text, ticket_price real DEFAULT 1, active integer DEFAULT 1, starts_at integer DEFAULT 0, capacity integer DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS engagement_events (id serial PRIMARY KEY, title text NOT NULL, description text, image text, ticket_price real DEFAULT 1, active integer DEFAULT 1, starts_at integer DEFAULT 0, end_time integer DEFAULT 0, location text DEFAULT '', timezone text DEFAULT 'Africa/Nairobi', registration_deadline integer DEFAULT 0, capacity integer DEFAULT 0)",
+      "CREATE TABLE IF NOT EXISTS event_attendees (id serial PRIMARY KEY, event_id integer NOT NULL, user_id integer NOT NULL, status text NOT NULL DEFAULT 'going', paid integer NOT NULL DEFAULT 0, order_id integer NOT NULL DEFAULT 0, created_at integer NOT NULL DEFAULT 0, cancelled_at integer NOT NULL DEFAULT 0)",
       "CREATE TABLE IF NOT EXISTS video_call_sessions (id serial PRIMARY KEY, caller_id integer NOT NULL, callee_id integer NOT NULL, status text NOT NULL DEFAULT 'ringing', created_at integer NOT NULL DEFAULT 0, connected_at integer NOT NULL DEFAULT 0, ended_at integer NOT NULL DEFAULT 0, billed_minutes integer NOT NULL DEFAULT 0, credits_charged integer NOT NULL DEFAULT 0, end_reason text NOT NULL DEFAULT '')",
       "CREATE TABLE IF NOT EXISTS chatmodz_deliveries (id serial PRIMARY KEY, direction text NOT NULL, external_event_id text NOT NULL, conversation_id text NOT NULL, message_id integer NOT NULL DEFAULT 0, status text NOT NULL DEFAULT 'pending', attempts integer NOT NULL DEFAULT 0, next_attempt_at integer NOT NULL DEFAULT 0, last_error text, created_at integer NOT NULL DEFAULT 0, delivered_at integer NOT NULL DEFAULT 0)",
     ]
     for (const statement of statements) {
       if (isMysql) await pool.execute(statement)
       else await pool.query(statement)
+    }
+    if (isMysql) {
+      for (const statement of [
+        "ALTER TABLE engagement_events ADD COLUMN end_time int NOT NULL DEFAULT 0",
+        "ALTER TABLE engagement_events ADD COLUMN location text NOT NULL DEFAULT ''",
+        "ALTER TABLE engagement_events ADD COLUMN timezone varchar(80) NOT NULL DEFAULT 'Africa/Nairobi'",
+        "ALTER TABLE engagement_events ADD COLUMN registration_deadline int NOT NULL DEFAULT 0",
+      ]) {
+        await pool.execute(statement).catch((e: any) => {
+          if (e?.code !== "ER_DUP_FIELDNAME") throw e
+        })
+      }
+    } else {
+      await pool.query("ALTER TABLE engagement_events ADD COLUMN IF NOT EXISTS end_time integer NOT NULL DEFAULT 0")
+      await pool.query("ALTER TABLE engagement_events ADD COLUMN IF NOT EXISTS location text NOT NULL DEFAULT ''")
+      await pool.query("ALTER TABLE engagement_events ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'Africa/Nairobi'")
+      await pool.query("ALTER TABLE engagement_events ADD COLUMN IF NOT EXISTS registration_deadline integer NOT NULL DEFAULT 0")
     }
     if (isMysql) {
       await pool.execute("ALTER TABLE engagement_daily ADD UNIQUE KEY uq_engagement_daily_user_day (user_id, day_key)").catch((e: any) => {
@@ -50,6 +69,19 @@ export async function runMigrations() {
     } else {
       await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS uq_engagement_daily_user_day ON engagement_daily (user_id, day_key)")
       await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS chatmodz_delivery_direction_event_uq ON chatmodz_deliveries (direction, external_event_id)")
+      await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS event_attendees_event_user_uq ON event_attendees (event_id, user_id)")
+      await pool.query("CREATE INDEX IF NOT EXISTS event_attendees_event_status_idx ON event_attendees (event_id, status)")
+    }
+    if (isMysql) {
+      await pool.execute("ALTER TABLE event_attendees ADD UNIQUE KEY event_attendees_event_user_uq (event_id, user_id)").catch((e: any) => {
+        if (!["ER_DUP_KEYNAME", "ER_DUP_ENTRY"].includes(e?.code)) throw e
+      })
+      await pool.execute("ALTER TABLE event_attendees ADD KEY event_attendees_event_status_idx (event_id, status)").catch((e: any) => {
+        if (e?.code !== "ER_DUP_KEYNAME") throw e
+      })
+      await pool.execute("INSERT INTO engagement_events (title, description, ticket_price, active, starts_at, end_time, location, timezone, registration_deadline, capacity) SELECT 'Nairobi Elite Rooftop Mixer', 'An intimate evening for verified members to meet, dine, and make meaningful connections.', 200.00, 1, UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)), UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)) + 10800, 'Nairobi, Kenya', 'Africa/Nairobi', UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 29 DAY)), 80 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM engagement_events WHERE title = 'Nairobi Elite Rooftop Mixer')")
+    } else {
+      await pool.query("INSERT INTO engagement_events (title, description, ticket_price, active, starts_at, end_time, location, timezone, registration_deadline, capacity) SELECT 'Nairobi Elite Rooftop Mixer', 'An intimate evening for verified members to meet, dine, and make meaningful connections.', 200.00, 1, EXTRACT(EPOCH FROM (NOW() + INTERVAL '30 days'))::int, EXTRACT(EPOCH FROM (NOW() + INTERVAL '30 days'))::int + 10800, 'Nairobi, Kenya', 'Africa/Nairobi', EXTRACT(EPOCH FROM (NOW() + INTERVAL '29 days'))::int, 80 WHERE NOT EXISTS (SELECT 1 FROM engagement_events WHERE title = 'Nairobi Elite Rooftop Mixer')")
     }
   } catch (err) {
     // Non-fatal: log but don't crash startup

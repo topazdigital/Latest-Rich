@@ -434,7 +434,22 @@ export const engagementEventsTable = mysqlTable("engagement_events", {
   ticketPrice: float("ticket_price").default(1),
   active: int("active").default(1),
   startsAt: int("starts_at").default(0),
+  endTime: int("end_time").default(0),
+  location: text("location").default(""),
+  timezone: varchar("timezone", { length: 80 }).default("Africa/Nairobi"),
+  registrationDeadline: int("registration_deadline").default(0),
   capacity: int("capacity").default(0),
+})
+
+export const eventAttendeesTable = mysqlTable("event_attendees", {
+  id: serial("id").primaryKey(),
+  eventId: int("event_id").notNull(),
+  userId: int("user_id").notNull(),
+  status: varchar("status", { length: 20 }).default("going"),
+  paid: int("paid").default(0),
+  orderId: int("order_id").default(0),
+  createdAt: int("created_at").default(0),
+  cancelledAt: int("cancelled_at").default(0),
 })
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })

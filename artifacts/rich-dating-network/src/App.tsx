@@ -40,6 +40,7 @@ const LikesPage = lazy(() => import("./pages/LikesPage"))
 const BoostPage = lazy(() => import("./pages/BoostPage"))
 const ReferralsPage = lazy(() => import("./pages/ReferralsPage"))
 const MembersPage = lazy(() => import("./pages/MembersPage"))
+const EventsPage = lazy(() => import("./pages/EventsPage"))
 import { getSeoLandingPage } from "./data/seoLandingPages"
 import MainNav from "./components/layout/MainNav"
 import SEOHead from "./components/layout/SEOHead"
@@ -53,9 +54,9 @@ import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
 import { useWebSocket, useWSEvent } from "./hooks/useWebSocket"
 
-const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
+const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals", "/events"]
 // Routes that require login (redirect to /login if not authed). Profile pages excluded so Google can crawl them.
-const AUTH_REQUIRED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals"]
+const AUTH_REQUIRED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals", "/events"]
 const ADMIN_PREFIXES = ["/admin"]
 const MODERATOR_PREFIXES = ["/moderator"]
 
@@ -546,6 +547,10 @@ function Router() {
           <Route path="/boost" component={BoostPage} />
           <Route path="/referrals" component={ReferralsPage} />
           <Route path="/ref/:code" component={ReferralsPage} />
+          <Route path="/events" component={EventsPage} />
+          <Route path="/events/:id">
+            {(params: { id: string }) => <EventsPage key={params.id} params={params} />}
+          </Route>
           <Route path="/members" component={MembersPage} />
           <Route path="/locations" component={LocationsPage} />
           <Route path="/terms" component={TermsPage} />

@@ -433,8 +433,25 @@ export const engagementEventsTable = pgTable("engagement_events", {
   ticketPrice: real("ticket_price").default(1),
   active: integer("active").default(1),
   startsAt: integer("starts_at").default(0),
+  endTime: integer("end_time").default(0),
+  location: text("location").default(""),
+  timezone: text("timezone").default("Africa/Nairobi"),
+  registrationDeadline: integer("registration_deadline").default(0),
   capacity: integer("capacity").default(0),
 })
+
+export const eventAttendeesTable = pgTable("event_attendees", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull(),
+  userId: integer("user_id").notNull(),
+  status: text("status").default("going"),
+  paid: integer("paid").default(0),
+  orderId: integer("order_id").default(0),
+  createdAt: integer("created_at").default(0),
+  cancelledAt: integer("cancelled_at").default(0),
+}, (table) => ({
+  eventUserUnique: uniqueIndex("event_attendees_event_user_uq").on(table.eventId, table.userId),
+}))
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true })
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true })

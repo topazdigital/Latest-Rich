@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter'
-import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, Users, LogOut, User } from 'lucide-react'
+import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, Users, LogOut, User, CalendarDays } from 'lucide-react'
 import { getPhotoUrl, isOnline } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
@@ -34,6 +34,7 @@ export default function MainNav() {
     ...(feedEnabled ? [{ href: '/home', icon: Heart, label: 'Feed' }] : []),
     { href: '/discover', icon: Search, label: 'Discover' },
     { href: '/meet', icon: Flame, label: 'Meet' },
+    { href: '/events', icon: CalendarDays, label: 'Events' },
     { href: '/likes', icon: Heart, label: 'Likes' },
     { href: '/chat', icon: MessageCircle, label: 'Chat' },
   ]
@@ -41,8 +42,8 @@ export default function MainNav() {
   const mobileItems = [
     { href: '/discover', icon: Search, label: 'Discover' },
     { href: '/meet', icon: Flame, label: 'Meet' },
+    { href: '/events', icon: CalendarDays, label: 'Events' },
     { href: '/likes', icon: Heart, label: 'Likes' },
-    { href: '/visitors', icon: Eye, label: 'Visitors' },
     { href: '/chat', icon: MessageCircle, label: 'Chat', badge: chatUnread },
   ]
 

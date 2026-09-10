@@ -97,6 +97,7 @@ export const engagementDailyTable = (schema as any).engagementDailyTable
 export const engagementReactionsTable = (schema as any).engagementReactionsTable
 export const engagementFeedbackTable = (schema as any).engagementFeedbackTable
 export const engagementEventsTable = (schema as any).engagementEventsTable
+export const eventAttendeesTable = (schema as any).eventAttendeesTable
 
 export const insertUserSchema = schema.insertUserSchema
 export const insertMessageSchema = schema.insertMessageSchema

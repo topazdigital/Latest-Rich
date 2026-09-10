@@ -860,8 +860,45 @@ CREATE TABLE IF NOT EXISTS `engagement_events` (
   `ticket_price` decimal(10,2) NOT NULL DEFAULT 1.00,
   `active` tinyint NOT NULL DEFAULT 1,
   `starts_at` int NOT NULL DEFAULT 0,
+  `end_time` int NOT NULL DEFAULT 0,
+  `location` text NOT NULL,
+  `timezone` varchar(80) NOT NULL DEFAULT 'Africa/Nairobi',
+  `registration_deadline` int NOT NULL DEFAULT 0,
   `capacity` int NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `engagement_events` ADD COLUMN IF NOT EXISTS `end_time` int NOT NULL DEFAULT 0;
+ALTER TABLE `engagement_events` ADD COLUMN IF NOT EXISTS `location` text NOT NULL;
+ALTER TABLE `engagement_events` ADD COLUMN IF NOT EXISTS `timezone` varchar(80) NOT NULL DEFAULT 'Africa/Nairobi';
+ALTER TABLE `engagement_events` ADD COLUMN IF NOT EXISTS `registration_deadline` int NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS `event_attendees` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `event_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'going',
+  `paid` tinyint NOT NULL DEFAULT 0,
+  `order_id` int NOT NULL DEFAULT 0,
+  `created_at` int NOT NULL DEFAULT 0,
+  `cancelled_at` int NOT NULL DEFAULT 0,
+  UNIQUE KEY `event_attendees_event_user_uq` (`event_id`, `user_id`),
+  KEY `event_attendees_event_status_idx` (`event_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `engagement_events` (`title`, `description`, `ticket_price`, `active`, `starts_at`, `end_time`, `location`, `timezone`, `registration_deadline`, `capacity`)
+SELECT
+  'Nairobi Elite Rooftop Mixer',
+  'An intimate evening for verified members to meet, dine, and make meaningful connections.',
+  200.00,
+  1,
+  UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)),
+  UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)) + 10800,
+  'Nairobi, Kenya',
+  'Africa/Nairobi',
+  UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 29 DAY)),
+  80
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `engagement_events` WHERE `title` = 'Nairobi Elite Rooftop Mixer');
 
 -- Add read column to engagement_reactions (safe, idempotent)
 SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'engagement_reactions' AND COLUMN_NAME = 'read');

@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { db, engagementDailyTable, engagementEventsTable, engagementFeedbackTable, engagementReactionsTable, likesTable, messagesTable, notificationsTable, ordersTable, siteConfigTable, userExtendedTable, usersTable } from "@workspace/db"
+import { db, engagementDailyTable, engagementEventsTable, engagementFeedbackTable, engagementReactionsTable, eventAttendeesTable, likesTable, messagesTable, notificationsTable, ordersTable, siteConfigTable, userExtendedTable, usersTable } from "@workspace/db"
 import { and, desc, eq, gte, lt, or, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 
@@ -31,6 +31,63 @@ function publicUser(user: any) {
   if (!user) return null
   const { password, ...safe } = user
   return safe
+}
+
+const EVENT_CURRENCY_BY_COUNTRY: Record<string, { currency: string; rate: number }> = {
+  KE: { currency: "KES", rate: 130 },
+  TZ: { currency: "TZS", rate: 2500 },
+  UG: { currency: "UGX", rate: 3700 },
+  RW: { currency: "RWF", rate: 1300 },
+  NG: { currency: "NGN", rate: 1600 },
+  GH: { currency: "GHS", rate: 12 },
+  ZA: { currency: "ZAR", rate: 19 },
+  PH: { currency: "PHP", rate: 56 },
+}
+
+const EVENT_COUNTRY_NAMES: Record<string, string> = {
+  kenya: "KE", tanzania: "TZ", uganda: "UG", rwanda: "RW", ethiopia: "ET",
+  nigeria: "NG", ghana: "GH", "south africa": "ZA", egypt: "EG", philippines: "PH",
+}
+
+async function eventPricing(userId: number, priceUsd: number) {
+  const [user] = await db.select({ country: usersTable.country, countryCode: usersTable.countryCode })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+  const code = String(user?.countryCode || "").trim().toUpperCase() || EVENT_COUNTRY_NAMES[String(user?.country || "").trim().toLowerCase()] || ""
+  const local = EVENT_CURRENCY_BY_COUNTRY[code]
+  if (!local) return { priceUsd, localPrice: priceUsd, currency: "USD", rate: 1 }
+  const configuredRate = Number(await getConfig(`${local.currency.toLowerCase()}_rate`))
+  const rate = Number.isFinite(configuredRate) && configuredRate > 0 ? configuredRate : local.rate
+  return { priceUsd, localPrice: Math.round(priceUsd * rate), currency: local.currency, rate }
+}
+
+async function eventView(event: any, userId: number) {
+  const attendeeRows = await db.select().from(eventAttendeesTable)
+    .where(eq(eventAttendeesTable.eventId, event.id))
+  const goingRows = attendeeRows.filter((row: any) => row.status === "going")
+  const realUsers = []
+  for (const row of goingRows) {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, row.userId)).limit(1)
+    if (user && user.fake !== 1) realUsers.push(publicUser(user))
+  }
+  const fakeUsers = await db.select().from(usersTable).where(eq(usersTable.fake, 1)).limit(8)
+  const preview = [...fakeUsers.map(publicUser), ...realUsers]
+    .filter(Boolean)
+    .filter((user: any, index: number, all: any[]) => all.findIndex((candidate: any) => candidate.id === user.id) === index)
+    .slice(0, 12)
+  const ownAttendance = attendeeRows.find((row: any) => row.userId === userId)
+  const capacity = Number(event.capacity || 0)
+  const attendeeCount = goingRows.length
+  const pricing = await eventPricing(userId, Number(event.ticketPrice || 200))
+  return {
+    ...event,
+    ticketPrice: Number(event.ticketPrice || 200),
+    ...pricing,
+    attendeeCount,
+    remaining: capacity > 0 ? Math.max(capacity - attendeeCount, 0) : null,
+    attendeePreview: preview,
+    userStatus: ownAttendance?.status || null,
+    userPaid: ownAttendance?.paid === 1,
+  }
 }
 
 router.get("/daily", requireAuth, async (req, res) => {
@@ -202,9 +259,81 @@ router.post("/feedback", requireAuth, async (req, res) => {
   }
 })
 
+router.get("/events", requireAuth, async (req, res) => {
+  try {
+    const events = await db.select().from(engagementEventsTable)
+      .where(eq(engagementEventsTable.active, 1))
+      .orderBy(engagementEventsTable.startsAt)
+      .limit(20)
+    return res.json(await Promise.all(events.map((event: any) => eventView(event, req.userId!))))
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to load events" })
+  }
+})
+
+router.get("/events/:id", requireAuth, async (req, res) => {
+  try {
+    const [event] = await db.select().from(engagementEventsTable)
+      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), eq(engagementEventsTable.active, 1))).limit(1)
+    if (!event) return res.status(404).json({ error: "Event not found" })
+    return res.json(await eventView(event, req.userId!))
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to load event" })
+  }
+})
+
+router.get("/my-events", requireAuth, async (req, res) => {
+  try {
+    const rows = await db.select().from(eventAttendeesTable)
+      .where(and(eq(eventAttendeesTable.userId, req.userId!), or(eq(eventAttendeesTable.status, "going"), eq(eventAttendeesTable.status, "waitlisted"))))
+    const result = []
+    for (const row of rows) {
+      const [event] = await db.select().from(engagementEventsTable).where(eq(engagementEventsTable.id, row.eventId)).limit(1)
+      if (event) result.push({ ...await eventView(event, req.userId!), attendanceStatus: row.status, paid: row.paid === 1 })
+    }
+    return res.json(result)
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to load your events" })
+  }
+})
+
+router.post("/events/:id/attend", requireAuth, async (req, res) => {
+  try {
+    const [event] = await db.select().from(engagementEventsTable)
+      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), eq(engagementEventsTable.active, 1))).limit(1)
+    if (!event) return res.status(404).json({ error: "Event not found" })
+    if (Number(event.ticketPrice || 0) > 0) return res.status(402).json({ error: "Payment is required for this event", requiresPayment: true })
+    const existing = await db.select().from(eventAttendeesTable)
+      .where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.userId, req.userId!))).limit(1)
+    if (existing[0]?.status === "going") return res.json({ success: true, status: "going" })
+    const going = await db.select().from(eventAttendeesTable).where(and(eq(eventAttendeesTable.eventId, event.id), eq(eventAttendeesTable.status, "going")))
+    if (Number(event.capacity || 0) > 0 && going.length >= Number(event.capacity)) {
+      return res.status(409).json({ error: "This event is full", status: "waitlisted" })
+    }
+    const values = { eventId: event.id, userId: req.userId!, status: "going", paid: 0, createdAt: now(), cancelledAt: 0 }
+    if (existing[0]) await db.update(eventAttendeesTable).set(values as any).where(eq(eventAttendeesTable.id, existing[0].id))
+    else await db.insert(eventAttendeesTable).values(values as any)
+    return res.json({ success: true, status: "going" })
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to attend event" })
+  }
+})
+
+router.delete("/events/:id/attend", requireAuth, async (req, res) => {
+  try {
+    const result = await db.update(eventAttendeesTable).set({ status: "cancelled", cancelledAt: now() } as any)
+      .where(and(eq(eventAttendeesTable.eventId, Number(req.params.id)), eq(eventAttendeesTable.userId, req.userId!)))
+    const changed = Number(result?.rowCount ?? result?.affectedRows ?? result?.[0]?.affectedRows ?? 0)
+    if (!changed) return res.status(404).json({ error: "Attendance not found" })
+    return res.json({ success: true })
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to cancel attendance" })
+  }
+})
+
 router.get("/offers", async (_req, res) => {
   const events = await db.select().from(engagementEventsTable).where(eq(engagementEventsTable.active, 1)).orderBy(engagementEventsTable.startsAt).limit(20).catch(() => [])
-  res.json({ starter: { id: "starter", title: "Try the network", description: "3 chat credits for $1", price: 1, credits: 3 }, events })
+  return res.json({ starter: { id: "starter", title: "Try the network", description: "3 chat credits for $1", price: 1, credits: 3 }, events })
 })
 
 router.post("/checkout", requireAuth, async (req, res) => {
@@ -216,6 +345,17 @@ router.post("/checkout", requireAuth, async (req, res) => {
     const eventId = Number(req.body?.eventId)
     const [event] = await db.select().from(engagementEventsTable).where(and(eq(engagementEventsTable.id, eventId), eq(engagementEventsTable.active, 1))).limit(1)
     if (!event) return res.status(404).json({ error: "Event not found" })
+    const [existingAttendance] = await db.select().from(eventAttendeesTable)
+      .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.userId, req.userId!))).limit(1)
+    if (existingAttendance?.status === "going") return res.status(409).json({ error: "You are already attending this event" })
+    const going = await db.select().from(eventAttendeesTable)
+      .where(and(eq(eventAttendeesTable.eventId, eventId), eq(eventAttendeesTable.status, "going")))
+    if (Number(event.capacity || 0) > 0 && going.length >= Number(event.capacity)) {
+      return res.status(409).json({ error: "This event is full" })
+    }
+    if (Number(event.registrationDeadline || 0) > 0 && Number(event.registrationDeadline) < now()) {
+      return res.status(409).json({ error: "Registration for this event has closed" })
+    }
     name = event.title
     amount = Math.round(Number(event.ticketPrice || 1) * 100)
     metadata = { userId: String(req.userId), type: "event", packageId: String(event.id) }
@@ -231,12 +371,12 @@ router.post("/checkout", requireAuth, async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [{ price_data: { currency: "usd", product_data: { name }, unit_amount: amount }, quantity: 1 }],
-      mode: "payment", success_url: `${baseUrl}/api/payments/stripe/success?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${baseUrl}/credits?cancelled=1`, metadata,
+      mode: "payment", success_url: `${baseUrl}/api/payments/stripe/success?session_id={CHECKOUT_SESSION_ID}`, cancel_url: kind === "event" ? `${baseUrl}/events/${metadata.packageId}?cancelled=1` : `${baseUrl}/credits?cancelled=1`, metadata,
     })
     await db.insert(ordersTable).values({ userId: req.userId!, amount: amount / 100, amountUsd: amount / 100, currency: "USD", type: metadata.type, description: name, status: "pending", stripeSessionId: session.id, packageId: Number(metadata.packageId), credits: kind === "starter" ? 3 : 0, time: now() } as any)
-    res.json({ url: session.url })
+    return res.json({ url: session.url })
   } catch (err: any) {
-    res.status(500).json({ error: err.message || "Payment failed" })
+    return res.status(500).json({ error: err.message || "Payment failed" })
   }
 })
 
@@ -249,14 +389,25 @@ router.get("/admin/feedback", requireAuth, requireAdmin, async (_req, res) => {
 router.patch("/admin/feedback/:id", requireAuth, requireAdmin, async (req, res) => {
   const status = ["new", "reviewed", "resolved"].includes(req.body?.status) ? req.body.status : "reviewed"
   await db.update(engagementFeedbackTable).set({ status, adminNote: String(req.body?.adminNote || "").slice(0, 1000), resolvedAt: status === "resolved" ? now() : 0 } as any).where(eq(engagementFeedbackTable.id, Number(req.params.id)))
-  res.json({ success: true })
+  return res.json({ success: true })
 })
 
 router.post("/admin/events", requireAuth, requireAdmin, async (req, res) => {
   const title = String(req.body?.title || "").trim()
   if (!title) return res.status(400).json({ error: "Title is required" })
-  await db.insert(engagementEventsTable).values({ title, description: String(req.body?.description || ""), ticketPrice: Number(req.body?.ticketPrice || 1), startsAt: Number(req.body?.startsAt || 0), capacity: Number(req.body?.capacity || 0), active: 1 } as any)
-  res.json({ success: true })
+  await db.insert(engagementEventsTable).values({
+    title,
+    description: String(req.body?.description || ""),
+    ticketPrice: Number(req.body?.ticketPrice || 200),
+    startsAt: Number(req.body?.startsAt || 0),
+    endTime: Number(req.body?.endTime || 0),
+    location: String(req.body?.location || ""),
+    timezone: String(req.body?.timezone || "Africa/Nairobi"),
+    registrationDeadline: Number(req.body?.registrationDeadline || 0),
+    capacity: Number(req.body?.capacity || 0),
+    active: 1,
+  } as any)
+  return res.json({ success: true })
 })
 
 export default router
