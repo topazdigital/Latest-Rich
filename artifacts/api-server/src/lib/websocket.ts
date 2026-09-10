@@ -8,6 +8,7 @@ import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
 import { connectVideoCall, endVideoCall, billVideoCall } from "../routes/video-calls"
 import { canShareContactInfo, containsContactInfo } from "./contact-filter"
+import { withEffectivePremiumPriority } from "./premium-entitlements"
 import { queueChatmodzMessage } from "./chatmodz"
 
 function now() { return Math.floor(Date.now() / 1000) }
@@ -93,8 +94,9 @@ async function handleMessage(fromUserId: number, msg: any) {
       const [fromUser] = await db.select().from(usersTable).where(eq(usersTable.id, fromUserId)).limit(1)
       if (!fromUser) return
 
-      // Contact sharing is reserved for Priority 2+ Premium members.
-      if (!canShareContactInfo(fromUser) && containsContactInfo(message.trim())) {
+      // Contact sharing is reserved for active Priority 2+ Premium members.
+      const senderEntitlements = await withEffectivePremiumPriority(fromUser)
+      if (!canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
         send(fromUserId, {
           type: "error",
           code: "contact_info_blocked",

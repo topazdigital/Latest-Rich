@@ -9,6 +9,7 @@ import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { requireAuth } from "../lib/auth-middleware"
 import { containsContactInfo } from "../lib/contact-filter"
+import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import crypto from "crypto"
 
 const router = Router()
@@ -195,7 +196,7 @@ router.post("/register", async (req, res) => {
     }).catch(() => {})
 
     const token = signToken({ userId: user.id })
-    const { password: _, ...safeUser } = user
+    const { password: _, ...safeUser } = await withEffectivePremiumPriority(user)
     res.json({
       token,
       user: safeUser,
@@ -277,7 +278,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = signToken({ userId: user.id })
-    const { password: _, ...safeUser } = user
+    const { password: _, ...safeUser } = await withEffectivePremiumPriority(user)
     res.json({ token, user: safeUser })
   } catch (err) {
     console.error("Login error:", err)

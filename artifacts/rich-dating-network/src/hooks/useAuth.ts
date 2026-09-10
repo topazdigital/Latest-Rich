@@ -9,6 +9,8 @@ interface AuthUser {
   photoThumb: string
   verified: number
   premium: number
+  premiumExpiry?: number
+  premiumPriority?: number
   credits: number
   gender: number
   age: number

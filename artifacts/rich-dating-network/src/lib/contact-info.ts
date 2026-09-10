@@ -10,7 +10,10 @@ export const CONTACT_INFO_PATTERN =
 export function canShareContactInfo(user: {
   fake?: number | null
   premium?: number | null
+  premiumExpiry?: number | null
   premiumPriority?: number | null
 } | null | undefined): boolean {
-  return user?.fake === 1 || (user?.premium === 1 && (user?.premiumPriority || 0) >= 2)
+  const expiry = user?.premiumExpiry || 0
+  const active = user?.premium === 1 && (expiry === 0 || expiry * 1000 > Date.now())
+  return user?.fake === 1 || (active && (user?.premiumPriority || 0) >= 2)
 }

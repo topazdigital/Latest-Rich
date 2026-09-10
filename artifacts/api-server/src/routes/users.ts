@@ -6,6 +6,7 @@ import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_BIO_ERROR, CONTACT_INFO_NAME_ERROR } from "../lib/contact-filter"
+import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -28,7 +29,7 @@ router.get("/me", requireAuth, async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     await db.update(usersTable).set({ lastAccess: String(now()) }).where(eq(usersTable.id, user.id))
-    res.json(safeUser(user))
+    res.json(safeUser(await withEffectivePremiumPriority(user)))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Failed" })
@@ -41,7 +42,7 @@ router.get("/me/full", requireAuth, async (req, res) => {
     if (!user) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, req.userId!)).limit(1)
     const photos = await db.select().from(photosTable).where(eq(photosTable.userId, req.userId!))
-    res.json({ ...safeUser(user), userExtended: extended || {}, photos })
+    res.json({ ...safeUser(await withEffectivePremiumPriority(user)), userExtended: extended || {}, photos })
   } catch {
     res.status(500).json({ error: "Failed" })
   }

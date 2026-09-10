@@ -50,9 +50,17 @@ export function containsContactInfo(text: string): boolean {
   return false
 }
 
-/** Only Priority 2+ Premium members can share contact details in chat. */
+export function isActivePremium(user: {
+  premium?: number | null
+  premiumExpiry?: number | null
+}): boolean {
+  const expiry = user.premiumExpiry || 0
+  return user.premium === 1 && (expiry === 0 || expiry > Math.floor(Date.now() / 1000))
+}
+
+/** Only active Priority 2+ Premium members can share contact details in chat. */
 export function canShareContactInfo(user: { fake?: number | null; premium?: number | null; premiumPriority?: number | null }): boolean {
-  return user.fake === 1 || (user.premium === 1 && (user.premiumPriority || 0) >= 2)
+  return user.fake === 1 || (isActivePremium(user) && (user.premiumPriority || 0) >= 2)
 }
 
 /** Error payload to send when contact info is detected in bio/name */

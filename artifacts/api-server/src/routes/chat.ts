@@ -5,6 +5,7 @@ import { eq, and, or, desc, count } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_CHAT_ERROR, canShareContactInfo } from "../lib/contact-filter"
+import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import multer from "multer"
 import path from "path"
 import fs from "fs"
@@ -136,8 +137,9 @@ router.post("/", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Cannot message between fake accounts" }); return
     }
 
-    // Contact sharing is reserved for Priority 2+ Premium members (text messages only).
-    if (message?.trim() && !canShareContactInfo(sender) && containsContactInfo(message.trim())) {
+    // Contact sharing is reserved for active Priority 2+ Premium members.
+    const senderEntitlements = await withEffectivePremiumPriority(sender)
+    if (message?.trim() && !canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
       res.status(403).json(CONTACT_INFO_CHAT_ERROR)
       return
     }

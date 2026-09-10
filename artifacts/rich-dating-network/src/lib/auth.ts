@@ -8,6 +8,8 @@ export interface User {
   emailVerified?: number
   welcomeShown?: number
   premium: number
+  premiumExpiry?: number
+  premiumPriority?: number
   credits: number
   gender: number
   looking?: number
