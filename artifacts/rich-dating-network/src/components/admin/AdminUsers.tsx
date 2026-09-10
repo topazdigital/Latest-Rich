@@ -43,6 +43,8 @@ export default function AdminUsers() {
   const [stats, setStats] = useState<UserStats | null>(null)
   const [detailUserId, setDetailUserId] = useState<number | null>(null)
   const [creditsAmount, setCreditsAmount] = useState("100")
+  const [recentUsers, setRecentUsers] = useState<AdminUser[]>([])
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
 
   // Quick-filter tab
   const [quickFilter, setQuickFilter] = useState("all")
@@ -85,8 +87,8 @@ export default function AdminUsers() {
     return params.toString()
   }, [page, quickFilter, search, gender, dateFrom, dateTo, country, city, ageMin, ageMax, orderBy, onlineNow, verifiedOnly])
 
-  const load = useCallback(async (p = page) => {
-    setLoading(true)
+  const load = useCallback(async (p = page, showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const r = await authFetch(`/api/admin/users?${buildQuery(p)}`)
       const d = await r.json()
@@ -98,19 +100,29 @@ export default function AdminUsers() {
       const ipCount: Record<string, number> = {}
       list.forEach(u => { if (u.lastIp) ipCount[u.lastIp] = (ipCount[u.lastIp] || 0) + 1 })
       setSharedIps(new Set(Object.entries(ipCount).filter(([, c]) => c > 1).map(([ip]) => ip)))
-    } finally { setLoading(false) }
+    } finally {
+      if (showLoading) setLoading(false)
+    }
   }, [buildQuery, page])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const r = await authFetch("/api/admin/stats")
       const d = await r.json()
       setStats(d)
     } catch { /* non-fatal */ }
-  }
+  }, [])
+
+  const loadRecentUsers = useCallback(async () => {
+    try {
+      const r = await authFetch("/api/admin/users?page=1&limit=8&filter=real&orderBy=createdDesc")
+      const d = await r.json()
+      if (r.ok) setRecentUsers(Array.isArray(d.users) ? d.users : [])
+    } catch { /* non-fatal */ }
+  }, [])
 
   // Load stats once on mount
-  useEffect(() => { loadStats() }, [])
+  useEffect(() => { loadStats() }, [loadStats])
 
   // Debounce filter changes
   useEffect(() => {
@@ -121,6 +133,23 @@ export default function AdminUsers() {
 
   // Page changes reload immediately
   useEffect(() => { load(page) }, [page])
+
+  // Keep the admin view fresh while it is open. Background refreshes preserve
+  // the current table instead of flashing the full loading state.
+  useEffect(() => {
+    const refresh = () => {
+      void Promise.all([load(page, false), loadStats(), loadRecentUsers()])
+      setLastRefreshed(new Date())
+    }
+    refresh()
+    const interval = setInterval(refresh, 30000)
+    return () => clearInterval(interval)
+  }, [load, loadStats, loadRecentUsers, page])
+
+  const refreshNow = () => {
+    void Promise.all([load(page, false), loadStats(), loadRecentUsers()])
+    setLastRefreshed(new Date())
+  }
 
   const banUser = async (u: AdminUser) => {
     const r = await authFetch(`/api/admin/users/${u.id}/ban`, { method: "POST" })
@@ -160,6 +189,47 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-4">
+      {/* Recent real-user joins ticker */}
+      <section className="overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 via-white to-orange-50 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-rose-100 px-4 py-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Live
+          </span>
+          <h2 className="text-sm font-black text-gray-900">New members</h2>
+          <span className="text-xs text-gray-500">Click a member to open their admin profile</span>
+          <div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
+            {lastRefreshed && <span>Updated {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+            <button onClick={refreshNow} className="rounded-lg border border-rose-200 bg-white px-2 py-1 font-bold text-rose-600 transition hover:bg-rose-50">Refresh</button>
+          </div>
+        </div>
+        {recentUsers.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto px-4 py-3">
+            {recentUsers.map(u => (
+              <button
+                key={u.id}
+                onClick={() => setDetailUserId(u.id)}
+                className="group flex min-w-[190px] items-center gap-2.5 rounded-xl border border-white bg-white/80 px-2.5 py-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-white hover:shadow-md"
+                title={`Open ${u.name}'s admin profile`}
+              >
+                <img
+                  src={getPhotoUrl(u.photo)}
+                  alt=""
+                  className="h-9 w-9 flex-shrink-0 rounded-full object-cover ring-2 ring-rose-100"
+                  onError={e => (e.currentTarget.src = "/images/default-avatar.svg")}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-bold text-gray-900 group-hover:text-rose-600">{u.name}{u.age ? `, ${u.age}` : ""}</span>
+                  <span className="block truncate text-[11px] text-gray-500">{[u.city, u.country].filter(Boolean).join(", ") || "Location not set"}</span>
+                  <span className="block text-[10px] font-semibold text-rose-500">{relativeTime(String(u.created)) || "Recently joined"}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="px-4 py-4 text-xs text-gray-400">No recent real-member joins to show.</div>
+        )}
+      </section>
+
       {/* Stats bar */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {QUICK_FILTERS.map(f => (
