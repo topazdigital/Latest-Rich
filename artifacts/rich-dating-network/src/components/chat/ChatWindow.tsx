@@ -94,6 +94,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [contactInfoBlocked, setContactInfoBlocked] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const initialScrollDoneRef = useRef(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
   const lastAttemptedTextRef = useRef('')
@@ -105,8 +106,21 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
+
+    // A newly opened conversation should start at the latest message. After
+    // that first positioning, preserve the user's place when older messages
+    // are being read and only follow new messages when already near the bottom.
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true
+      const frame = requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+
     const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
     if (distFromBottom < 200) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    return undefined
   }, [messages, otherTyping])
 
   // Show "scroll to bottom" button when user scrolls up in chat
