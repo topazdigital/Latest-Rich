@@ -49,8 +49,11 @@ export default function ProfilePage({ params }: Props) {
 
     if (token) {
       // Authenticated: fetch full profile + like status + my info
+      const profileRequest = user?.id === profileId
+        ? fetch('/api/users/me/full', { headers: { Authorization: `Bearer ${token}` } })
+        : fetch(`/api/users/${profileId}`, { headers: { Authorization: `Bearer ${token}` } })
       Promise.all([
-        fetch(`/api/users/${profileId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        profileRequest.then(r => r.json()),
         fetch(`/api/users/${profileId}/photos`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
         fetch(`/api/users/${profileId}/liked-status`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
         fetch(`/api/users/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
@@ -69,7 +72,7 @@ export default function ProfilePage({ params }: Props) {
         .catch(() => {})
         .finally(() => setLoading(false))
     }
-  }, [profileId, token])
+  }, [profileId, token, user?.id])
 
   // Dynamic SEO + JSON-LD: set title/meta/structured-data once profile data loads
   useEffect(() => {
