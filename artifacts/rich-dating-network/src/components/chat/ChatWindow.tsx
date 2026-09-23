@@ -280,7 +280,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <div className="font-bold text-gray-900 text-sm mb-1">Premium Required</div>
             <p className="text-xs text-gray-500 mb-2">A Priority 2 Premium plan or higher is required to share contact info, social handles, or links.</p>
             <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
-              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
+              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
           </div>
         </div>
       ), { duration: 5000 })
@@ -440,7 +440,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
                 <div className="font-bold text-gray-900 text-sm mb-1">Higher Premium Tier Required</div>
                 <p className="text-xs text-gray-500 mb-2">A Priority 2 Premium plan or higher is required to share contact info.</p>
                 <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
-                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>Upgrade Now</a>
+                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
               </div>
             </div>
           ), { duration: 5000 })
@@ -753,7 +753,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         {!canShareContactInfo(me) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
           <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
             <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
-            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">Upgrade to share</Link>
+            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium plans</Link>
           </div>
         )}
         <div className="flex gap-2 items-end">

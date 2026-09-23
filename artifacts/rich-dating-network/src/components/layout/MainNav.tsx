@@ -128,6 +128,20 @@ export default function MainNav() {
               </Link>
             )}
 
+            {user && user.fake !== 1 && (
+              <Link href="/premium" title="Premium membership" style={{
+                display: 'flex', alignItems: 'center', gap: '0.3rem',
+                borderRadius: '0.6rem', padding: '0.3rem 0.6rem',
+                fontSize: '0.72rem', fontWeight: 800, textDecoration: 'none', transition: 'all 0.15s',
+                background: location.startsWith('/premium') ? 'linear-gradient(135deg,#f59e0b,#d97706)' : '#fff7ed',
+                color: location.startsWith('/premium') ? '#fff' : '#b45309',
+                border: location.startsWith('/premium') ? 'none' : '1px solid #fde68a',
+              }} className="premium-btn">
+                <Crown size={12} fill={location.startsWith('/premium') ? '#fff' : 'none'} />
+                <span className="premium-btn-label">{user.premium === 1 ? 'Premium' : 'Upgrade'}</span>
+              </Link>
+            )}
+
             {user?.premium === 1 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', borderRadius: '0.6rem', padding: '0.3rem 0.6rem', fontSize: '0.68rem', fontWeight: 800 }} className="vip-badge">
                 <Crown size={10} /> VIP
@@ -164,6 +178,12 @@ export default function MainNav() {
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f9fafb'}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                     <User size={14} /> My Profile
+                  </Link>
+                  <Link href="/premium" onClick={() => setShowProfileMenu(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.82rem', fontWeight: 700, color: '#b45309', textDecoration: 'none', transition: 'background 0.1s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fffbeb'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <Crown size={14} /> Premium
                   </Link>
                   <Link href="/settings" onClick={() => setShowProfileMenu(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.82rem', fontWeight: 600, color: '#374151', textDecoration: 'none', transition: 'background 0.1s' }}
@@ -230,6 +250,7 @@ export default function MainNav() {
           .desktop-nav { display: none !important; }
           .boost-btn { display: none !important; }
           .credits-btn { display: none !important; }
+          .premium-btn-label { display: none !important; }
           .vip-badge { display: none !important; }
         }
         @media (min-width: 768px) {

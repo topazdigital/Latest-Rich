@@ -45,6 +45,7 @@ export default function PremiumPage({
   const isPremium = user?.premium === 1 && (!user?.premiumExpiry || user.premiumExpiry * 1000 > Date.now())
   const premiumExpiry = user?.premiumExpiry ? new Date(user.premiumExpiry * 1000) : null
   const premiumPriority = Math.max(1, user?.premiumPriority || 1)
+  const contactSharingPackage = packages.find(p => (p.priority || p.id) >= 2)
   const tierBenefits = premiumPriority >= 4
     ? ['Top discovery placement', '5 daily Superlikes', 'Free monthly gift', 'Priority support']
     : premiumPriority >= 3
@@ -149,11 +150,11 @@ export default function PremiumPage({
           <Lock size={18} className="text-white" />
         </div>
         <div>
-          <div className="font-bold text-gray-900 text-sm mb-1">{isPremium ? 'Want more visibility?' : 'Why Premium?'}</div>
+           <div className="font-bold text-gray-900 text-sm mb-1">{isPremium ? 'Want more visibility?' : 'Contact sharing starts at Priority 2'}</div>
           <p className="text-gray-600 text-sm leading-relaxed">
             {isPremium
               ? <>Upgrade to a higher priority level to appear more prominently in discovery, or choose any plan to add more time to your current access.</>
-              : <>To protect all members, contact info (phones, social handles, emails, links) can only be shared in chat by <strong>Priority 2 Premium members or higher</strong>. Choose at least the 2-week plan to unlock contact sharing.</>}
+               : <>To protect all members, contact info (phones, social handles, emails, and links) can only be shared in chat by <strong>Priority 2 Premium members or higher</strong>. {contactSharingPackage ? <>Choose the <strong>{contactSharingPackage.name}</strong> plan or higher to unlock contact sharing.</> : 'Choose a Priority 2 plan or higher to unlock contact sharing.'}</>}
           </p>
         </div>
       </div>
@@ -236,6 +237,9 @@ export default function PremiumPage({
                     {useCard ? `$${pkg.price}` : formatLocalPrice ? formatLocalPrice(pkg.price, effectiveProvider || provider, country) : `$${pkg.price}`}
                   </div>
                   <div className="text-xs font-semibold text-amber-600">Priority level {pkg.priority || pkg.id}</div>
+                   {(pkg.priority || pkg.id) >= 2
+                     ? <div className="text-[11px] font-semibold text-green-600 mt-1">✓ Contact sharing included</div>
+                     : <div className="text-[11px] text-gray-400 mt-1">Contact sharing unavailable</div>}
                   {formatLocalPrice && country && !useCard && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
                   )}

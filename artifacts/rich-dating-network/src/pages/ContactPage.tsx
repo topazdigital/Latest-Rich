@@ -7,7 +7,7 @@ const FAQS = [
   { q: "How do I verify my profile?", a: "Go to Settings → Verification and upload a clear photo holding a note with your username and date." },
   { q: "Can I get a refund?", a: "We review requests case-by-case. Contact us within 7 days of purchase with your payment reference." },
   { q: "How do I report a fake or abusive profile?", a: "Use the Report button on any profile, or send us the username/link via this form." },
-  { q: "How does premium membership work?", a: "Premium unlocks unlimited messaging, boosts, and read receipts. Subscribe via Credits → Premium." },
+  { q: "How do I access Premium and unlock contact sharing?", a: "Sign in and select Premium or Upgrade from the top menu, or open the Premium option in your profile menu. Priority 2 Premium or higher lets you share phone numbers, social handles, emails, and links in chat." },
   { q: "Is Rich Dating Network available in my country?", a: "Yes — available worldwide with payment options for Kenya, Nigeria, South Africa, Philippines, USA, UK, Europe and more." },
 ]
 
