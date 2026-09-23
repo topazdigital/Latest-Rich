@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "dF-darh8gjWcd2j9Dysx2"
+uri = "file://premium-selection-fix-reply.html"
+type = "html"
+title = "Premium selection fix reply email"
+description = "Standalone HTML email explaining the stale Premium amount fix."
+logical_id = "0f806946-b179-4a74-8d7d-61c4aac40885"
+content_hash = "sha256:a701d31726265a5d670748939594545582092fb17224d829251f743c15c07ee3"
+size = 2326
+mtime_ms = 1790145847172
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:ce532e3f-84da-480f-899c-4f0890811c19/0f806946-b179-4a74-8d7d-61c4aac40885/e4b4bdd6-b535-4822-bda4-b1f578bc2db6"
+storage_version_token = "1790145886248163"
+content_type = "text/html"

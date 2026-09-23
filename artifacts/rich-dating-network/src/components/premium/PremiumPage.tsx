@@ -38,7 +38,10 @@ export default function PremiumPage({
   formatLocalPrice, handleBuy, handleCustomSubmit,
   hasLocalMethod = false, useCard = false, setUseCard, originalProviderInfo, effectiveProvider,
 }: Props) {
-  const [localSelected, setLocalSelected] = useState(packages.find(p => p.popular === 1) || packages[0])
+  // Do not preselect the fallback package list. The real prices arrive
+  // asynchronously, and selecting the fallback object can show a stale price
+  // while the live package cards already show updated prices.
+  const [localSelected, setLocalSelected] = useState<any>(null)
   const { token } = useAuth()
   const [, setLocation] = useLocation()
   const [localLoading, setLocalLoading] = useState(false)
