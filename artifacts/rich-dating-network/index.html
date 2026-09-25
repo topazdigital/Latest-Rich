@@ -320,16 +320,106 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      #browser-compat-warning[hidden] {
+        display: none !important;
+      }
+
+      #browser-compat-warning {
+        box-sizing: border-box;
+        min-height: 100vh;
+        padding: 48px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff7f8;
+        color: #24151a;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      #browser-compat-warning .browser-compat-card {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 560px;
+        padding: 32px;
+        border: 1px solid #ffd6dc;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 12px 40px rgba(117, 25, 43, 0.12);
+      }
+
+      #browser-compat-warning h1 {
+        margin: 0 0 12px;
+        color: #e11d48;
+        font-size: 26px;
+        line-height: 1.2;
+      }
+
+      #browser-compat-warning p {
+        margin: 10px 0;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      #browser-compat-warning a {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        background: #e11d48;
+        color: #ffffff;
+        font-weight: bold;
+        text-decoration: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="browser-compat-warning" hidden role="alert">
+      <div class="browser-compat-card">
+        <h1>Rich Dating Network could not load</h1>
+        <p id="browser-compat-message">
+          This browser is too old to run the site. Please update it or use the latest
+          Microsoft Edge, Google Chrome, Firefox, or Safari.
+        </p>
+        <p>You can download a current browser and then reload this page.</p>
+        <a href="https://www.microsoft.com/edge/download" target="_blank" rel="noopener noreferrer">
+          Get a newer browser
+        </a>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {})
-        })
-      }
+      (function () {
+        var warning = document.getElementById('browser-compat-warning')
+        var message = document.getElementById('browser-compat-message')
+        var root = document.getElementById('root')
+        var moduleSupported = 'noModule' in document.createElement('script')
+
+        function showWarning(text) {
+          if (message && text) message.textContent = text
+          if (warning) warning.removeAttribute('hidden')
+        }
+
+        if (!moduleSupported) {
+          showWarning('This browser is too old to run the site. Please update it or use the latest Microsoft Edge, Google Chrome, Firefox, or Safari.')
+          return
+        }
+
+        // If the bundle is blocked, stale, or crashes before React can render,
+        // replace the otherwise blank page with a useful recovery message.
+        window.setTimeout(function () {
+          if (root && !root.firstChild) {
+            showWarning('The site could not start in this browser. Please update your browser, then reload the page. If the problem continues, clear this site\'s cached data and try again.')
+          }
+        }, 8000)
+
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').catch(function () {})
+          })
+        }
+      }())
     </script>
   </body>
 </html>

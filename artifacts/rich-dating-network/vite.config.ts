@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import legacy from "@vitejs/plugin-legacy";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
@@ -21,6 +22,19 @@ export default defineConfig({
   base: basePath,
   plugins: [
     react(),
+    legacy({
+      // Keep the modern bundle for current browsers, while also producing
+      // a transpiled/polyfilled bundle for Edge Legacy and older Safari,
+      // Chrome, and Firefox releases.
+      targets: [
+        "Edge >= 16",
+        "Chrome >= 49",
+        "Firefox >= 52",
+        "Safari >= 10.1",
+        "iOS >= 10.3",
+      ],
+      modernPolyfills: true,
+    }),
     tailwindcss(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
