@@ -402,6 +402,10 @@
         }
 
         if (!moduleSupported) {
+          var legacyStylesheet = document.createElement('link')
+          legacyStylesheet.rel = 'stylesheet'
+          legacyStylesheet.href = '/assets/index-legacy.css'
+          document.getElementsByTagName('head')[0].appendChild(legacyStylesheet)
           showWarning('This browser is too old to run the site. Please update it or use the latest Microsoft Edge, Google Chrome, Firefox, or Safari.')
           return
         }
