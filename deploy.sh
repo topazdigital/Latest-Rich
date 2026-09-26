@@ -29,6 +29,13 @@ if [[ "$1" != "--skip-pull" ]]; then
   echo "  Rich Dating Network Deploy"
   echo "==============================="
   echo "[0/7] Pulling latest code from GitHub..."
+  # DirectAdmin may run this script as root while the checkout is owned by
+  # the site user. Git refuses that ownership mismatch unless this exact
+  # deployment directory is explicitly trusted.
+  REPO_DIR="$(pwd)"
+  if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq "$REPO_DIR"; then
+    git config --global --add safe.directory "$REPO_DIR"
+  fi
   git fetch origin
   git reset --hard origin/main
   echo "      Code updated ✓"
