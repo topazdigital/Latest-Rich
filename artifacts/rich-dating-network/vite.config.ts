@@ -49,7 +49,10 @@ function findMatchingBrace(source: string, openIndex: number) {
       continue;
     }
 
-    if (character === '"' || character === "'") {
+    if (
+      (character === '"' || character === "'") &&
+      source[index - 1] !== "\\"
+    ) {
       quote = character;
     } else if (character === "(") {
       parentheses += 1;
