@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import { db } from "@workspace/db"
-import { chatmodzDeliveriesTable, messagesTable, usersTable } from "@workspace/db/schema"
-import { and, eq, lte, or } from "drizzle-orm"
+import { chatmodzDeliveriesTable, messagesTable, photosTable, usersTable } from "@workspace/db/schema"
+import { and, desc, eq, lte, or } from "drizzle-orm"
 
 const CHATMODZ_BASE_URL = (process.env.CHATMODZ_BASE_URL || "https://chatmodz.com").replace(/\/+$/, "")
 const CHATMODZ_SITE_KEY = process.env.CHATMODZ_SITE_KEY || "site_one"
@@ -85,6 +85,20 @@ async function postSignedJson(path: string, payload: Record<string, unknown>) {
   }
 }
 
+async function withProfilePhoto(user: any) {
+  const currentPhoto = String(user?.photo || user?.photoThumb || "").trim()
+  if (currentPhoto) return user
+
+  const [profilePhoto] = await db.select({ photo: photosTable.photo, thumb: photosTable.thumb })
+    .from(photosTable)
+    .where(and(eq(photosTable.userId, user.id), eq(photosTable.approved, 1)))
+    .orderBy(desc(photosTable.main), desc(photosTable.id))
+    .limit(1)
+  return profilePhoto
+    ? { ...user, photo: profilePhoto.photo, photoThumb: profilePhoto.thumb || profilePhoto.photo }
+    : user
+}
+
 async function getMemberMessage(messageId: number) {
   const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1)
   if (!message || !message.message?.trim()) return null
@@ -94,11 +108,12 @@ async function getMemberMessage(messageId: number) {
   const sender = users.find((user: any) => user.id === message.u1)
   const recipient = users.find((user: any) => user.id === message.u2)
   if (!sender || !recipient || sender.fake === 1 || recipient.fake !== 1) return null
+  const [member, managedProfile] = await Promise.all([withProfilePhoto(sender), withProfilePhoto(recipient)])
 
   return {
     message,
-    member: sender,
-    managedProfile: recipient,
+    member,
+    managedProfile,
     eventId: `rdn-message-${message.id}`,
     conversationId: chatmodzConversationId(sender.id, recipient.id),
   }
