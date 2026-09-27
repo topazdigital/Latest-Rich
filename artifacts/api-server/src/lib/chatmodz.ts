@@ -20,6 +20,26 @@ function getSecret() {
   return process.env[CHATMODZ_SECRET_ENV] || ""
 }
 
+function chatmodzPhotoUrl(user: any) {
+  let photo = String(user?.photoThumb || user?.photo || "").trim()
+  if (!photo) return undefined
+
+  try {
+    const parsed = new URL(photo.startsWith("//") ? "https:" + photo : photo)
+    if (parsed.hostname.toLowerCase() === "richdatingnetwork.com" || parsed.hostname.toLowerCase().endsWith(".richdatingnetwork.com")) {
+      photo = parsed.pathname + parsed.search + parsed.hash
+    }
+  } catch {
+    // Legacy database values are often stored as a relative path or filename.
+  }
+
+  if (photo.startsWith("/api/uploads/")) return photo
+  for (const prefix of ["/assets/sources/uploads/", "assets/sources/uploads/", "/uploads/", "uploads/", "/photos/", "photos/"]) {
+    if (photo.startsWith(prefix)) return "/api/uploads/" + photo.slice(prefix.length)
+  }
+  return photo.startsWith("/") ? photo : "/api/uploads/" + photo
+}
+
 export function chatmodzSignature(timestamp: string, body: string, secret = getSecret()) {
   return `sha256=${crypto.createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex")}`
 }
@@ -115,6 +135,8 @@ async function deliverOne(delivery: ChatmodzDelivery) {
       messageId: details.eventId,
       memberAlias: details.member.name || `Member ${details.member.id}`,
       managedProfileAlias: details.managedProfile.name || `Managed profile ${details.managedProfile.id}`,
+      memberPhotoUrl: chatmodzPhotoUrl(details.member),
+      managedProfilePhotoUrl: chatmodzPhotoUrl(details.managedProfile),
       sender: "member",
       body: details.message.message.trim(),
       sentAt: new Date(Number(details.message.time || now()) * 1000).toISOString(),
