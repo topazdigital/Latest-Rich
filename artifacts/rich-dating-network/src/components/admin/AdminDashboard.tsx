@@ -73,7 +73,7 @@ export default function AdminDashboard() {
     try {
       const r = await authFetch("/api/admin/sync-photos", { method: "POST" })
       const d = await r.json()
-      toast.success(`Synced photos for ${d.updated} users`)
+      toast.success(`Synced ${d.updated} local users and ${d.chatmodz?.synced || 0} Chatmodz conversations`)
     } catch { toast.error("Failed to sync photos") } finally { setSyncing(false) }
   }
 
