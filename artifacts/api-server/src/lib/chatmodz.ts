@@ -228,6 +228,10 @@ export async function syncExistingChatmodzProfiles() {
       if (!memberPhotoUrl && !managedProfilePhotoUrl) return false
       const result = await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
         conversationId: chatmodzConversationId(member.id, managedProfile.id),
+        memberId: member.id,
+        managedProfileId: managedProfile.id,
+        memberAlias: member.name || `Member ${member.id}`,
+        managedProfileAlias: managedProfile.name || `Managed profile ${managedProfile.id}`,
         memberPhotoUrl,
         managedProfilePhotoUrl,
       })
