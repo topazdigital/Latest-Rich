@@ -94,7 +94,7 @@ async function handleMessage(fromUserId: number, msg: any) {
       const [fromUser] = await db.select().from(usersTable).where(eq(usersTable.id, fromUserId)).limit(1)
       if (!fromUser) return
 
-      // Contact sharing is reserved for active Premium members.
+      // Contact sharing is reserved for active Priority 2+ Premium members.
       const senderEntitlements = await withEffectivePremiumPriority(fromUser)
       if (!canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
         send(fromUserId, {

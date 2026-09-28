@@ -58,13 +58,14 @@ export function isActivePremium(user: {
   return user.premium === 1 && (expiry === 0 || expiry > Math.floor(Date.now() / 1000))
 }
 
-/** Any active Premium package can share contact details in chat. */
+/** Active Priority 2+ Premium members can share contact details in chat. */
 export function canShareContactInfo(user: {
   fake?: number | null
   premium?: number | null
   premiumExpiry?: number | null
+  premiumPriority?: number | null
 }): boolean {
-  return user.fake === 1 || isActivePremium(user)
+  return user.fake === 1 || (isActivePremium(user) && (user.premiumPriority || 0) >= 2)
 }
 
 /** Error payload to send when contact info is detected in bio/name */
@@ -82,6 +83,6 @@ export const CONTACT_INFO_NAME_ERROR = {
 /** Error payload for non-premium chat */
 export const CONTACT_INFO_CHAT_ERROR = {
   error: "premium_required",
-  message: "An active Premium plan is required to share contact details, social handles, or links in chat.",
+  message: "A Priority 2 Premium plan or higher is required to share contact details, social handles, or links in chat.",
   code: "contact_info_blocked" as const,
 }

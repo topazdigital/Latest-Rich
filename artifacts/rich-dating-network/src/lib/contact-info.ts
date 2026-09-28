@@ -21,5 +21,5 @@ export function canShareContactInfo(user: {
   premiumExpiry?: number | null
   premiumPriority?: number | null
 } | null | undefined): boolean {
-  return user?.fake === 1 || isActivePremium(user)
+  return user?.fake === 1 || (isActivePremium(user) && (user?.premiumPriority || 0) >= 2)
 }

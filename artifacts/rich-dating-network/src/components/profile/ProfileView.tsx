@@ -277,7 +277,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
             <div className="relative">
               {!canShareContactInfo(currentUser) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(msgText)) && (
                 <div role="alert" className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 shadow-sm">
-                  <span className="text-xs font-semibold text-amber-800">👑 An active Premium plan is required to share contact info</span>
+                  <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
                   <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">Upgrade to share</Link>
                 </div>
               )}
