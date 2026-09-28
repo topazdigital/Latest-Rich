@@ -180,6 +180,63 @@ async function deliverOne(delivery: ChatmodzDelivery) {
   }
 }
 
+export async function syncExistingChatmodzProfiles() {
+  if (!getSecret()) throw new Error(\[CHATMODZ_SECRET_ENV} is not configured")
+
+  const [messagePairs, users] = await Promise.all([
+    db.select({ u1: messagesTable.u1, u2: messagesTable.u2 }).from(messagesTable),
+    db.select().from(usersTable),
+  ])
+  const usersById = new Map(users.map((user: any) => [Number(user.id), user]))
+  const pairs = new Map<string, { memberId: number; managedProfileId: number }>()
+
+  for (const row of messagePairs) {
+    const first = usersById.get(Number(row.u1))
+    const second = usersById.get(Number(row.u2))
+    if (!first || !second) continue
+    const member = first.fake === 1 ? second : first
+    const managedProfile = first.fake === 1 ? first : second
+    if (member.fake === 1 || managedProfile.fake !== 1) continue
+    pairs.set(chatmodzConversationId(member.id, managedProfile.id), { memberId: member.id, managedProfileId: managedProfile.id })
+  }
+
+  let synced = 0
+  let failed = 0
+  const entries = [...pairs.values()]
+  for (let offset = 0; offset < entries.length; offset += 10) {
+    const results = await Promise.allSettled(entries.slice(offset, offset + 10).map(async ({ memberId, managedProfileId }) => {
+      const [memberRow, managedProfileRow] = await Promise.all([
+        db.select().from(usersTable).where(eq(usersTable.id, memberId)).limit(1),
+        db.select().from(usersTable).where(eq(usersTable.id, managedProfileId)).limit(1),
+      ])
+      const member = memberRow[0]
+      const managedProfile = managedProfileRow[0]
+      if (!member || !managedProfile) return
+      const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([
+        withProfilePhoto(member),
+        withProfilePhoto(managedProfile),
+      ])
+      const memberPhotoUrl = chatmodzPhotoUrl(memberWithPhoto)
+      const managedProfilePhotoUrl = chatmodzPhotoUrl(managedProfileWithPhoto)
+      if (!memberPhotoUrl && !managedProfilePhotoUrl) return
+      await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
+        conversationId: chatmodzConversationId(member.id, managedProfile.id),
+        memberPhotoUrl,
+        managedProfilePhotoUrl,
+      })
+    }))
+    for (const result of results) {
+      if (result.status === 'fulfilled') synced++
+      else {
+        failed++
+        console.error('[Chatmodz] Profile sync failed', result.reason)
+      }
+    }
+  }
+
+  return { examined: entries.length, synced, failed }
+}
+
 export async function queueChatmodzMessage(messageId: number) {
   if (!getSecret()) return
   const details = await getMemberMessage(messageId)
