@@ -80,6 +80,13 @@ async function postSignedJson(path: string, payload: Record<string, unknown>) {
       const responseText = (await response.text()).slice(0, 300)
       throw new Error(`Chatmodz returned HTTP ${response.status}${responseText ? `: ${responseText}` : ""}`)
     }
+    const responseText = await response.text()
+    if (!responseText) return {}
+    try {
+      return JSON.parse(responseText)
+    } catch {
+      return {}
+    }
   } finally {
     clearTimeout(timeout)
   }
@@ -211,23 +218,24 @@ export async function syncExistingChatmodzProfiles() {
       ])
       const member = memberRow[0]
       const managedProfile = managedProfileRow[0]
-      if (!member || !managedProfile) return
+      if (!member || !managedProfile) return false
       const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([
         withProfilePhoto(member),
         withProfilePhoto(managedProfile),
       ])
       const memberPhotoUrl = chatmodzPhotoUrl(memberWithPhoto)
       const managedProfilePhotoUrl = chatmodzPhotoUrl(managedProfileWithPhoto)
-      if (!memberPhotoUrl && !managedProfilePhotoUrl) return
-      await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
+      if (!memberPhotoUrl && !managedProfilePhotoUrl) return false
+      const result = await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
         conversationId: chatmodzConversationId(member.id, managedProfile.id),
         memberPhotoUrl,
         managedProfilePhotoUrl,
       })
+      return (result as any)?.updated !== false
     }))
     for (const result of results) {
-      if (result.status === 'fulfilled') synced++
-      else {
+      if (result.status === 'fulfilled' && result.value) synced++
+      else if (result.status === 'rejected') {
         failed++
         console.error('[Chatmodz] Profile sync failed', result.reason)
       }
