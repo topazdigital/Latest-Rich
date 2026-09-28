@@ -4,13 +4,14 @@ import { likesTable, notificationsTable, usersTable, photosTable } from "@worksp
 import { eq, and, desc, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send } from "../lib/websocket"
+import { toEffectivePremiumUser } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
 
 function safeUser(u: any) {
   if (!u) return null
-  const { password, ...rest } = u
+  const { password, ...rest } = toEffectivePremiumUser(u)
   return rest
 }
 

@@ -19,6 +19,17 @@ export const DEFAULT_PREMIUM_PACKAGES: PremiumPackage[] = [
   { id: 4, name: "1 Year", days: 365, price: 59.99, popular: 0, description: "Best value — Save 50%", active: 1, priority: 4 },
 ]
 
+/** Convert a human-readable membership label to its calendar duration. */
+export function parsePremiumDays(label: string): number | null {
+  const match = String(label || "").match(/(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months|year|years)\b/i)
+  if (!match) return null
+  const quantity = Number(match[1])
+  if (!Number.isFinite(quantity) || quantity <= 0) return null
+  const unit = match[2].toLowerCase()
+  const multiplier = unit.startsWith("year") ? 365 : unit.startsWith("month") ? 30 : unit.startsWith("week") ? 7 : 1
+  return Math.max(1, Math.round(quantity * multiplier))
+}
+
 export async function getPremiumPackages(): Promise<Record<number, PremiumPackage>> {
   try {
     const configs = await db.select().from(siteConfigTable)

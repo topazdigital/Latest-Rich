@@ -6,13 +6,13 @@ import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_BIO_ERROR, CONTACT_INFO_NAME_ERROR } from "../lib/contact-filter"
-import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
+import { toEffectivePremiumUser, withEffectivePremiumPriority } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
 
 function safeUser(u: any) {
-  const { password, ...rest } = u
+  const { password, ...rest } = toEffectivePremiumUser(u)
   // Decode HTML entities from legacy PHP data (htmlspecialchars'd before storage)
   if (rest.bio) rest.bio = decodeHtml(rest.bio)
   return rest

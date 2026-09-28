@@ -6,9 +6,11 @@ import {
   photosTable, likesTable, reportedUsersTable, autoMessageLogTable,
   chatLocksTable, userExtendedTable
 } from "@workspace/db/schema"
-import { eq, desc, sql, and, ne, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
+import { eq, desc, sql, and, ne, gt, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { syncExistingChatmodzProfiles } from "../lib/chatmodz"
+import { toEffectivePremiumUser, withEffectivePremiumPriority } from "../lib/premium-entitlements"
+import { getPremiumPackage, parsePremiumDays } from "../lib/premium-packages"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -29,7 +31,7 @@ function requireAdmin(req: any, res: any, next: any) {
 
 function safeUser(u: typeof usersTable.$inferSelect) {
   const { password, ...rest } = u
-  return rest
+  return toEffectivePremiumUser(rest)
 }
 
 // Sync users.photo from photos table for users missing a profile photo
@@ -77,7 +79,10 @@ router.get("/stats", requireAuth, requireAdmin, async (req, res) => {
     const [totalUsers] = await db.select({ count: count() }).from(usersTable)
     const [fakeUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.fake, 1))
     const [newToday] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.created, today))
-    const [premiumUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.premium, 1))
+    const [premiumUsers] = await db.select({ count: count() }).from(usersTable).where(and(
+      eq(usersTable.premium, 1),
+      or(eq(usersTable.premiumExpiry, 0), gt(usersTable.premiumExpiry, now())),
+    ))
     const [onlineUsers] = await db.select({ count: count() }).from(usersTable).where(gte(usersTable.lastAccess as any, String(now() - 300)))
     const [totalMessages] = await db.select({ count: count() }).from(messagesTable)
     const [totalLikes] = await db.select({ count: count() }).from(likesTable)
@@ -204,7 +209,7 @@ router.get("/users/:id", requireAuth, requireAdmin, async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     const photos = await db.select().from(photosTable).where(eq(photosTable.userId, user.id))
-    res.json({ ...safeUser(user), photos })
+    res.json({ ...safeUser(await withEffectivePremiumPriority(user)), photos })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
@@ -991,14 +996,21 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
       res.json({ success: true, message: `Order #${id} fulfilled — ${creditsToAdd} credits added to ${user.email}` })
     } else if (order.type === "premium") {
       // Case-insensitive: match "1 Year", "3 Months", "6 Months", "1 Month", etc.
-      const desc = (order.description || "").toLowerCase()
-      const days =
-        desc.includes("year") ? 365 :
-        desc.includes("6 month") ? 180 :
-        desc.includes("3 month") ? 90 :
-        desc.includes("month") || desc.includes("week") ? 30 :
-        30
-      await db.update(usersTable).set({ premium: 1, premiumExpiry: now() + days * 86400, premiumPriority: 1 }).where(eq(usersTable.id, order.userId))
+      const pkg = order.packageId ? await getPremiumPackage(order.packageId) : undefined
+      const packageDays = pkg?.days
+      const days = order.premiumDays || packageDays || parsePremiumDays(order.description || "") || 30
+      const currentTime = now()
+      const currentlyActive = user.premium === 1 &&
+        ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
+      const baseExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime
+        ? (user.premiumExpiry || 0)
+        : currentTime
+      const priority = order.premiumPriority || pkg?.priority || 1
+      await db.update(usersTable).set({
+        premium: 1,
+        premiumExpiry: baseExpiry + days * 86400,
+        premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, priority),
+      }).where(eq(usersTable.id, order.userId))
       await db.insert(notificationsTable).values({
         userId: order.userId, type: "premium", message: `Premium membership activated for ${days} days.`, time: now(), read: 0,
       } as any).catch(() => {})

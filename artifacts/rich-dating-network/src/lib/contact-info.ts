@@ -7,13 +7,19 @@
 export const CONTACT_INFO_PATTERN =
   /(?:[\w.+-]+@[\w-]+\.[a-z]{2,}|\+?\d[\d\s().-]{5,}\d|\d(?:\.\d){5,}|(?:instagram|insta|ig|whatsapp|whats\s*app|wa\b|telegram|tg\b|t\.me|snapchat|snap\b|facebook|fb|twitter|x\.com|tiktok|wechat|we\s*chat|line\b|kik\b|skype|discord|viber|signal|linktree|onlyfans|imo\b|zalo|bbm|hangouts?)\s*[:=@\/\-\s]*[\w.@+-]{2,}|@[\w.]{3,}|https?:\/\/[^\s]{4,}|www\.[a-z0-9-]{2,}\.[a-z]{2,}|\b[a-z0-9-]{2,}\.(?:com|net|org|io|co|me|app|link|ly|to|gg|tv)\b)/i
 
+export function isActivePremium(user: {
+  premium?: number | null
+  premiumExpiry?: number | null
+} | null | undefined): boolean {
+  const expiry = user?.premiumExpiry || 0
+  return user?.premium === 1 && (expiry === 0 || expiry * 1000 > Date.now())
+}
+
 export function canShareContactInfo(user: {
   fake?: number | null
   premium?: number | null
   premiumExpiry?: number | null
   premiumPriority?: number | null
 } | null | undefined): boolean {
-  const expiry = user?.premiumExpiry || 0
-  const active = user?.premium === 1 && (expiry === 0 || expiry * 1000 > Date.now())
-  return user?.fake === 1 || (active && (user?.premiumPriority || 0) >= 2)
+  return user?.fake === 1 || (isActivePremium(user) && (user?.premiumPriority || 0) >= 2)
 }

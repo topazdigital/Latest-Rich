@@ -71,6 +71,17 @@ export function useAuthState() {
     }
   }, [])
 
+  // Keep an already-open page in sync when the membership expires without
+  // requiring a reload or another API request.
+  useEffect(() => {
+    if (!user?.premium || !user.premiumExpiry) return
+    const delay = Math.max(0, user.premiumExpiry * 1000 - Date.now())
+    const timer = window.setTimeout(() => {
+      setUser(current => current ? { ...current, premium: 0, premiumPriority: 0 } : current)
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [user?.premium, user?.premiumExpiry])
+
   async function login(email: string, password: string) {
     const res = await fetch('/api/auth/login', {
       method: 'POST',

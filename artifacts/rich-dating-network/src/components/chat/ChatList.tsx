@@ -3,6 +3,7 @@ import { Link } from 'wouter'
 import { BadgeCheck, Crown } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useWSEvent } from '../../hooks/useWebSocket'
+import { isActivePremium } from '../../lib/contact-info'
 
 interface Props { userId: number; conversations: any[] }
 
@@ -71,7 +72,7 @@ export default function ChatList({ userId, conversations: initial }: Props) {
                   <div className="flex items-center gap-1 mb-0.5">
                     <span className="font-semibold text-gray-900">{c.name}</span>
                     {c.verified === 1 && <BadgeCheck size={14} className="text-blue-500" />}
-                    {c.premium === 1 && <Crown size={14} className="text-amber-500" />}
+                    {isActivePremium(c) && <Crown size={14} className="text-amber-500" />}
                   </div>
                   {isTyping ? (
                     <p className="text-sm text-brand-500 font-medium flex items-center gap-1">

@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { Heart, MessageCircle, Crown, BadgeCheck, ThumbsUp, X, ChevronLeft, ChevronRight, Search, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import { isActivePremium } from '../../lib/contact-info'
 import DailyHighlights from '../engagement/DailyHighlights'
 
 interface Props {
@@ -280,7 +281,7 @@ export default function HomeFeed({ userId, suggestedUsers, feedPosts, stories }:
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <Link href={profileUrl(u)} style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</Link>
-                          {u.premium === 1 && <Crown size={11} color="#f59e0b" />}
+                          {isActivePremium(u) && <Crown size={11} color="#f59e0b" />}
                         </div>
                         <p style={{ fontSize: '0.75rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.city || u.country}</p>
                       </div>

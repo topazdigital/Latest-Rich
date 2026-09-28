@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { INTERESTS } from '../settings/SettingsPage'
 import { ScrollToTopButton } from '../ui/ScrollToTopButton'
-import { CONTACT_INFO_PATTERN, canShareContactInfo } from '../../lib/contact-info'
+import { CONTACT_INFO_PATTERN, canShareContactInfo, isActivePremium } from '../../lib/contact-info'
 
 interface Props {
   user: any; photos: any[]; isOwnProfile: boolean;
@@ -220,7 +220,7 @@ export default function ProfileView({ user, photos, isOwnProfile, myId, hasLiked
           {/* Top badges */}
           <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
             <div className="flex flex-col gap-1.5">
-              {user.premium === 1 && (
+              {isActivePremium(user) && (
                 <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2.5 py-1 rounded-full font-semibold shadow-lg">
                   <Crown size={11} /> VIP Member
                 </div>

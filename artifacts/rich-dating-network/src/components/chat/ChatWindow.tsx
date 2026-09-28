@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
 import FeedbackPrompt from '../engagement/FeedbackPrompt'
 import PaidVideoCallModal from '../common/PaidVideoCallModal'
-import { CONTACT_INFO_PATTERN, canShareContactInfo } from '../../lib/contact-info'
+import { CONTACT_INFO_PATTERN, canShareContactInfo, isActivePremium } from '../../lib/contact-info'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
 
@@ -501,7 +501,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="flex items-center gap-1">
             <Link href={profileUrl(other)} className="font-semibold text-gray-900 hover:text-brand-500 truncate">{other.name}</Link>
             {other.verified === 1 && <BadgeCheck size={14} className="text-blue-500 flex-shrink-0" />}
-            {other.premium === 1 && <Crown size={14} className="text-amber-500 flex-shrink-0" />}
+            {isActivePremium(other) && <Crown size={14} className="text-amber-500 flex-shrink-0" />}
           </div>
           <p className="text-xs text-gray-400">
             {otherTyping ? <span className="text-brand-500 font-medium">typing...</span>

@@ -4,13 +4,14 @@ import { authFetch } from "../lib/auth"
 import { getPhotoUrl, timeAgo, profileUrl } from "../lib/utils"
 import { Eye, Crown, Lock } from "lucide-react"
 import { useAuth } from "../hooks/useAuth"
+import { isActivePremium } from "../lib/contact-info"
 
 export default function VisitorsPage() {
   const [visitors, setVisitors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [, setLocation] = useLocation()
   const { user } = useAuth()
-  const isPremium = user?.premium === 1
+  const isPremium = isActivePremium(user)
 
   useEffect(() => {
     authFetch("/api/visits").then(r => r.json()).then(d => { setVisitors(Array.isArray(d) ? d : []); setLoading(false) })

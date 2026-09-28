@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Crown, Check, Loader2, MessageCircle, Eye, Star, Heart, Gift, Zap, Phone, Shield, Lock, Upload } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { isActivePremium } from '../../lib/contact-info'
 import { useLocation } from 'wouter'
 
 interface Props {
@@ -45,7 +46,7 @@ export default function PremiumPage({
   const { token } = useAuth()
   const [, setLocation] = useLocation()
   const [localLoading, setLocalLoading] = useState(false)
-  const isPremium = user?.premium === 1 && (!user?.premiumExpiry || user.premiumExpiry * 1000 > Date.now())
+  const isPremium = isActivePremium(user)
   const premiumExpiry = user?.premiumExpiry ? new Date(user.premiumExpiry * 1000) : null
   const premiumPriority = Math.max(1, user?.premiumPriority || 1)
   const contactSharingPackage = packages.find(p => (p.priority || p.id) >= 2)

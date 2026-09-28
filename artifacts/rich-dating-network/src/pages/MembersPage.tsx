@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useSearch, useLocation } from 'wouter'
 import { getPhotoUrl, isOnline } from '../lib/utils'
 import { BadgeCheck, Crown, Search, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { isActivePremium } from '../lib/contact-info'
 
 const GENDERS = [
   { value: '', label: 'All' },
@@ -36,7 +37,7 @@ function MemberCard({ member }: { member: any }) {
         )}
 
         {/* VIP badge */}
-        {member.premium === 1 && (
+        {isActivePremium(member) && (
           <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 bg-amber-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
             <Crown size={9} /> VIP
           </div>

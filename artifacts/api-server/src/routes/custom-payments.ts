@@ -277,11 +277,12 @@ router.post("/admin/orders/:id/approve", requireAuth, requireAdmin, async (req, 
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
         if (user) {
           const currentTime = now()
-          const currentExpiry = user.premium && (user.premiumExpiry || 0) > currentTime ? (user.premiumExpiry || 0) : currentTime
+          const currentlyActive = user.premium === 1 && ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
+          const currentExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime ? (user.premiumExpiry || 0) : currentTime
           await db.update(usersTable).set({
             premium: 1,
             premiumExpiry: currentExpiry + (order.premiumDays || pkg!.days) * 86400,
-            premiumPriority: Math.max(user.premiumPriority || 0, order.premiumPriority || pkg!.priority),
+            premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, order.premiumPriority || pkg!.priority),
           }).where(eq(usersTable.id, order.userId))
         }
       }

@@ -1192,13 +1192,14 @@ async function activatePremium(userId: number, pkg: { days: number; priority: nu
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
   if (!user) return
   const currentTime = now()
-  const currentExpiry = user.premium && (user.premiumExpiry || 0) > currentTime
+  const currentlyActive = user.premium === 1 && ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
+  const currentExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime
     ? (user.premiumExpiry || 0)
     : currentTime
   await db.update(usersTable).set({
     premium: 1,
     premiumExpiry: currentExpiry + pkg.days * 86400,
-    premiumPriority: Math.max(user.premiumPriority || 0, pkg.priority),
+    premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, pkg.priority),
   }).where(eq(usersTable.id, userId))
 }
 

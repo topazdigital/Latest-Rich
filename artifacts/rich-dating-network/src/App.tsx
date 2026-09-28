@@ -5,6 +5,7 @@ import { usePWAInstall } from "./hooks/usePWAInstall"
 import { usePushNotifications } from "./hooks/usePushNotifications"
 
 import { AuthContext, useAuth, useAuthState } from "./hooks/useAuth"
+import { isActivePremium } from "./lib/contact-info"
 // Public / SEO-crawlable pages load eagerly so search engines and first-time
 // visitors get fast, flash-free renders straight from the initial bundle.
 import LandingPage from "./components/landing/LandingPage"
@@ -446,7 +447,7 @@ function AnalyticsInjector() {
       Clarity.setTag('userId', String(user.id))
       Clarity.setTag('username', user.username || '')
       Clarity.setTag('city', user.city || '')
-      Clarity.setTag('premium', user.premium === 1 ? 'yes' : 'no')
+      Clarity.setTag('premium', isActivePremium(user) ? 'yes' : 'no')
     }).catch(() => {})
   }, [user?.id])
 

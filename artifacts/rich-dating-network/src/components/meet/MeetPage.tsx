@@ -4,6 +4,7 @@ import { Heart, X, Star, MapPin, Info, MessageCircle, BadgeCheck, Crown } from '
 import { Link } from 'wouter'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
+import { isActivePremium } from '../../lib/contact-info'
 
 interface Props { userId: number; users: any[]; onRefresh?: () => void }
 
@@ -110,7 +111,7 @@ export default function MeetPage({ userId, users, onRefresh }: Props) {
             {dragX < -60 && <div className="absolute top-10 right-6 rotate-[20deg] border-4 border-gray-400 text-gray-600 text-2xl font-black px-4 py-1 rounded-xl bg-white/90">NOPE ✗</div>}
 
             <div className="absolute top-4 right-4 flex gap-2">
-              {user.premium === 1 && <div className="bg-amber-500 text-white rounded-full px-2 py-1 flex items-center gap-1 text-xs"><Crown size={11} /> VIP</div>}
+              {isActivePremium(user) && <div className="bg-amber-500 text-white rounded-full px-2 py-1 flex items-center gap-1 text-xs"><Crown size={11} /> VIP</div>}
               {user.verified === 1 && <div className="bg-blue-500 text-white rounded-full px-2 py-1 flex items-center gap-1 text-xs"><BadgeCheck size={11} /> Verified</div>}
             </div>
 

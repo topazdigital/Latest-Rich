@@ -6,6 +6,7 @@ import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
 import { containsContactInfo, CONTACT_INFO_CHAT_ERROR, canShareContactInfo } from "../lib/contact-filter"
 import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
+import { toEffectivePremiumUser } from "../lib/premium-entitlements"
 import multer from "multer"
 import path from "path"
 import fs from "fs"
@@ -92,7 +93,7 @@ router.get("/conversations", requireAuth, async (req, res) => {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, otherId)).limit(1)
       if (user) {
         const { password, ...safe } = user
-        results.push({ ...conv, ...safe, otherId })
+        results.push({ ...conv, ...toEffectivePremiumUser(safe), otherId })
       }
     }
     res.json(results)

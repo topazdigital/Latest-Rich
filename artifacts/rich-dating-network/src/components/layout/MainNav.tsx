@@ -3,6 +3,7 @@ import { Search, Flame, MessageCircle, Heart, Gift, Eye, Settings, Crown, Zap, U
 import { getPhotoUrl, isOnline } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
+import { isActivePremium } from '../../lib/contact-info'
 import NotificationDropdown from './NotificationDropdown'
 import { useEffect, useState, useRef } from 'react'
 
@@ -138,11 +139,11 @@ export default function MainNav() {
                 border: location.startsWith('/premium') ? 'none' : '1px solid #fde68a',
               }} className="premium-btn">
                 <Crown size={12} fill={location.startsWith('/premium') ? '#fff' : 'none'} />
-                <span className="premium-btn-label">{user.premium === 1 ? 'Premium' : 'Upgrade'}</span>
+                <span className="premium-btn-label">{isActivePremium(user) ? 'Premium' : 'Upgrade'}</span>
               </Link>
             )}
 
-            {user?.premium === 1 && (
+            {isActivePremium(user) && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', borderRadius: '0.6rem', padding: '0.3rem 0.6rem', fontSize: '0.68rem', fontWeight: 800 }} className="vip-badge">
                 <Crown size={10} /> VIP
               </span>

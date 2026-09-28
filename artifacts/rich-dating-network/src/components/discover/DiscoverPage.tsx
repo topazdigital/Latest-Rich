@@ -8,6 +8,7 @@ import AdsterraNativeBanner from '../ui/AdsterraNativeBanner'
 import { useWSEvent } from '../../hooks/useWebSocket'
 import LocationAutocomplete from '../ui/LocationAutocomplete'
 import { authFetch } from '../../lib/auth'
+import { isActivePremium } from '../../lib/contact-info'
 
 interface Props {
   userId: number;
@@ -310,7 +311,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
                   {(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
                     <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm" />
                   )}
-                  {u.premium === 1 && !(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
+                  {isActivePremium(u) && !(onlineUserIds.has(u.id) || isOnline(u.lastAccess)) && (
                     <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-sm text-white rounded-full p-1">
                       <Crown size={9} />
                     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
+import { isActivePremium } from "../../lib/contact-info"
 import toast from "react-hot-toast"
 import AdminUserDetail from "./AdminUserDetail"
 
@@ -427,7 +428,7 @@ export default function AdminUsers() {
                       )}
                       {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-500">Banned</span>}
                       {u.verified === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">✓</span>}
-                      {u.premium === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
+                      {isActivePremium(u) && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
                     </div>
                   </div>
 
@@ -547,7 +548,7 @@ export default function AdminUsers() {
                             )}
                             {u.banned === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-500">Banned</span>}
                             {u.verified === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">✓</span>}
-                            {u.premium === 1 && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
+                            {isActivePremium(u) && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-600">★</span>}
                             {u.fake !== 1 && (
                               <select
                                 value={u.admin}

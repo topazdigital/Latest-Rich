@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
 import { getPhotoUrl } from "../../lib/utils"
 import { formatDate, timeAgo } from "../../lib/utils"
+import { isActivePremium } from "../../lib/contact-info"
 import toast from "react-hot-toast"
 import { X, Shield, Crown, Ban, Trash2, Key, MessageSquare, CreditCard, User, Image, Activity, ChevronRight, AlertTriangle, LogIn, Send, Mail } from "lucide-react"
 
@@ -260,7 +261,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ color: "white", fontWeight: 700, fontSize: 20 }}>{user.name}</span>
                 {user.verified === 1 && <Shield size={16} style={{ color: "#60a5fa" }} />}
-                {user.premium === 1 && <Crown size={16} style={{ color: "#facc15" }} />}
+                {isActivePremium(user) && <Crown size={16} style={{ color: "#facc15" }} />}
                 {user.banned === 1 && <Ban size={16} style={{ color: "#f87171" }} />}
               </div>
               <div style={{ color: "#6b7280", fontSize: 13, marginTop: 2 }}>
@@ -275,7 +276,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
                 {user.admin === 1 && <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#1e3a5f", color: "#93c5fd" }}>Moderator</span>}
                 {user.fake !== 1 && user.admin === 0 && <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#14532d33", color: "#86efac" }}>User</span>}
                 {user.banned === 1 && <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#7f1d1d33", color: "#fca5a5" }}>Banned</span>}
-                {user.premium === 1 && <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#78350f33", color: "#fde68a" }}>Premium</span>}
+                {isActivePremium(user) && <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#78350f33", color: "#fde68a" }}>Premium</span>}
                 <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 11, background: "#1f2937", color: "#9ca3af" }}>{user.credits} credits</span>
               </div>
             </div>
@@ -562,7 +563,7 @@ export default function AdminUserDetail({ userId, onClose, onUpdate }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <StatCard label="Current Credits" value={String(user.credits)} color="#facc15" />
-                <StatCard label="Premium" value={user.premium ? "Active" : "Inactive"} color={user.premium ? "#10b981" : "#6b7280"} />
+                <StatCard label="Premium" value={isActivePremium(user) ? "Active" : "Inactive"} color={isActivePremium(user) ? "#10b981" : "#6b7280"} />
                 <StatCard label="Total Orders" value={String(orders.length)} color="#60a5fa" />
               </div>
 
