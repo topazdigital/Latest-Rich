@@ -76,7 +76,6 @@ export default function CreditsPageWrapper() {
         if (mapped.length > 0) setPackages(mapped)
       }
     }).catch(() => {})
-    fetch('/api/engagement/offers').then(r => r.json()).then(setOffers).catch(() => {})
   }, [])
 
   async function buyOffer(kind: 'starter' | 'event', eventId?: number) {
@@ -104,6 +103,7 @@ export default function CreditsPageWrapper() {
     if (!token) return
     authFetch('/api/payments/method').then(r => r.json()).then(setPaymentMethod).catch(() => {})
     authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
+    authFetch('/api/engagement/offers').then(r => r.json()).then(setOffers).catch(() => {})
     authFetch('/api/custom-payments/gateways').then(r => r.json()).then(d => setCustomGateways(Array.isArray(d) ? d : [])).catch(() => {})
     authFetch('/api/custom-payments/my-orders').then(r => r.json()).then(d => setCustomOrders(Array.isArray(d) ? d : [])).catch(() => {})
 
@@ -112,6 +112,7 @@ export default function CreditsPageWrapper() {
       toast.success('Payment successful! Credits added. 🎉')
       refreshUser()
       authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
+      setOffers((current: any) => current ? { ...current, starter: null } : current)
     }
     if (params.get('pending')) toast.success('Payment received — your credits will appear shortly.')
     if (params.get('error')) toast.error('Payment failed. Please try again.')
@@ -211,6 +212,7 @@ export default function CreditsPageWrapper() {
           toast.success('Payment received! Credits added. 🎉')
           await refreshUser()
           authFetch('/api/credits/orders').then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : [])).catch(() => {})
+          setOffers((current: any) => current ? { ...current, starter: null } : current)
           return
         }
         if (data.finalStatus === 'cancelled') {

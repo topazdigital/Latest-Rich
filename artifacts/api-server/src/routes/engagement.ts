@@ -1,7 +1,8 @@
 import { Router } from "express"
 import { db, engagementDailyTable, engagementEventsTable, engagementFeedbackTable, engagementReactionsTable, eventAttendeesTable, likesTable, messagesTable, notificationsTable, ordersTable, siteConfigTable, userExtendedTable, usersTable } from "@workspace/db"
 import { and, desc, eq, gte, lt, or, sql } from "drizzle-orm"
-import { requireAuth } from "../lib/auth-middleware"
+import { optionalAuth, requireAuth } from "../lib/auth-middleware"
+import { hasCompletedStarterOrder } from "../lib/starter-trial"
 
 const router = Router()
 const now = () => Math.floor(Date.now() / 1000)
@@ -331,9 +332,13 @@ router.delete("/events/:id/attend", requireAuth, async (req, res) => {
   }
 })
 
-router.get("/offers", async (_req, res) => {
+router.get("/offers", optionalAuth, async (req, res) => {
   const events = await db.select().from(engagementEventsTable).where(eq(engagementEventsTable.active, 1)).orderBy(engagementEventsTable.startsAt).limit(20).catch(() => [])
-  return res.json({ starter: { id: "starter", title: "Try the network", description: "3 chat credits for $1", price: 1, credits: 3 }, events })
+  const starterUsed = req.userId ? await hasCompletedStarterOrder(req.userId) : false
+  return res.json({
+    starter: starterUsed ? null : { id: "starter", title: "Try the network", description: "3 chat credits for $1", price: 1, credits: 3 },
+    events,
+  })
 })
 
 router.post("/checkout", requireAuth, async (req, res) => {
@@ -348,6 +353,9 @@ router.post("/checkout", requireAuth, async (req, res) => {
   let metadata: Record<string, string> = { userId: String(req.userId), type: "starter", packageId: "0" }
   if (kind !== "starter") {
     return res.status(400).json({ error: "Unknown offer" })
+  }
+  if (await hasCompletedStarterOrder(req.userId!)) {
+    return res.status(409).json({ error: "Your $1 starter trial has already been used." })
   }
   const stripeKey = process.env.STRIPE_SECRET_KEY || await getConfig("stripe_secret_key")
   if (!stripeKey) return res.status(400).json({ error: "Card payments are not configured yet. Ask an admin to enable Stripe." })

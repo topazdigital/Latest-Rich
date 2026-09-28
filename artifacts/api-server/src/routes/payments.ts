@@ -1,13 +1,20 @@
-import { Router } from "express"
+import { Router, Response } from "express"
 import { db, engagementEventsTable, eventAttendeesTable } from "@workspace/db"
 import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
 import { activatePremiumEntitlement } from "../lib/premium-entitlements"
+import { fulfillStarterOrder, hasCompletedStarterOrder } from "../lib/starter-trial"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+
+async function rejectUsedStarter(userId: number, res: Response): Promise<boolean> {
+  if (!(await hasCompletedStarterOrder(userId))) return false
+  res.status(409).json({ error: "Your $1 starter trial has already been used." })
+  return true
+}
 
 // Fallback credit packages used only when DB config is unavailable
 const DEFAULT_CREDIT_PACKAGES: Record<number, { credits: number; price: number; name: string }> = {
@@ -197,8 +204,7 @@ router.get("/stripe/success", async (req, res) => {
     const [existingOrder] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, String(session_id))).limit(1)
     if (!existingOrder || existingOrder.status === "pending") {
       if (type === "starter") {
-        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(userId))).limit(1)
-        if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, user.id))
+        await fulfillStarterOrder(parseInt(userId), existingOrder?.id)
        } else if (type === "event") {
          await fulfillEventAttendance(parseInt(userId), parseInt(packageId || "0"), existingOrder?.id || 0)
        } else {
@@ -219,6 +225,9 @@ router.get("/stripe/success", async (req, res) => {
 
 /* ─── PAYHERO (Kenya M-Pesa + East Africa) ─── */
 router.post("/payhero/initiate", requireAuth, async (req, res) => {
+  const { phone, packageId, type } = req.body
+  if (type === "starter" && await rejectUsedStarter(req.userId!, res)) return
+
   const apiUsername = await getConfig("payhero_api_username")
   const apiPassword = await getConfig("payhero_api_password")
   const channelId = await getConfig("payhero_channel_id")
@@ -228,7 +237,6 @@ router.post("/payhero/initiate", requireAuth, async (req, res) => {
     return
   }
 
-  const { phone, packageId, type } = req.body
   if (!phone) { res.status(400).json({ error: "Phone number required (format: 0712345678)" }); return }
 
   const creditPkgs = await getCreditPackages()
@@ -442,8 +450,7 @@ router.post("/payhero/callback", async (req, res) => {
         res.json({ success: true }); return
       }
       if (order.type === "starter") {
-        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-        if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, order.userId))
+        await fulfillStarterOrder(order.userId, order.id)
       } else if (order.type === "credits") {
         const parsedFromDesc = order.description ? parseInt((order.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
         const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : parsedFromDesc
@@ -506,8 +513,7 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
         .set({ status: "completed" })
         .where(and(eq(ordersTable.stripeSessionId, req.params.ref as string), eq(ordersTable.status, "pending")))
       if (freshOrder.type === "starter") {
-        const [u] = await db.select().from(usersTable).where(eq(usersTable.id, freshOrder.userId)).limit(1)
-        if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + 3 }).where(eq(usersTable.id, freshOrder.userId))
+        await fulfillStarterOrder(freshOrder.userId, freshOrder.id)
       } else if (freshOrder.type === "credits") {
         const parsedFromDesc = freshOrder.description ? parseInt((freshOrder.description.match(/^(\d+)\s*credits?/i) || [])[1] || "0") : 0
         const creditsToAdd = (freshOrder.credits && freshOrder.credits > 0) ? freshOrder.credits : parsedFromDesc
@@ -555,12 +561,14 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
 
 /* ─── PAYSTACK (Nigeria, Ghana, South Africa) ─── */
 router.post("/paystack/initiate", requireAuth, async (req, res) => {
+  const { packageId, type, email } = req.body
+  if (type === "starter" && await rejectUsedStarter(req.userId!, res)) return
+
   const secretKey = process.env.PAYSTACK_SECRET_KEY || await getConfig("paystack_secret_key")
   if (!secretKey) {
     res.status(400).json({ error: "Paystack not configured. Contact admin to set Paystack keys." })
     return
   }
-  const { packageId, type, email } = req.body
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const userEmail = email || user?.email
   const cc = (user?.countryCode || "").toUpperCase()
@@ -633,7 +641,7 @@ router.get("/paystack/verify", async (req, res) => {
          if (order.type === "premium") {
            await fulfillOrderFromRecord(order)
          } else {
-           await fulfillOrder(order.userId, order.type || "credits", parseInt(String(pkg || 0)), order.currency || "USD")
+            await fulfillOrder(order.userId, order.type || "credits", parseInt(String(pkg || 0)), order.currency || "USD", order.id)
          }
       }
       return res.redirect(type === "event" ? `/events/${pkg}?success=1` : "/credits?success=1")
@@ -644,12 +652,14 @@ router.get("/paystack/verify", async (req, res) => {
 
 /* ─── PAYMONGO (Philippines - GCash, Maya, Credit Cards) ─── */
 router.post("/paymongo/initiate", requireAuth, async (req, res) => {
+  const { packageId, type, paymentMethod = "gcash" } = req.body
+  if (type === "starter" && await rejectUsedStarter(req.userId!, res)) return
+
   const secretKey = process.env.PAYMONGO_SECRET_KEY || await getConfig("paymongo_secret_key")
   if (!secretKey) {
     res.status(400).json({ error: "PayMongo not configured. Contact admin." })
     return
   }
-  const { packageId, type, paymentMethod = "gcash" } = req.body
   const phpRate = Number(await getConfig("php_rate") || "56")
 
   const creditPkgsPaymongo = await getCreditPackages()
@@ -713,20 +723,22 @@ router.get("/paymongo/success", async (req, res) => {
   if (order && order.status === "pending") {
     await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(ref)))
     if (order.type === "premium") await fulfillOrderFromRecord(order)
-    else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || 0)), "PHP")
+    else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || 0)), "PHP", order.id)
   }
   res.redirect(type === "event" ? `/events/${pkg}?success=1` : "/credits?success=1")
 })
 
 /* ─── INTASEND (International Visa/Mastercard — default for all other countries) ─── */
 router.post("/intasend/checkout", requireAuth, async (req, res) => {
+  const { packageId, type } = req.body
+  if (type === "starter" && await rejectUsedStarter(req.userId!, res)) return
+
   const secretKey = process.env.INTASEND_SECRET_KEY || await getConfig("intasend_secret_key")
   const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY || await getConfig("intasend_publishable_key")
   if (!secretKey || !publishableKey) {
     res.status(400).json({ error: "Card payments not configured yet. Contact support." })
     return
   }
-  const { packageId, type } = req.body
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const creditPkgs = await getCreditPackages()
   let amount = 0, description = "", credits = 0
@@ -877,13 +889,15 @@ async function getPesapalIpnId(token: string, appUrl: string, isLive: boolean): 
 }
 
 router.post("/pesapal/checkout", requireAuth, async (req, res) => {
+  const { packageId, type } = req.body
+  if (type === "starter" && await rejectUsedStarter(req.userId!, res)) return
+
   const consumerKey = process.env.PESAPAL_CONSUMER_KEY || await getConfig("pesapal_consumer_key")
   const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET || await getConfig("pesapal_consumer_secret")
   if (!consumerKey || !consumerSecret) {
     res.status(400).json({ error: "Card payments not configured yet. Contact support." })
     return
   }
-  const { packageId, type } = req.body
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
   const creditPkgs = await getCreditPackages()
   let amount = 0, description = "", credits = 0
@@ -963,7 +977,7 @@ router.get("/pesapal/success", async (req, res) => {
             await db.update(ordersTable).set({ status: "completed", stripeSessionId: String(ref) })
               .where(and(eq(ordersTable.stripeSessionId, String(ref)), eq(ordersTable.status, "pending")))
             if (order.type === "premium") await fulfillOrderFromRecord(order)
-            else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || "0")), "USD")
+            else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || "0")), "USD", order.id)
           }
         }
       } catch (e) { console.error("Pesapal status check error:", e) }
@@ -999,7 +1013,7 @@ router.post("/pesapal/webhook", async (req, res) => {
             const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
             if (confirmed?.status === "completed") {
               if (order.type === "premium") await fulfillOrderFromRecord(order)
-              else await fulfillOrder(order.userId, order.type || "credits", 0, "USD")
+              else await fulfillOrder(order.userId, order.type || "credits", 0, "USD", order.id)
               if (order.type === "credits" && order.credits && order.credits > 0) {
                 const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
                 if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + order.credits }).where(eq(usersTable.id, order.userId))
@@ -1107,7 +1121,7 @@ router.post("/paddle/webhook", async (req, res) => {
             await fulfillEventAttendance(parseInt(userId), parseInt(packageId || "0"), confirmed.id)
           } else {
             if (confirmed.type === "premium") await fulfillOrderFromRecord(confirmed)
-            else await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
+            else await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD", confirmed.id)
           }
         }
       }
@@ -1182,10 +1196,9 @@ router.post("/config", requireAuth, async (req, res) => {
 })
 
 /* ─── Shared fulfillment ─── */
-async function fulfillOrder(userId: number, type: string, packageId: number, currency: string) {
+async function fulfillOrder(userId: number, type: string, packageId: number, currency: string, orderId?: number) {
   if (type === "starter") {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
-    if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, userId))
+    await fulfillStarterOrder(userId, orderId)
   } else if (type === "premium") {
     const pkg = await getPremiumPackage(packageId)
     if (pkg) await activatePremiumEntitlement(userId, pkg)
@@ -1216,8 +1229,7 @@ async function fulfillOrderFromRecord(order: {
 }) {
   const type = order.type || "credits"
   if (type === "starter") {
-    const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
-    if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + 3 }).where(eq(usersTable.id, order.userId))
+    await fulfillStarterOrder(order.userId, order.id)
   } else if (type === "credits") {
     const creditsToAdd = (order.credits && order.credits > 0) ? order.credits : 0
     if (creditsToAdd > 0) {
