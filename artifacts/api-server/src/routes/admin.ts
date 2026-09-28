@@ -45,6 +45,7 @@ router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
       .from(photosTable)
       .where(and(inArray(photosTable.userId, userIds), eq(photosTable.approved, 1)))
       .orderBy(desc(photosTable.main), photosTable.id)
+      : []
 
     const photoMap = new Map<number, { photo: string; thumb: string }>()
     for (const p of photos) {
