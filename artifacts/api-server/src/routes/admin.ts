@@ -8,6 +8,7 @@ import {
 } from "@workspace/db/schema"
 import { eq, desc, sql, and, ne, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
+import { syncExistingChatmodzProfiles } from "../lib/chatmodz"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -55,7 +56,13 @@ router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
       await db.update(usersTable).set({ photo, photoThumb: thumb }).where(eq(usersTable.id, userId))
       updated++
     }
-    res.json({ updated })
+    let chatmodz: unknown = { examined: 0, synced: 0, failed: 0 }
+    try {
+      chatmodz = await syncExistingChatmodzProfiles()
+    } catch (syncError) {
+      chatmodz = { error: syncError instanceof Error ? syncError.message : "Chatmodz profile sync failed" }
+    }
+    res.json({ updated, chatmodz })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
