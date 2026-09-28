@@ -181,7 +181,7 @@ async function deliverOne(delivery: ChatmodzDelivery) {
 }
 
 export async function syncExistingChatmodzProfiles() {
-  if (!getSecret()) throw new Error(\[CHATMODZ_SECRET_ENV} is not configured")
+  if (!getSecret()) throw new Error(`${CHATMODZ_SECRET_ENV} is not configured`)
 
   const [messagePairs, users] = await Promise.all([
     db.select({ u1: messagesTable.u1, u2: messagesTable.u2 }).from(messagesTable),
