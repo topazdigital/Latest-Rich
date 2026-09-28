@@ -39,9 +39,9 @@ router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
       .from(usersTable)
       .where(or(eq(usersTable.photo, ''), isNull(usersTable.photo as any)))
     const userIds = usersNeedingPhoto.map(u => u.id)
-    if (userIds.length === 0) { res.json({ updated: 0 }); return }
 
-    const photos = await db.select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
+
+    const photos = userIds.length ? await db.select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
       .from(photosTable)
       .where(and(inArray(photosTable.userId, userIds), eq(photosTable.approved, 1)))
       .orderBy(desc(photosTable.main), photosTable.id)
