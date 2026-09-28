@@ -240,25 +240,49 @@ CREATE TABLE IF NOT EXISTS `orders` (
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Preserve historical Premium purchases so expiry repair can use the original
--- purchase date and package label. The insert is idempotent on order_id.
+-- Preserve all historical orders so the admin Orders page keeps both Premium
+-- and credit history. Premium rows also retain their original purchase date,
+-- package duration, and package ID for expiry repair. The insert is idempotent
+-- on the legacy order ID stored in stripe_session_id.
 -- Legacy `process` is the old site's completed payment state.
 SET @legacy_orders_exists = (
   SELECT COUNT(*) FROM information_schema.TABLES
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders_legacy'
 );
-SET @sql_import_premium = IF(
+SET @sql_import_orders = IF(
   @legacy_orders_exists > 0,
-  'INSERT INTO `orders` (`user_id`, `amount`, `currency`, `type`, `description`, `status`, `stripe_session_id`, `credits`, `package_id`, `premium_days`, `premium_priority`, `time`)
-   SELECT old.`user_id`, 0, ''USD'', ''premium'', COALESCE(old.`order_title`, CONCAT(old.`order_package`, '' Premium'')), ''completed'', old.`order_id`, 0, COALESCE(old.`order_package`, 0), 0, 0, CAST(old.`order_date` AS UNSIGNED)
+  'INSERT INTO `orders` (`user_id`, `amount`, `amount_usd`, `currency`, `type`, `description`, `status`, `stripe_session_id`, `credits`, `package_id`, `premium_days`, `premium_priority`, `time`)
+   SELECT old.`user_id`,
+     0,
+     0,
+     ''USD'',
+     LOWER(COALESCE(NULLIF(old.`order_type`, ''''), ''credits'')),
+     COALESCE(NULLIF(old.`order_title`, ''''),
+       CONCAT(COALESCE(old.`order_package`, 0), '' '', LOWER(COALESCE(old.`order_type`, ''order'')))),
+     CASE
+       WHEN LOWER(COALESCE(old.`order_status`, '''')) IN (''completed'', ''complete'', ''success'', ''successful'', ''paid'', ''approved'', ''process'') THEN ''completed''
+       WHEN LOWER(COALESCE(old.`order_status`, '''')) IN (''failed'', ''declined'', ''rejected'') THEN ''failed''
+       WHEN LOWER(COALESCE(old.`order_status`, '''')) IN (''cancelled'', ''canceled'') THEN ''cancelled''
+       ELSE ''pending''
+     END,
+     old.`order_id`,
+     CASE WHEN LOWER(COALESCE(old.`order_type`, '''')) = ''credits''
+       THEN COALESCE((SELECT c.`credits` FROM `config_credits` c WHERE c.`id` = old.`order_package`), 0)
+       ELSE 0 END,
+     COALESCE(old.`order_package`, 0),
+     CASE WHEN LOWER(COALESCE(old.`order_type`, '''')) = ''premium''
+       THEN COALESCE((SELECT p.`days` FROM `config_premium` p WHERE p.`id` = old.`order_package`), 0)
+       ELSE 0 END,
+     CASE WHEN LOWER(COALESCE(old.`order_type`, '''')) = ''premium''
+       THEN COALESCE(old.`order_package`, 0)
+       ELSE 0 END,
+     CAST(old.`order_date` AS UNSIGNED)
    FROM `orders_legacy` old
-   WHERE LOWER(COALESCE(old.`order_type`, '''')) = ''premium''
-     AND LOWER(COALESCE(old.`order_status`, '''')) IN (''completed'', ''complete'', ''success'', ''successful'', ''paid'', ''approved'', ''process'')
-     AND old.`user_id` IS NOT NULL
+   WHERE old.`user_id` IS NOT NULL
      AND NOT EXISTS (SELECT 1 FROM `orders` current_order WHERE current_order.`stripe_session_id` = old.`order_id`)',
   'SELECT 1'
 );
-PREPARE stmt FROM @sql_import_premium;
+PREPARE stmt FROM @sql_import_orders;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
