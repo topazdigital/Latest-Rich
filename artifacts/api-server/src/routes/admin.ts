@@ -1189,7 +1189,10 @@ router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
     }).from(ordersTable)
       .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
       .where(whereClause)
-      .orderBy(desc(ordersTable.id))
+      // Legacy rows imported after newer app orders can have larger IDs even
+      // though their purchase timestamps are months older. Sort by the real
+      // order time so the admin page shows the complete timeline correctly.
+      .orderBy(desc(ordersTable.time), desc(ordersTable.id))
       .limit(50)
       .offset((page - 1) * 50)
     res.json(orders)
