@@ -12,6 +12,40 @@ type PremiumUser = {
   fake?: number | null
 }
 
+export type PremiumActivation = {
+  days: number
+  priority: number
+  startedAt?: number
+}
+
+/**
+ * Apply a purchased premium package. The order timestamp is the subscription
+ * start date; fulfillment may happen later when a provider callback or admin
+ * approval arrives.
+ */
+export async function activatePremiumEntitlement(userId: number, packageDetails: PremiumActivation): Promise<void> {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+  if (!user) return
+
+  const currentTime = Math.floor(Date.now() / 1000)
+  const startedAt = Number(packageDetails.startedAt || 0) > 0
+    ? Math.floor(Number(packageDetails.startedAt))
+    : currentTime
+  const days = Math.max(1, Math.floor(Number(packageDetails.days) || 0))
+  const priority = Math.max(1, Math.floor(Number(packageDetails.priority) || 1))
+  const existingExpiry = Number(user.premiumExpiry || 0)
+  const currentlyActive = user.premium === 1 && (existingExpiry === 0 || existingExpiry > currentTime)
+  const baseExpiry = currentlyActive && existingExpiry > 0
+    ? existingExpiry
+    : startedAt
+
+  await db.update(usersTable).set({
+    premium: 1,
+    premiumExpiry: baseExpiry + days * 86400,
+    premiumPriority: Math.max(currentlyActive ? Number(user.premiumPriority || 0) : 0, priority),
+  }).where(eq(usersTable.id, userId))
+}
+
 /**
  * The premium priority is stored on users for fast authorization checks.
  * Older paid orders predate that column, so recover the purchased tier from
@@ -116,9 +150,13 @@ async function repairLegacyWeekExpiry(user: PremiumUser): Promise<number | null>
     const orders = [
       ...paidOrders.map((order: any) => ({
         time: Number(order.time || 0),
-        days: Number(order.premiumDays || 0) || packages[Number(order.packageId || 0)]?.days || parsePremiumDays(order.description || ""),
-        legacyDays: Number(order.premiumDays || 0) || packages[Number(order.packageId || 0)]?.days ||
-          (/week/i.test(order.description || "") ? 30 : parsePremiumDays(order.description || "")),
+        // The order label is the historical package snapshot when the
+        // snapshot columns were not available. Prefer it over today's
+        // package configuration so "2 Weeks" cannot become 30 days later.
+        days: Number(order.premiumDays || 0) || parsePremiumDays(order.description || "") ||
+          packages[Number(order.packageId || 0)]?.days,
+        legacyDays: Number(order.premiumDays || 0) || (/week/i.test(order.description || "") ? 30 :
+          parsePremiumDays(order.description || "") || packages[Number(order.packageId || 0)]?.days),
       })),
       ...customOrders.map((order: any) => {
         const pkg = packages[Number(order.packageId || 0)]

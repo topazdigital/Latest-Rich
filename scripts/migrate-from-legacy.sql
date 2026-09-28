@@ -233,10 +233,34 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `stripe_session_id` text DEFAULT '',
   `credits` int(11) DEFAULT 0,
   `package_id` int(11) DEFAULT 0,
+  `premium_days` int(11) DEFAULT 0,
+  `premium_priority` int(11) DEFAULT 0,
   `time` int(11) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Preserve historical Premium purchases so expiry repair can use the original
+-- purchase date and package label. The insert is idempotent on order_id.
+-- Legacy `process` is the old site's completed payment state.
+SET @legacy_orders_exists = (
+  SELECT COUNT(*) FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders_legacy'
+);
+SET @sql_import_premium = IF(
+  @legacy_orders_exists > 0,
+  'INSERT INTO `orders` (`user_id`, `amount`, `currency`, `type`, `description`, `status`, `stripe_session_id`, `credits`, `package_id`, `premium_days`, `premium_priority`, `time`)
+   SELECT old.`user_id`, 0, ''USD'', ''premium'', COALESCE(old.`order_title`, CONCAT(old.`order_package`, '' Premium'')), ''completed'', old.`order_id`, 0, COALESCE(old.`order_package`, 0), 0, 0, CAST(old.`order_date` AS UNSIGNED)
+   FROM `orders_legacy` old
+   WHERE LOWER(COALESCE(old.`order_type`, '''')) = ''premium''
+     AND LOWER(COALESCE(old.`order_status`, '''')) IN (''completed'', ''complete'', ''success'', ''successful'', ''paid'', ''approved'', ''process'')
+     AND old.`user_id` IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM `orders` current_order WHERE current_order.`stripe_session_id` = old.`order_id`)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql_import_premium;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ---------------------------------------------------------------------------
 -- 8. FAKE MESSAGE TEMPLATES
@@ -687,6 +711,36 @@ INSERT IGNORE INTO `site_config` (`key`, `value`)
 SELECT CONCAT('credits_pkg_', `id`, '_popular'), '0'
 FROM `config_credits`
 WHERE `credits` > 0;
+
+-- Import legacy Premium package durations and prices. Historical orders may
+-- only contain the package ID, so retain these values before any admin edits.
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_name'), CONCAT(`days`, ' Days')
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_days'), CAST(`days` AS CHAR)
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_price'), CAST(`price` AS CHAR)
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_active'), '1'
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_popular'), '0'
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_description'), ''
+FROM `config_premium`;
+
+INSERT IGNORE INTO `site_config` (`key`, `value`)
+SELECT CONCAT('premium_pkg_', `id`, '_priority'), CAST(`id` AS CHAR)
+FROM `config_premium`;
 
 -- ---------------------------------------------------------------------------
 -- 18. Add missing columns to existing tables (safe ALTER TABLE IF NOT EXISTS)

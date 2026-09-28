@@ -138,7 +138,7 @@ router.post("/", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Cannot message between fake accounts" }); return
     }
 
-    // Contact sharing is reserved for active Priority 2+ Premium members.
+    // Contact sharing is reserved for active Premium members.
     const senderEntitlements = await withEffectivePremiumPriority(sender)
     if (message?.trim() && !canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
       res.status(403).json(CONTACT_INFO_CHAT_ERROR)

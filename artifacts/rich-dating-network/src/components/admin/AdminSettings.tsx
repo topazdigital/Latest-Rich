@@ -133,7 +133,7 @@ const DEFAULT_CREDIT_PACKAGES = [
   { credits: 1000, price: 29.99, popular: 0, description: "Best Value", active: 1 },
 ]
 
-interface PremiumPkg { name: string; days: number; price: number; popular: number; description: string; active: number; priority: number }
+interface PremiumPkg { id?: number; name: string; days: number; price: number; popular: number; description: string; active: number; priority: number }
 interface CreditPkg { credits: number; price: number; popular: number; description: string; active: number }
 
 export default function AdminSettings() {

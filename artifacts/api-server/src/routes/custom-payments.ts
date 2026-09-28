@@ -4,6 +4,7 @@ import { customPaymentsTable, customPaymentOrdersTable, engagementEventsTable, e
 import { eq, desc, and, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
+import { activatePremiumEntitlement } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -276,14 +277,11 @@ router.post("/admin/orders/:id/approve", requireAuth, requireAdmin, async (req, 
       if (order.premiumDays || pkg) {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
         if (user) {
-          const currentTime = now()
-          const currentlyActive = user.premium === 1 && ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
-          const currentExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime ? (user.premiumExpiry || 0) : currentTime
-          await db.update(usersTable).set({
-            premium: 1,
-            premiumExpiry: currentExpiry + (order.premiumDays || pkg!.days) * 86400,
-            premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, order.premiumPriority || pkg!.priority),
-          }).where(eq(usersTable.id, order.userId))
+          await activatePremiumEntitlement(order.userId, {
+            days: order.premiumDays || pkg!.days,
+            priority: order.premiumPriority || pkg!.priority,
+            startedAt: order.time || undefined,
+          })
         }
       }
     } else if (order.type === "event") {

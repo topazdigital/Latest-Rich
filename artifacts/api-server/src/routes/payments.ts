@@ -4,6 +4,7 @@ import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, and } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
+import { activatePremiumEntitlement } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -455,7 +456,11 @@ router.post("/payhero/callback", async (req, res) => {
         }
       } else if (order.type === "premium") {
         const pkg = Object.values(await getPremiumPackages()).find(p => p.name === order.description || `${p.name} Premium` === order.description)
-        if (order.premiumDays || pkg) await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
+        if (order.premiumDays || pkg) await activatePremiumEntitlement(order.userId, {
+          days: order.premiumDays || pkg!.days,
+          priority: order.premiumPriority || pkg!.priority,
+          startedAt: order.time || undefined,
+        })
       } else if (order.type === "event") {
         await fulfillEventAttendance(order.userId, order.packageId || 0, order.id || 0)
       }
@@ -515,7 +520,11 @@ router.get("/payhero/status/:ref", requireAuth, async (req, res) => {
         }
       } else if (freshOrder.type === "premium") {
          const pkg = Object.values(await getPremiumPackages()).find(p => p.name === freshOrder.description || `${p.name} Premium` === freshOrder.description)
-         if (freshOrder.premiumDays || pkg) await activatePremium(freshOrder.userId, { days: freshOrder.premiumDays || pkg!.days, priority: freshOrder.premiumPriority || pkg!.priority })
+         if (freshOrder.premiumDays || pkg) await activatePremiumEntitlement(freshOrder.userId, {
+           days: freshOrder.premiumDays || pkg!.days,
+           priority: freshOrder.premiumPriority || pkg!.priority,
+           startedAt: freshOrder.time || undefined,
+         })
       } else if (freshOrder.type === "event") {
         await fulfillEventAttendance(freshOrder.userId, freshOrder.packageId || 0, freshOrder.id || 0)
       }
@@ -703,7 +712,8 @@ router.get("/paymongo/success", async (req, res) => {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, String(ref))).limit(1)
   if (order && order.status === "pending") {
     await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.stripeSessionId, String(ref)))
-    await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || 0)), "PHP")
+    if (order.type === "premium") await fulfillOrderFromRecord(order)
+    else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || 0)), "PHP")
   }
   res.redirect(type === "event" ? `/events/${pkg}?success=1` : "/credits?success=1")
 })
@@ -952,7 +962,8 @@ router.get("/pesapal/success", async (req, res) => {
           if (order && order.status === "pending") {
             await db.update(ordersTable).set({ status: "completed", stripeSessionId: String(ref) })
               .where(and(eq(ordersTable.stripeSessionId, String(ref)), eq(ordersTable.status, "pending")))
-            await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || "0")), "USD")
+            if (order.type === "premium") await fulfillOrderFromRecord(order)
+            else await fulfillOrder(order.userId, String(type || "credits"), parseInt(String(pkg || "0")), "USD")
           }
         }
       } catch (e) { console.error("Pesapal status check error:", e) }
@@ -987,7 +998,8 @@ router.post("/pesapal/webhook", async (req, res) => {
               .where(and(eq(ordersTable.stripeSessionId, ref), eq(ordersTable.status, "pending")))
             const [confirmed] = await db.select().from(ordersTable).where(eq(ordersTable.stripeSessionId, ref)).limit(1)
             if (confirmed?.status === "completed") {
-              await fulfillOrder(order.userId, order.type || "credits", 0, "USD")
+              if (order.type === "premium") await fulfillOrderFromRecord(order)
+              else await fulfillOrder(order.userId, order.type || "credits", 0, "USD")
               if (order.type === "credits" && order.credits && order.credits > 0) {
                 const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
                 if (u) await db.update(usersTable).set({ credits: (u.credits || 0) + order.credits }).where(eq(usersTable.id, order.userId))
@@ -1094,7 +1106,8 @@ router.post("/paddle/webhook", async (req, res) => {
           if (String(type || "") === "event") {
             await fulfillEventAttendance(parseInt(userId), parseInt(packageId || "0"), confirmed.id)
           } else {
-            await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
+            if (confirmed.type === "premium") await fulfillOrderFromRecord(confirmed)
+            else await fulfillOrder(parseInt(userId), String(type || "credits"), parseInt(packageId || "0"), "USD")
           }
         }
       }
@@ -1175,7 +1188,7 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
     if (user) await db.update(usersTable).set({ credits: (user.credits || 0) + 3 }).where(eq(usersTable.id, userId))
   } else if (type === "premium") {
     const pkg = await getPremiumPackage(packageId)
-    if (pkg) await activatePremium(userId, pkg)
+    if (pkg) await activatePremiumEntitlement(userId, pkg)
   } else if (type === "credits") {
     const pkgs = await getCreditPackages()
     const pkg = pkgs[packageId]
@@ -1188,24 +1201,19 @@ async function fulfillOrder(userId: number, type: string, packageId: number, cur
   }
 }
 
-async function activatePremium(userId: number, pkg: { days: number; priority: number }) {
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1)
-  if (!user) return
-  const currentTime = now()
-  const currentlyActive = user.premium === 1 && ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
-  const currentExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime
-    ? (user.premiumExpiry || 0)
-    : currentTime
-  await db.update(usersTable).set({
-    premium: 1,
-    premiumExpiry: currentExpiry + pkg.days * 86400,
-    premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, pkg.priority),
-  }).where(eq(usersTable.id, userId))
-}
-
 // Fulfills an order using data already stored on the order row itself (safe for webhook paths
 // where packageId is known but cannot be re-derived from request params).
-async function fulfillOrderFromRecord(order: { id?: number; userId: number; type: string | null; packageId: number | null; credits: number | null; description: string | null; premiumDays: number | null; premiumPriority: number | null }) {
+async function fulfillOrderFromRecord(order: {
+  id?: number
+  userId: number
+  type: string | null
+  packageId: number | null
+  credits: number | null
+  description: string | null
+  premiumDays: number | null
+  premiumPriority: number | null
+  time?: number | null
+}) {
   const type = order.type || "credits"
   if (type === "starter") {
     const [u] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1)
@@ -1221,7 +1229,11 @@ async function fulfillOrderFromRecord(order: { id?: number; userId: number; type
     const pkgById = order.packageId ? (await getPremiumPackages())[order.packageId] : null
     const pkg = pkgById || Object.values(await getPremiumPackages()).find(p => p.name === order.description || `${p.name} Premium` === order.description)
     if (order.premiumDays || pkg) {
-      await activatePremium(order.userId, { days: order.premiumDays || pkg!.days, priority: order.premiumPriority || pkg!.priority })
+      await activatePremiumEntitlement(order.userId, {
+        days: order.premiumDays || pkg!.days,
+        priority: order.premiumPriority || pkg!.priority,
+        startedAt: order.time || undefined,
+      })
     }
   } else if (type === "event") {
     await fulfillEventAttendance(order.userId, order.packageId || 0, order.id || 0)

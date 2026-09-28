@@ -11,6 +11,7 @@ import { requireAuth } from "../lib/auth-middleware"
 import { syncExistingChatmodzProfiles } from "../lib/chatmodz"
 import { toEffectivePremiumUser, withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import { getPremiumPackage, parsePremiumDays } from "../lib/premium-packages"
+import { activatePremiumEntitlement } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -998,19 +999,13 @@ router.post("/orders/:id/fulfill", requireAuth, requireAdmin, async (req, res) =
       // Case-insensitive: match "1 Year", "3 Months", "6 Months", "1 Month", etc.
       const pkg = order.packageId ? await getPremiumPackage(order.packageId) : undefined
       const packageDays = pkg?.days
-      const days = order.premiumDays || packageDays || parsePremiumDays(order.description || "") || 30
-      const currentTime = now()
-      const currentlyActive = user.premium === 1 &&
-        ((user.premiumExpiry || 0) === 0 || (user.premiumExpiry || 0) > currentTime)
-      const baseExpiry = currentlyActive && (user.premiumExpiry || 0) > currentTime
-        ? (user.premiumExpiry || 0)
-        : currentTime
+       const days = order.premiumDays || parsePremiumDays(order.description || "") || packageDays || 30
       const priority = order.premiumPriority || pkg?.priority || 1
-      await db.update(usersTable).set({
-        premium: 1,
-        premiumExpiry: baseExpiry + days * 86400,
-        premiumPriority: Math.max(currentlyActive ? (user.premiumPriority || 0) : 0, priority),
-      }).where(eq(usersTable.id, order.userId))
+       await activatePremiumEntitlement(order.userId, {
+         days,
+         priority,
+         startedAt: order.time || undefined,
+       })
       await db.insert(notificationsTable).values({
         userId: order.userId, type: "premium", message: `Premium membership activated for ${days} days.`, time: now(), read: 0,
       } as any).catch(() => {})
