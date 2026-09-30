@@ -60,7 +60,7 @@ router.post("/upload", requireAuth, (req, res) => {
     }
     const mediaType = ALLOWED_MIME[req.file.mimetype] || "image"
     const url = `/api/uploads/chat/${req.file.filename}`
-    res.json({ url, type: mediaType })
+    return res.json({ url, type: mediaType })
   })
 })
 
@@ -176,7 +176,7 @@ router.post("/", requireAuth, async (req, res) => {
     const [updatedSender] = await db.select({ credits: usersTable.credits }).from(usersTable).where(eq(usersTable.id, myId)).limit(1)
 
     // Log activity for admin
-    const [recipient] = await db.select({ name: usersTable.name, fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
+    const [recipient] = await db.select({ id: usersTable.id, name: usersTable.name, fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, parseInt(toUserId))).limit(1)
     const logText = mediaType ? `[${mediaType}]` : (msgText.slice(0, 80))
     db.insert(activityTable).values({
       type: "message",
@@ -201,7 +201,7 @@ router.post("/", requireAuth, async (req, res) => {
     // Push notify real recipient when a real sender messages them
     if (sender.fake !== 1 && recipient?.fake !== 1) {
       import("../lib/push").then(({ sendPushToUser }) => {
-        sendPushToUser(recipientId, {
+        sendPushToUser(recipient.id, {
           title: `💬 New message from ${sender.name}`,
           body: mediaType ? `Sent a ${mediaType}` : msgText.slice(0, 80),
           url: `/chat/${sender.id}`,
@@ -220,9 +220,9 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     res.json({ ...msg, credits: updatedSender?.credits })
-    if (sender.fake !== 1 && recipient?.fake === 1 && msg?.id) {
+    if (recipient && Number(sender.fake) !== Number(recipient.fake) && msg?.id) {
       queueChatmodzMessage(Number(msg.id)).catch(error => {
-        console.error("[Chatmodz] Could not queue member message", error)
+        console.error("[Chatmodz] Could not queue chat message", error)
       })
     }
   } catch (err) {

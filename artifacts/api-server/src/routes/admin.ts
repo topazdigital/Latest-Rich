@@ -8,7 +8,7 @@ import {
 } from "@workspace/db/schema"
 import { eq, desc, sql, and, ne, gt, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
-import { syncExistingChatmodzProfiles } from "../lib/chatmodz"
+import { queueChatmodzMessage, syncExistingChatmodzMessages, syncExistingChatmodzProfiles } from "../lib/chatmodz"
 import { toEffectivePremiumUser, withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import { getPremiumPackage, parsePremiumDays } from "../lib/premium-packages"
 import { activatePremiumEntitlement } from "../lib/premium-entitlements"
@@ -69,6 +69,15 @@ router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
     res.json({ updated, chatmodz })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
+    res.status(500).json({ error: msg })
+  }
+})
+
+router.post("/sync-chatmodz-messages", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    res.json(await syncExistingChatmodzMessages())
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Chatmodz message sync failed"
     res.status(500).json({ error: msg })
   }
 })
@@ -893,13 +902,23 @@ router.post("/users/:id/chats/:otherId/send", requireAuth, requireAdmin, async (
     const { message } = req.body
     if (!message?.trim()) { res.status(400).json({ error: "Message is required" }); return }
 
+    const messageTime = now()
     await db.insert(messagesTable).values({
       u1: id,
       u2: otherId,
       message: message.trim(),
-      time: now(),
+      time: messageTime,
       read: 0,
     } as any)
+    const [savedMessage] = await db.select({ id: messagesTable.id }).from(messagesTable)
+      .where(and(eq(messagesTable.u1, id), eq(messagesTable.u2, otherId), eq(messagesTable.time, messageTime)))
+      .orderBy(desc(messagesTable.id))
+      .limit(1)
+    if (savedMessage?.id) {
+      queueChatmodzMessage(Number(savedMessage.id)).catch(error => {
+        console.error("[Chatmodz] Could not queue admin message", error)
+      })
+    }
 
     // Notify the recipient
     await db.insert(notificationsTable).values({

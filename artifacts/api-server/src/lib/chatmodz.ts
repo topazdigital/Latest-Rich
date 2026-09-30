@@ -11,6 +11,7 @@ const DELIVERY_INTERVAL_MS = 30_000
 const REQUEST_TIMEOUT_MS = 10_000
 
 type ChatmodzDelivery = typeof chatmodzDeliveriesTable.$inferSelect
+type ChatmodzDeliveryOutcome = "delivered" | "already_delivered" | "pending" | "failed" | "skipped" | "disabled"
 
 function now() {
   return Math.floor(Date.now() / 1000)
@@ -106,23 +107,38 @@ async function withProfilePhoto(user: any) {
     : user
 }
 
-async function getMemberMessage(messageId: number) {
+async function getChatmodzMessage(messageId: number) {
   const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1)
-  if (!message || !message.message?.trim()) return null
+  if (!message) return null
+
+  const body = typeof message.message === "string" ? message.message.trim() : ""
+  const requestedMediaUrl = typeof message.mediaUrl === "string" ? message.mediaUrl.trim() : ""
+  const requestedMediaType = typeof message.mediaType === "string" ? message.mediaType.trim().toLowerCase() : ""
+  const mediaType = ["image", "video", "audio"].includes(requestedMediaType) ? requestedMediaType : ""
+  const mediaUrl = mediaType ? requestedMediaUrl : ""
+  if (!body && !mediaUrl) return null
 
   const users = await db.select().from(usersTable)
     .where(or(eq(usersTable.id, message.u1), eq(usersTable.id, message.u2)))
   const sender = users.find((user: any) => user.id === message.u1)
   const recipient = users.find((user: any) => user.id === message.u2)
-  if (!sender || !recipient || sender.fake === 1 || recipient.fake !== 1) return null
-  const [member, managedProfile] = await Promise.all([withProfilePhoto(sender), withProfilePhoto(recipient)])
+  if (!sender || !recipient || Number(sender.fake) === Number(recipient.fake)) return null
+  const senderIsManagedProfile = Number(sender.fake) === 1
+  const member = senderIsManagedProfile ? recipient : sender
+  const managedProfile = senderIsManagedProfile ? sender : recipient
+  if (Number(member.fake) === 1 || Number(managedProfile.fake) !== 1) return null
+  const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([withProfilePhoto(member), withProfilePhoto(managedProfile)])
 
   return {
     message,
-    member,
-    managedProfile,
+    body,
+    mediaUrl,
+    mediaType,
+    member: memberWithPhoto,
+    managedProfile: managedProfileWithPhoto,
+    senderType: senderIsManagedProfile ? "managed_profile" as const : "member" as const,
     eventId: `rdn-message-${message.id}`,
-    conversationId: chatmodzConversationId(sender.id, recipient.id),
+    conversationId: chatmodzConversationId(member.id, managedProfile.id),
   }
 }
 
@@ -132,7 +148,7 @@ async function markDelivery(deliveryId: number, values: Record<string, unknown>)
     .where(eq(chatmodzDeliveriesTable.id, deliveryId))
 }
 
-async function deliverOne(delivery: ChatmodzDelivery) {
+async function deliverOne(delivery: ChatmodzDelivery): Promise<ChatmodzDeliveryOutcome> {
   const claimedAttempts = Number(delivery.attempts || 0) + 1
   await markDelivery(delivery.id, {
     status: "sending",
@@ -141,14 +157,14 @@ async function deliverOne(delivery: ChatmodzDelivery) {
   })
 
   try {
-    const details = await getMemberMessage(Number(delivery.messageId))
+    const details = await getChatmodzMessage(Number(delivery.messageId))
     if (!details) {
       await markDelivery(delivery.id, {
         status: "skipped",
-        lastError: "Message is not a text message from a real member to a managed profile",
+        lastError: "Message is not between a member and a managed profile, or has no content",
         deliveredAt: now(),
       })
-      return
+      return "skipped"
     }
 
     await postSignedJson(`/api/chatmodz/integrations/${encodeURIComponent(CHATMODZ_SITE_KEY)}/messages`, {
@@ -159,8 +175,10 @@ async function deliverOne(delivery: ChatmodzDelivery) {
       managedProfileAlias: details.managedProfile.name || `Managed profile ${details.managedProfile.id}`,
       memberPhotoUrl: chatmodzPhotoUrl(details.member),
       managedProfilePhotoUrl: chatmodzPhotoUrl(details.managedProfile),
-      sender: "member",
-      body: details.message.message.trim(),
+      sender: details.senderType,
+      body: details.body,
+      mediaUrl: details.mediaUrl,
+      mediaType: details.mediaType,
       sentAt: new Date(Number(details.message.time || now()) * 1000).toISOString(),
     })
 
@@ -170,6 +188,7 @@ async function deliverOne(delivery: ChatmodzDelivery) {
       deliveredAt: now(),
       nextAttemptAt: 0,
     })
+    return "delivered"
   } catch (error: any) {
     const message = String(error?.message || "Chatmodz delivery failed").slice(0, 500)
     const exhausted = claimedAttempts >= MAX_ATTEMPTS
@@ -178,12 +197,13 @@ async function deliverOne(delivery: ChatmodzDelivery) {
       lastError: message,
       nextAttemptAt: exhausted ? 0 : now() + retryDelay(claimedAttempts),
     })
-    console.error("[Chatmodz] Member message delivery failed", {
+    console.error("[Chatmodz] Message delivery failed", {
       deliveryId: delivery.id,
       messageId: delivery.messageId,
       attempts: claimedAttempts,
       error: message,
     })
+    return exhausted ? "failed" : "pending"
   }
 }
 
@@ -194,7 +214,7 @@ export async function syncExistingChatmodzProfiles() {
     db.select({ u1: messagesTable.u1, u2: messagesTable.u2 }).from(messagesTable),
     db.select().from(usersTable),
   ])
-  const usersById = new Map(users.map((user: any) => [Number(user.id), user]))
+  const usersById = new Map<number, any>(users.map((user: any) => [Number(user.id), user] as [number, any]))
   const pairs = new Map<string, { memberId: number; managedProfileId: number }>()
 
   for (const row of messagePairs) {
@@ -249,10 +269,10 @@ export async function syncExistingChatmodzProfiles() {
   return { examined: entries.length, synced, failed }
 }
 
-export async function queueChatmodzMessage(messageId: number) {
-  if (!getSecret()) return
-  const details = await getMemberMessage(messageId)
-  if (!details) return
+export async function queueChatmodzMessage(messageId: number): Promise<ChatmodzDeliveryOutcome> {
+  if (!getSecret()) return "disabled"
+  const details = await getChatmodzMessage(messageId)
+  if (!details) return "skipped"
 
   const [existing] = await db.select().from(chatmodzDeliveriesTable)
     .where(and(
@@ -295,9 +315,55 @@ export async function queueChatmodzMessage(messageId: number) {
     }
   }
 
-  if (delivery && delivery.status !== "delivered" && delivery.status !== "skipped") {
-    await deliverOne(delivery)
+  if (!delivery) return "failed"
+  if (delivery.status === "delivered") return "already_delivered"
+  if (delivery.status === "skipped") {
+    await markDelivery(delivery.id, {
+      status: "pending",
+      attempts: 0,
+      nextAttemptAt: 0,
+      lastError: "",
+    })
+    delivery = { ...delivery, status: "pending", attempts: 0 } as ChatmodzDelivery
   }
+  return deliverOne(delivery)
+}
+
+export async function syncExistingChatmodzMessages() {
+  if (!getSecret()) throw new Error(`${CHATMODZ_SECRET_ENV} is not configured`)
+
+  const [messageRows, users] = await Promise.all([
+    db.select({ id: messagesTable.id, u1: messagesTable.u1, u2: messagesTable.u2 }).from(messagesTable).orderBy(messagesTable.id),
+    db.select({ id: usersTable.id, fake: usersTable.fake }).from(usersTable),
+  ])
+  const usersById = new Map<number, any>(users.map((user: any) => [Number(user.id), user] as [number, any]))
+  const messageIds = messageRows
+    .filter((row: any) => {
+      const sender = usersById.get(Number(row.u1))
+      const recipient = usersById.get(Number(row.u2))
+      return sender && recipient && Number(sender.fake) !== Number(recipient.fake)
+    })
+    .map((row: any) => Number(row.id))
+
+  const totals = { examined: messageIds.length, delivered: 0, alreadyDelivered: 0, pending: 0, failed: 0, skipped: 0 }
+  for (let offset = 0; offset < messageIds.length; offset += 10) {
+    const results = await Promise.allSettled(messageIds.slice(offset, offset + 10).map(queueChatmodzMessage))
+    for (const result of results) {
+      if (result.status === "rejected") {
+        totals.failed++
+        continue
+      }
+      switch (result.value) {
+        case "delivered": totals.delivered++; break
+        case "already_delivered": totals.alreadyDelivered++; break
+        case "pending": totals.pending++; break
+        case "failed":
+        case "disabled": totals.failed++; break
+        case "skipped": totals.skipped++; break
+      }
+    }
+  }
+  return totals
 }
 
 export async function processPendingChatmodzDeliveries() {

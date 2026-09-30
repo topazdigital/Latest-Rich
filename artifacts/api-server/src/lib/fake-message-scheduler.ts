@@ -3,8 +3,9 @@ import {
   usersTable, messagesTable, notificationsTable,
   fakeMessageTemplatesTable, autoMessageLogTable, likesTable, siteConfigTable
 } from "@workspace/db/schema"
-import { eq, and, inArray, notInArray, gte } from "drizzle-orm"
+import { eq, and, inArray, notInArray, gte, desc } from "drizzle-orm"
 import { send as wsSend } from "./websocket"
+import { queueChatmodzMessage } from "./chatmodz"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -143,6 +144,15 @@ export async function sendAutoMessagesToUser(realUserId: number): Promise<number
       time: msgTime,
       read: 0,
     })
+    const [savedMessage] = await db.select({ id: messagesTable.id }).from(messagesTable)
+      .where(and(eq(messagesTable.u1, faker.id), eq(messagesTable.u2, realUser.id), eq(messagesTable.time, msgTime)))
+      .orderBy(desc(messagesTable.id))
+      .limit(1)
+    if (savedMessage?.id) {
+      queueChatmodzMessage(Number(savedMessage.id)).catch(error => {
+        console.error("[Chatmodz] Could not queue auto message", error)
+      })
+    }
 
     wsSend(realUser.id, { type: 'typing', fromUserId: faker.id, typing: false })
 
@@ -321,6 +331,15 @@ export async function boostMessagesToUser(realUserId: number, count: number, win
           time: msgTime,
           read: 0,
         })
+        const [savedMessage] = await db.select({ id: messagesTable.id }).from(messagesTable)
+          .where(and(eq(messagesTable.u1, faker.id), eq(messagesTable.u2, u.id), eq(messagesTable.time, msgTime)))
+          .orderBy(desc(messagesTable.id))
+          .limit(1)
+        if (savedMessage?.id) {
+          queueChatmodzMessage(Number(savedMessage.id)).catch(error => {
+            console.error("[Chatmodz] Could not queue boosted auto message", error)
+          })
+        }
 
         wsSend(u.id, { type: 'typing', fromUserId: faker.id, typing: false })
 

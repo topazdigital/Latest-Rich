@@ -47,6 +47,7 @@ export default function AdminDashboard() {
   const [actLoading, setActLoading] = useState(true)
   const [triggering, setTriggering] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncingChatmodz, setSyncingChatmodz] = useState(false)
 
   useEffect(() => {
     authFetch("/api/admin/stats").then(r => r.json()).then(setStats).catch(() => {})
@@ -75,6 +76,23 @@ export default function AdminDashboard() {
       const d = await r.json()
       d.chatmodz?.error ? toast.error(d.chatmodz.error) : d.chatmodz?.failed ? toast.error(`Updated ${d.chatmodz.synced || 0}/${d.chatmodz.examined || 0} Chatmodz conversations; ${d.chatmodz.failed} failed`) : toast.success(`Updated ${d.chatmodz?.synced || 0}/${d.chatmodz?.examined || 0} Chatmodz conversations`)
     } catch { toast.error("Failed to sync photos") } finally { setSyncing(false) }
+  }
+
+  const syncChatmodzHistory = async () => {
+    setSyncingChatmodz(true)
+    try {
+      const response = await authFetch("/api/admin/sync-chatmodz-messages", { method: "POST" })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Chatmodz message history sync failed")
+      const failed = Number(data.failed || 0)
+      const summary = `Restored ${data.delivered || 0} messages; ${data.alreadyDelivered || 0} were already synced`
+      if (failed || data.pending) toast.error(`${summary}; ${failed} failed, ${data.pending || 0} pending`)
+      else toast.success(`${summary}; checked ${data.examined || 0} existing messages`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Chatmodz message history sync failed")
+    } finally {
+      setSyncingChatmodz(false)
+    }
   }
 
   if (!stats) return (
@@ -112,6 +130,13 @@ export default function AdminDashboard() {
                 opacity: syncing ? 0.6 : 1,
               }}>
                 {syncing ? "Syncing…" : "🖼️ Sync Photos"}
+              </button>
+              <button onClick={syncChatmodzHistory} disabled={syncingChatmodz} style={{
+                padding: '0.3rem 0.75rem', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
+                borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                opacity: syncingChatmodz ? 0.6 : 1,
+              }}>
+                {syncingChatmodz ? "Syncing…" : "💬 Sync Chatmodz History"}
               </button>
               <button onClick={triggerAutoMessages} disabled={triggering} style={{
                 padding: '0.3rem 0.75rem', background: '#FF192C', color: '#fff',

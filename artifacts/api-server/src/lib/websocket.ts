@@ -132,12 +132,12 @@ async function handleMessage(fromUserId: number, msg: any) {
 
       // If a real user messaged a fake user, push-notify moderators
       const [toUser] = await db.select({ fake: usersTable.fake }).from(usersTable).where(eq(usersTable.id, toUserId)).limit(1)
+      if (savedMsg?.id && toUser && Number(fromUser.fake) !== Number(toUser.fake)) {
+        queueChatmodzMessage(Number(savedMsg.id)).catch(error => {
+          console.error("[Chatmodz] Could not queue WebSocket chat message", error)
+        })
+      }
       if (fromUser.fake !== 1 && toUser?.fake === 1) {
-        if (savedMsg?.id) {
-          queueChatmodzMessage(Number(savedMsg.id)).catch(error => {
-            console.error("[Chatmodz] Could not queue WebSocket member message", error)
-          })
-        }
         import("./push").then(({ sendPushToModerators }) => {
           sendPushToModerators({
             title: "💬 New message needs reply",
