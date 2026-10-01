@@ -1,4 +1,5 @@
 import { Router } from "express"
+import { randomUUID } from "crypto"
 import { db, isMysql } from "@workspace/db"
 import {
   usersTable, ordersTable, notificationsTable, messagesTable,
@@ -8,12 +9,22 @@ import {
 } from "@workspace/db/schema"
 import { eq, desc, sql, and, ne, gt, gte, lte, count, SQL, or, isNull, inArray } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
-import { queueChatmodzMessage, syncExistingChatmodzMessages, syncExistingChatmodzProfiles } from "../lib/chatmodz"
+import { ChatmodzHistorySyncProgress, queueChatmodzMessage, syncExistingChatmodzMessages, syncExistingChatmodzProfiles } from "../lib/chatmodz"
 import { toEffectivePremiumUser, withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import { getPremiumPackage, parsePremiumDays } from "../lib/premium-packages"
 import { activatePremiumEntitlement } from "../lib/premium-entitlements"
 
 const router = Router()
+
+type ChatmodzHistorySyncJob = {
+  jobId: string
+  status: "running" | "completed" | "failed"
+  progress: ChatmodzHistorySyncProgress
+  error?: string
+}
+
+let chatmodzHistorySyncJob: ChatmodzHistorySyncJob | null = null
+
 function now() { return Math.floor(Date.now() / 1000) }
 async function getConfig(key: string): Promise<string> {
   try {
@@ -74,12 +85,49 @@ router.post("/sync-photos", requireAuth, requireAdmin, async (req, res) => {
 })
 
 router.post("/sync-chatmodz-messages", requireAuth, requireAdmin, async (_req, res) => {
-  try {
-    res.json(await syncExistingChatmodzMessages())
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Chatmodz message sync failed"
-    res.status(500).json({ error: msg })
+  if (chatmodzHistorySyncJob?.status === "running") {
+    res.status(202).json(chatmodzHistorySyncJob)
+    return
   }
+
+  const job: ChatmodzHistorySyncJob = {
+    jobId: randomUUID(),
+    status: "running",
+    progress: {
+      examined: 0,
+      processed: 0,
+      delivered: 0,
+      alreadyDelivered: 0,
+      pending: 0,
+      failed: 0,
+      skipped: 0,
+    },
+  }
+  chatmodzHistorySyncJob = job
+
+  void syncExistingChatmodzMessages(progress => {
+    if (chatmodzHistorySyncJob?.jobId === job.jobId) job.progress = progress
+  }).then(progress => {
+    if (chatmodzHistorySyncJob?.jobId !== job.jobId) return
+    job.progress = progress
+    job.status = "completed"
+  }).catch((err: unknown) => {
+    if (chatmodzHistorySyncJob?.jobId !== job.jobId) return
+    job.status = "failed"
+    job.error = err instanceof Error ? err.message : "Chatmodz message history sync failed"
+    console.error("[admin] Chatmodz message history sync failed", err)
+  })
+
+  res.status(202).json(job)
+})
+
+router.get("/sync-chatmodz-messages/:jobId", requireAuth, requireAdmin, (req, res) => {
+  const jobId = String(req.params.jobId)
+  if (!chatmodzHistorySyncJob || chatmodzHistorySyncJob.jobId !== jobId) {
+    res.status(404).json({ error: "Chatmodz history sync job not found. Start the sync again; delivered messages are deduplicated." })
+    return
+  }
+  res.json(chatmodzHistorySyncJob)
 })
 
 // Dashboard stats

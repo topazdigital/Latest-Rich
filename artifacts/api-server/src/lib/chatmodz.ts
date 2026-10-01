@@ -13,6 +13,16 @@ const REQUEST_TIMEOUT_MS = 10_000
 type ChatmodzDelivery = typeof chatmodzDeliveriesTable.$inferSelect
 type ChatmodzDeliveryOutcome = "delivered" | "already_delivered" | "pending" | "failed" | "skipped" | "disabled"
 
+export type ChatmodzHistorySyncProgress = {
+  examined: number
+  processed: number
+  delivered: number
+  alreadyDelivered: number
+  pending: number
+  failed: number
+  skipped: number
+}
+
 function now() {
   return Math.floor(Date.now() / 1000)
 }
@@ -329,7 +339,7 @@ export async function queueChatmodzMessage(messageId: number): Promise<ChatmodzD
   return deliverOne(delivery)
 }
 
-export async function syncExistingChatmodzMessages() {
+export async function syncExistingChatmodzMessages(onProgress?: (progress: ChatmodzHistorySyncProgress) => void) {
   if (!getSecret()) throw new Error(`${CHATMODZ_SECRET_ENV} is not configured`)
 
   const [messageRows, users] = await Promise.all([
@@ -346,8 +356,11 @@ export async function syncExistingChatmodzMessages() {
     .map((row: any) => Number(row.id))
 
   const totals = { examined: messageIds.length, delivered: 0, alreadyDelivered: 0, pending: 0, failed: 0, skipped: 0 }
+  const makeProgress = (processed: number): ChatmodzHistorySyncProgress => ({ ...totals, processed })
+  onProgress?.(makeProgress(0))
   for (let offset = 0; offset < messageIds.length; offset += 10) {
-    const results = await Promise.allSettled(messageIds.slice(offset, offset + 10).map(queueChatmodzMessage))
+    const batch = messageIds.slice(offset, offset + 10)
+    const results = await Promise.allSettled(batch.map(queueChatmodzMessage))
     for (const result of results) {
       if (result.status === "rejected") {
         totals.failed++
@@ -362,8 +375,9 @@ export async function syncExistingChatmodzMessages() {
         case "skipped": totals.skipped++; break
       }
     }
+    onProgress?.(makeProgress(Math.min(offset + batch.length, messageIds.length)))
   }
-  return totals
+  return makeProgress(messageIds.length)
 }
 
 export async function processPendingChatmodzDeliveries() {

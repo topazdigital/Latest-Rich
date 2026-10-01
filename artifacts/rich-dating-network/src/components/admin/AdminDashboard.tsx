@@ -19,6 +19,35 @@ const ACT_TABS = [
   { key: "admin", label: "Reports" },
 ]
 
+interface ChatmodzHistorySyncProgress {
+  examined: number
+  processed: number
+  delivered: number
+  alreadyDelivered: number
+  pending: number
+  failed: number
+  skipped: number
+}
+
+interface ChatmodzHistorySyncJob {
+  jobId: string
+  status: "running" | "completed" | "failed"
+  progress: ChatmodzHistorySyncProgress
+  error?: string
+}
+
+async function readChatmodzHistorySyncResponse(response: Response): Promise<ChatmodzHistorySyncJob> {
+  const body = await response.text()
+  let data: any
+  try {
+    data = JSON.parse(body)
+  } catch {
+    throw new Error(`History sync returned a non-JSON response (HTTP ${response.status}). You can safely start it again.`)
+  }
+  if (!response.ok) throw new Error(data.error || `History sync failed (HTTP ${response.status})`)
+  return data as ChatmodzHistorySyncJob
+}
+
 function StatCard({ label, value, icon, color = "#3b82f6" }: { label: string; value: string | number; icon: string; color?: string }) {
   const isRevenue = label.toLowerCase().includes("revenue")
   const display = isRevenue ? `$${Number(value).toFixed(2)}` : Number(value).toLocaleString()
@@ -48,6 +77,7 @@ export default function AdminDashboard() {
   const [triggering, setTriggering] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncingChatmodz, setSyncingChatmodz] = useState(false)
+  const [chatmodzSyncProgress, setChatmodzSyncProgress] = useState<ChatmodzHistorySyncProgress | null>(null)
 
   useEffect(() => {
     authFetch("/api/admin/stats").then(r => r.json()).then(setStats).catch(() => {})
@@ -81,17 +111,31 @@ export default function AdminDashboard() {
   const syncChatmodzHistory = async () => {
     setSyncingChatmodz(true)
     try {
-      const response = await authFetch("/api/admin/sync-chatmodz-messages", { method: "POST" })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || "Chatmodz message history sync failed")
-      const failed = Number(data.failed || 0)
-      const summary = `Restored ${data.delivered || 0} messages; ${data.alreadyDelivered || 0} were already synced`
-      if (failed || data.pending) toast.error(`${summary}; ${failed} failed, ${data.pending || 0} pending`)
-      else toast.success(`${summary}; checked ${data.examined || 0} existing messages`)
+      const startResponse = await authFetch("/api/admin/sync-chatmodz-messages", { method: "POST" })
+      let job = await readChatmodzHistorySyncResponse(startResponse)
+      setChatmodzSyncProgress(job.progress)
+
+      while (job.status === "running") {
+        await new Promise(resolve => window.setTimeout(resolve, 1200))
+        const statusResponse = await authFetch(`/api/admin/sync-chatmodz-messages/${encodeURIComponent(job.jobId)}`)
+        job = await readChatmodzHistorySyncResponse(statusResponse)
+        setChatmodzSyncProgress(job.progress)
+      }
+
+      const progress = job.progress
+      const summary = `Restored ${progress.delivered} messages; ${progress.alreadyDelivered} were already synced`
+      if (job.status === "failed") {
+        toast.error(`${summary}; sync stopped: ${job.error || "unknown error"}`)
+      } else if (progress.failed || progress.pending) {
+        toast.error(`${summary}; ${progress.failed} failed, ${progress.pending} pending`)
+      } else {
+        toast.success(`${summary}; checked ${progress.examined.toLocaleString()} existing messages`)
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Chatmodz message history sync failed")
     } finally {
       setSyncingChatmodz(false)
+      setChatmodzSyncProgress(null)
     }
   }
 
@@ -136,7 +180,11 @@ export default function AdminDashboard() {
                 borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 opacity: syncingChatmodz ? 0.6 : 1,
               }}>
-                {syncingChatmodz ? "Syncing…" : "💬 Sync Chatmodz History"}
+                {syncingChatmodz
+                  ? chatmodzSyncProgress?.examined
+                    ? `Syncing ${chatmodzSyncProgress.processed.toLocaleString()} / ${chatmodzSyncProgress.examined.toLocaleString()}`
+                    : "Starting sync…"
+                  : "💬 Sync Chatmodz History"}
               </button>
               <button onClick={triggerAutoMessages} disabled={triggering} style={{
                 padding: '0.3rem 0.75rem', background: '#FF192C', color: '#fff',
