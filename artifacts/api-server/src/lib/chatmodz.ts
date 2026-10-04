@@ -1,6 +1,6 @@
 import crypto from "crypto"
 import { db } from "@workspace/db"
-import { chatmodzDeliveriesTable, messagesTable, photosTable, usersTable } from "@workspace/db/schema"
+import { chatmodzDeliveriesTable, messagesTable, photosTable, userExtendedTable, usersTable } from "@workspace/db/schema"
 import { and, desc, eq, lte, or } from "drizzle-orm"
 
 const CHATMODZ_BASE_URL = (process.env.CHATMODZ_BASE_URL || "https://chatmodz.com").replace(/\/+$/, "")
@@ -117,6 +117,40 @@ async function withProfilePhoto(user: any) {
     : user
 }
 
+function profileText(value: unknown, maxLength = 180) {
+  if (typeof value !== "string" && typeof value !== "number") return ""
+  return String(value).trim().slice(0, maxLength)
+}
+
+function chatmodzProfileDetails(user: any, extended: any) {
+  const age = Number(user?.age)
+  const location = [user?.city, user?.country].map(value => profileText(value)).filter(Boolean).join(", ")
+  const bio = profileText(user?.bio, 1000)
+  const genderCode = Number(user?.gender)
+  const details: Record<string, string> = {}
+  const values: Array<[string, unknown]> = [
+    ["Gender", ({ 1: "Male", 2: "Female", 3: "Non-binary", 4: "Other" } as Record<number, string>)[genderCode] || ""],
+    ["Zodiac", extended?.zodiac],
+    ["Occupation", extended?.occupation],
+    ["Education", extended?.education],
+    ["Relationship", extended?.relationship],
+    ["Interests", extended?.interests],
+    ["Languages", extended?.languages],
+  ]
+
+  for (const [label, value] of values) {
+    const text = profileText(value)
+    if (text) details[label] = text
+  }
+
+  const profile: Record<string, unknown> = {}
+  if (Number.isInteger(age) && age > 0 && age < 130) profile.age = age
+  if (location) profile.location = location
+  if (bio) profile.bio = bio
+  if (Object.keys(details).length) profile.details = details
+  return Object.keys(profile).length ? profile : undefined
+}
+
 async function getChatmodzMessage(messageId: number) {
   const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1)
   if (!message) return null
@@ -137,7 +171,15 @@ async function getChatmodzMessage(messageId: number) {
   const member = senderIsManagedProfile ? recipient : sender
   const managedProfile = senderIsManagedProfile ? sender : recipient
   if (Number(member.fake) === 1 || Number(managedProfile.fake) !== 1) return null
-  const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([withProfilePhoto(member), withProfilePhoto(managedProfile)])
+  const [memberWithPhoto, managedProfileWithPhoto, extendedRows] = await Promise.all([
+    withProfilePhoto(member),
+    withProfilePhoto(managedProfile),
+    db.select().from(userExtendedTable).where(or(
+      eq(userExtendedTable.userId, member.id),
+      eq(userExtendedTable.userId, managedProfile.id),
+    )),
+  ])
+  const extendedByUserId = new Map<number, any>(extendedRows.map((row: any) => [Number(row.userId), row]))
 
   return {
     message,
@@ -146,6 +188,8 @@ async function getChatmodzMessage(messageId: number) {
     mediaType,
     member: memberWithPhoto,
     managedProfile: managedProfileWithPhoto,
+    memberProfile: chatmodzProfileDetails(member, extendedByUserId.get(Number(member.id))),
+    managedProfileDetails: chatmodzProfileDetails(managedProfile, extendedByUserId.get(Number(managedProfile.id))),
     senderType: senderIsManagedProfile ? "managed_profile" as const : "member" as const,
     eventId: `rdn-message-${message.id}`,
     conversationId: chatmodzConversationId(member.id, managedProfile.id),
@@ -185,6 +229,8 @@ async function deliverOne(delivery: ChatmodzDelivery): Promise<ChatmodzDeliveryO
       managedProfileAlias: details.managedProfile.name || `Managed profile ${details.managedProfile.id}`,
       memberPhotoUrl: chatmodzPhotoUrl(details.member),
       managedProfilePhotoUrl: chatmodzPhotoUrl(details.managedProfile),
+      memberProfile: details.memberProfile,
+      managedProfileProfile: details.managedProfileDetails,
       sender: details.senderType,
       body: details.body,
       mediaUrl: details.mediaUrl,
@@ -220,11 +266,13 @@ async function deliverOne(delivery: ChatmodzDelivery): Promise<ChatmodzDeliveryO
 export async function syncExistingChatmodzProfiles() {
   if (!getSecret()) throw new Error(`${CHATMODZ_SECRET_ENV} is not configured`)
 
-  const [messagePairs, users] = await Promise.all([
+  const [messagePairs, users, extendedRows] = await Promise.all([
     db.select({ u1: messagesTable.u1, u2: messagesTable.u2 }).from(messagesTable),
     db.select().from(usersTable),
+    db.select().from(userExtendedTable),
   ])
   const usersById = new Map<number, any>(users.map((user: any) => [Number(user.id), user] as [number, any]))
+  const extendedByUserId = new Map<number, any>(extendedRows.map((row: any) => [Number(row.userId), row]))
   const pairs = new Map<string, { memberId: number; managedProfileId: number }>()
 
   for (const row of messagePairs) {
@@ -242,12 +290,8 @@ export async function syncExistingChatmodzProfiles() {
   const entries = [...pairs.values()]
   for (let offset = 0; offset < entries.length; offset += 10) {
     const results = await Promise.allSettled(entries.slice(offset, offset + 10).map(async ({ memberId, managedProfileId }) => {
-      const [memberRow, managedProfileRow] = await Promise.all([
-        db.select().from(usersTable).where(eq(usersTable.id, memberId)).limit(1),
-        db.select().from(usersTable).where(eq(usersTable.id, managedProfileId)).limit(1),
-      ])
-      const member = memberRow[0]
-      const managedProfile = managedProfileRow[0]
+      const member = usersById.get(memberId)
+      const managedProfile = usersById.get(managedProfileId)
       if (!member || !managedProfile) return false
       const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([
         withProfilePhoto(member),
@@ -255,7 +299,9 @@ export async function syncExistingChatmodzProfiles() {
       ])
       const memberPhotoUrl = chatmodzPhotoUrl(memberWithPhoto)
       const managedProfilePhotoUrl = chatmodzPhotoUrl(managedProfileWithPhoto)
-      if (!memberPhotoUrl && !managedProfilePhotoUrl) return false
+      const memberProfile = chatmodzProfileDetails(member, extendedByUserId.get(memberId))
+      const managedProfileProfile = chatmodzProfileDetails(managedProfile, extendedByUserId.get(managedProfileId))
+      if (!memberPhotoUrl && !managedProfilePhotoUrl && !memberProfile && !managedProfileProfile) return false
       const result = await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
         conversationId: chatmodzConversationId(member.id, managedProfile.id),
         memberId: member.id,
@@ -264,6 +310,8 @@ export async function syncExistingChatmodzProfiles() {
         managedProfileAlias: managedProfile.name || `Managed profile ${managedProfile.id}`,
         memberPhotoUrl,
         managedProfilePhotoUrl,
+        memberProfile,
+        managedProfileProfile,
       })
       return (result as any)?.updated !== false
     }))

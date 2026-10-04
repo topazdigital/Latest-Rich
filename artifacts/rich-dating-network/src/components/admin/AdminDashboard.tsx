@@ -105,7 +105,7 @@ export default function AdminDashboard() {
       const r = await authFetch("/api/admin/sync-photos", { method: "POST" })
       const d = await r.json()
       d.chatmodz?.error ? toast.error(d.chatmodz.error) : d.chatmodz?.failed ? toast.error(`Updated ${d.chatmodz.synced || 0}/${d.chatmodz.examined || 0} Chatmodz conversations; ${d.chatmodz.failed} failed`) : toast.success(`Updated ${d.chatmodz?.synced || 0}/${d.chatmodz?.examined || 0} Chatmodz conversations`)
-    } catch { toast.error("Failed to sync photos") } finally { setSyncing(false) }
+    } catch { toast.error("Failed to sync profile photos and details") } finally { setSyncing(false) }
   }
 
   const syncChatmodzHistory = async () => {
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
                 borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 opacity: syncing ? 0.6 : 1,
               }}>
-                {syncing ? "Syncing…" : "🖼️ Sync Photos"}
+                {syncing ? "Syncing…" : "🖼️ Sync Photos & Details"}
               </button>
               <button onClick={syncChatmodzHistory} disabled={syncingChatmodz} style={{
                 padding: '0.3rem 0.75rem', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
