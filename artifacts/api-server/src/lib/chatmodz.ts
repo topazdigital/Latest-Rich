@@ -9,6 +9,7 @@ const CHATMODZ_SECRET_ENV = process.env.CHATMODZ_SECRET_ENV || "SITE_ONE_SECRET"
 const MAX_ATTEMPTS = 8
 const DELIVERY_INTERVAL_MS = 30_000
 const REQUEST_TIMEOUT_MS = 10_000
+const MAX_CHATMODZ_PROFILE_GALLERY_ITEMS = 8
 
 type ChatmodzDelivery = typeof chatmodzDeliveriesTable.$inferSelect
 type ChatmodzDeliveryOutcome = "delivered" | "already_delivered" | "pending" | "failed" | "skipped" | "disabled"
@@ -109,7 +110,7 @@ async function withProfilePhoto(user: any) {
 
   const [profilePhoto] = await db.select({ photo: photosTable.photo, thumb: photosTable.thumb })
     .from(photosTable)
-    .where(and(eq(photosTable.userId, user.id), eq(photosTable.approved, 1)))
+    .where(and(eq(photosTable.userId, user.id), eq(photosTable.approved, 1), eq(photosTable.flagged, 0)))
     .orderBy(desc(photosTable.main), desc(photosTable.id))
     .limit(1)
   return profilePhoto
@@ -117,12 +118,24 @@ async function withProfilePhoto(user: any) {
     : user
 }
 
+async function chatmodzPhotoGallery(userId: number): Promise<string[]> {
+  const photos = await db.select({ photo: photosTable.photo, thumb: photosTable.thumb })
+    .from(photosTable)
+    .where(and(eq(photosTable.userId, userId), eq(photosTable.approved, 1), eq(photosTable.flagged, 0)))
+    .orderBy(desc(photosTable.main), desc(photosTable.id))
+    .limit(MAX_CHATMODZ_PROFILE_GALLERY_ITEMS)
+  const galleryUrls = photos
+    .map((photo: { photo: string; thumb: string | null }) => chatmodzPhotoUrl({ photo: photo.photo, photoThumb: photo.thumb }))
+    .filter((url: string | undefined): url is string => Boolean(url))
+  return [...new Set<string>(galleryUrls)]
+}
+
 function profileText(value: unknown, maxLength = 180) {
   if (typeof value !== "string" && typeof value !== "number") return ""
   return String(value).trim().slice(0, maxLength)
 }
 
-function chatmodzProfileDetails(user: any, extended: any) {
+function chatmodzProfileDetails(user: any, extended: any, gallery: string[] = []) {
   const age = Number(user?.age)
   const location = [user?.city, user?.country].map(value => profileText(value)).filter(Boolean).join(", ")
   const bio = profileText(user?.bio, 1000)
@@ -147,6 +160,8 @@ function chatmodzProfileDetails(user: any, extended: any) {
   if (Number.isInteger(age) && age > 0 && age < 130) profile.age = age
   if (location) profile.location = location
   if (bio) profile.bio = bio
+  const galleryUrls = [...new Set(gallery)].slice(0, MAX_CHATMODZ_PROFILE_GALLERY_ITEMS)
+  if (galleryUrls.length) profile.gallery = galleryUrls
   if (Object.keys(details).length) profile.details = details
   return Object.keys(profile).length ? profile : undefined
 }
@@ -171,13 +186,15 @@ async function getChatmodzMessage(messageId: number) {
   const member = senderIsManagedProfile ? recipient : sender
   const managedProfile = senderIsManagedProfile ? sender : recipient
   if (Number(member.fake) === 1 || Number(managedProfile.fake) !== 1) return null
-  const [memberWithPhoto, managedProfileWithPhoto, extendedRows] = await Promise.all([
+  const [memberWithPhoto, managedProfileWithPhoto, extendedRows, memberGallery, managedProfileGallery] = await Promise.all([
     withProfilePhoto(member),
     withProfilePhoto(managedProfile),
     db.select().from(userExtendedTable).where(or(
       eq(userExtendedTable.userId, member.id),
       eq(userExtendedTable.userId, managedProfile.id),
     )),
+    chatmodzPhotoGallery(Number(member.id)),
+    chatmodzPhotoGallery(Number(managedProfile.id)),
   ])
   const extendedByUserId = new Map<number, any>(extendedRows.map((row: any) => [Number(row.userId), row]))
 
@@ -188,8 +205,8 @@ async function getChatmodzMessage(messageId: number) {
     mediaType,
     member: memberWithPhoto,
     managedProfile: managedProfileWithPhoto,
-    memberProfile: chatmodzProfileDetails(member, extendedByUserId.get(Number(member.id))),
-    managedProfileDetails: chatmodzProfileDetails(managedProfile, extendedByUserId.get(Number(managedProfile.id))),
+    memberProfile: chatmodzProfileDetails(member, extendedByUserId.get(Number(member.id)), memberGallery),
+    managedProfileDetails: chatmodzProfileDetails(managedProfile, extendedByUserId.get(Number(managedProfile.id)), managedProfileGallery),
     senderType: senderIsManagedProfile ? "managed_profile" as const : "member" as const,
     eventId: `rdn-message-${message.id}`,
     conversationId: chatmodzConversationId(member.id, managedProfile.id),
@@ -293,14 +310,16 @@ export async function syncExistingChatmodzProfiles() {
       const member = usersById.get(memberId)
       const managedProfile = usersById.get(managedProfileId)
       if (!member || !managedProfile) return false
-      const [memberWithPhoto, managedProfileWithPhoto] = await Promise.all([
+      const [memberWithPhoto, managedProfileWithPhoto, memberGallery, managedProfileGallery] = await Promise.all([
         withProfilePhoto(member),
         withProfilePhoto(managedProfile),
+        chatmodzPhotoGallery(memberId),
+        chatmodzPhotoGallery(managedProfileId),
       ])
       const memberPhotoUrl = chatmodzPhotoUrl(memberWithPhoto)
       const managedProfilePhotoUrl = chatmodzPhotoUrl(managedProfileWithPhoto)
-      const memberProfile = chatmodzProfileDetails(member, extendedByUserId.get(memberId))
-      const managedProfileProfile = chatmodzProfileDetails(managedProfile, extendedByUserId.get(managedProfileId))
+      const memberProfile = chatmodzProfileDetails(member, extendedByUserId.get(memberId), memberGallery)
+      const managedProfileProfile = chatmodzProfileDetails(managedProfile, extendedByUserId.get(managedProfileId), managedProfileGallery)
       if (!memberPhotoUrl && !managedProfilePhotoUrl && !memberProfile && !managedProfileProfile) return false
       const result = await postSignedJson("/api/chatmodz/integrations/" + encodeURIComponent(CHATMODZ_SITE_KEY) + "/profiles", {
         conversationId: chatmodzConversationId(member.id, managedProfile.id),
