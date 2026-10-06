@@ -7,7 +7,13 @@ import { useAuth } from '../../hooks/useAuth'
 import { useWebSocket, useWSEvent } from '../../hooks/useWebSocket'
 import FeedbackPrompt from '../engagement/FeedbackPrompt'
 import PaidVideoCallModal from '../common/PaidVideoCallModal'
-import { CONTACT_INFO_PATTERN, canShareContactInfo, isActivePremium } from '../../lib/contact-info'
+import {
+  CONTACT_INFO_PATTERN,
+  FINANCIAL_INFO_PATTERN,
+  canShareContactInfo,
+  canShareFinancialInfo,
+  isActivePremium,
+} from '../../lib/contact-info'
 
 const QUICK_EMOJIS = ['😊', '❤️', '😍', '😂', '🔥', '👋', '💝', '😘', '🥰', '💕', '✨', '🌹', '😏', '🤩', '💋', '😇']
 
@@ -92,6 +98,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
   const [activeCall, setActiveCall] = useState<{ sessionId: number; peer: any } | null>(null)
   const [startingCall, setStartingCall] = useState(false)
   const [contactInfoBlocked, setContactInfoBlocked] = useState(false)
+  const [financialInfoBlocked, setFinancialInfoBlocked] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const initialScrollDoneRef = useRef(false)
@@ -269,6 +276,21 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         </div>
       ), { duration: 6000 })
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
+    } else if (msg.code === 'financial_info_blocked') {
+      if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
+      setFinancialInfoBlocked(true)
+      if (lastAttemptedTextRef.current) setInput(lastAttemptedTextRef.current)
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
+          <div className="text-2xl">👑</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-gray-900 text-sm mb-1">Priority 3 Required</div>
+            <p className="text-xs text-gray-500 mb-2">Priority 3 Premium or higher is required to discuss financial help or share payment details in chat.</p>
+            <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+              style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
+          </div>
+        </div>
+      ), { duration: 6000 })
     } else if (msg.code === 'contact_info_blocked') {
       if (msg.tempId) setMessages(prev => prev.filter(m => (m as any)._tempId !== msg.tempId))
       setContactInfoBlocked(true)
@@ -431,6 +453,19 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
               </div>
             </div>
           ), { duration: 6000 })
+        } else if (data.code === 'financial_info_blocked') {
+          setFinancialInfoBlocked(true)
+          toast.custom((t) => (
+            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm bg-white shadow-xl rounded-2xl border border-amber-200 p-4 flex items-start gap-3`}>
+              <div className="text-2xl">👑</div>
+              <div className="flex-1">
+                <div className="font-bold text-gray-900 text-sm mb-1">Priority 3 Required</div>
+                <p className="text-xs text-gray-500 mb-2">Priority 3 Premium or higher is required to discuss financial help or share payment details in chat.</p>
+                <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+                  style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
+              </div>
+            </div>
+          ), { duration: 6000 })
         } else if (data.error === 'premium_required' || data.code === 'contact_info_blocked') {
           setContactInfoBlocked(true)
           toast.custom((t) => (
@@ -453,6 +488,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
         const data = await res.json()
         setMessages(prev => prev.map(m => (m as any)._tempId === tempId ? { ...data, read: 0 } : m))
         setContactInfoBlocked(false)
+        setFinancialInfoBlocked(false)
         if (data.credits !== undefined) setCredits(data.credits)
         const myMessageCount = messages.filter(message => message.u1 === me.id).length + 1
         if (myMessageCount >= 5) {
@@ -750,7 +786,13 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <Link href="/credits" className="text-xs font-semibold text-brand-500 hover:underline">Buy more</Link>
           </div>
         )}
-        {!canShareContactInfo(me) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
+        {!canShareFinancialInfo(me) && (financialInfoBlocked || FINANCIAL_INFO_PATTERN.test(input)) && (
+          <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-xs font-semibold text-amber-800">👑 Priority 3 Premium is required to discuss financial help or share payment details</span>
+            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium plans</Link>
+          </div>
+        )}
+        {!canShareContactInfo(me) && !FINANCIAL_INFO_PATTERN.test(input) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
           <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
            <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
             <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium plans</Link>
@@ -785,7 +827,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2">
             <textarea
               value={input}
-              onChange={e => { setInput(e.target.value); setContactInfoBlocked(false); handleTyping() }}
+              onChange={e => { setInput(e.target.value); setContactInfoBlocked(false); setFinancialInfoBlocked(false); handleTyping() }}
               onKeyDown={handleKeyDown}
               placeholder={pendingMedia ? `Add a caption...` : `Message ${other.name}...`}
               rows={1}

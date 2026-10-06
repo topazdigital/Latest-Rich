@@ -4,7 +4,14 @@ import { messagesTable, usersTable, siteConfigTable, activityTable, notification
 import { eq, and, or, desc, count } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { decodeHtml } from "../lib/html-decode"
-import { containsContactInfo, CONTACT_INFO_CHAT_ERROR, canShareContactInfo } from "../lib/contact-filter"
+import {
+  containsContactInfo,
+  containsFinancialSharingInfo,
+  CONTACT_INFO_CHAT_ERROR,
+  FINANCIAL_INFO_CHAT_ERROR,
+  canShareContactInfo,
+  canShareFinancialInfo,
+} from "../lib/contact-filter"
 import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import { toEffectivePremiumUser } from "../lib/premium-entitlements"
 import multer from "multer"
@@ -138,8 +145,16 @@ router.post("/", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Cannot message between fake accounts" }); return
     }
 
-    // Contact sharing is reserved for active Priority 2+ Premium members.
+    // Payment details and explicit financial-help requests are reserved for
+    // active Priority 3+ Premium members. Check this before the broader
+    // Priority 2 contact-sharing rule (e.g. a PayPal email is also an email).
     const senderEntitlements = await withEffectivePremiumPriority(sender)
+    if (message?.trim() && !canShareFinancialInfo(senderEntitlements) && containsFinancialSharingInfo(message.trim())) {
+      res.status(403).json(FINANCIAL_INFO_CHAT_ERROR)
+      return
+    }
+
+    // Ordinary contact sharing remains reserved for active Priority 2+ members.
     if (message?.trim() && !canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
       res.status(403).json(CONTACT_INFO_CHAT_ERROR)
       return

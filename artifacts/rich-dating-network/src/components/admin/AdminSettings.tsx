@@ -568,7 +568,7 @@ export default function AdminSettings() {
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-xl p-3 mb-4">
                  <p className="text-gray-600 text-xs leading-relaxed">
-                   <strong className="text-gray-600">Every plan unlocks:</strong> profile visitors, unlimited likes, read receipts, and a VIP badge. <strong>Priority 2 and higher</strong> also unlock contact sharing. Priority controls how prominently a premium member appears in discovery.
+                   <strong className="text-gray-600">Every plan unlocks:</strong> profile visitors, unlimited likes, read receipts, and a VIP badge. <strong>Priority 2 and higher</strong> also unlock ordinary contact sharing; <strong>Priority 3 and higher</strong> unlock financial-help requests and payment-detail sharing in chat. Priority controls how prominently a premium member appears in discovery.
                 </p>
               </div>
 

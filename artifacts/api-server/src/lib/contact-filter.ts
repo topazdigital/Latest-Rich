@@ -50,6 +50,29 @@ export function containsContactInfo(text: string): boolean {
   return false
 }
 
+/**
+ * Detects content used to request financial help or share off-platform
+ * payment details. This is separate from contact info so the chat entitlement
+ * can begin at Priority 3 without changing Priority 2 contact sharing.
+ */
+export function containsFinancialSharingInfo(text: string): boolean {
+  if (!text || text.length < 3) return false
+
+  const PAYMENT_METHOD =
+    /\b(pay\s*pal|venmo|cash\s*app|cashapp|zelle|western\s*union|money\s*gram|transferwise|wise\s+(?:account|payment|transfer|app)|remitly|world\s*remit|payoneer|skrill|neteller|revolut|m[\s-]?pesa|airtel\s*money|mtn\s*mobile\s*money|mobile\s*money|bank\s+transfer|wire\s+transfer|bitcoin|btc|crypto(?:currency)?\s+wallet|wallet\s+address|payment\s+(?:link|handle|tag))\b/i
+  if (PAYMENT_METHOD.test(text)) return true
+
+  const BANK_DETAILS =
+    /\b(?:bank\s+details?|bank\s+account|account\s+(?:number|no\.?|details?)|iban|swift(?:\s*\/\s*bic)?|bic\s+code|routing\s+(?:number|no\.?)|sort\s+code|account\s+no\.?)\b/i
+  if (BANK_DETAILS.test(text)) return true
+
+  // Require an explicit request for financial help rather than blocking
+  // ordinary conversation that merely mentions money.
+  const MONEY_REQUEST =
+    /\b(?:send|transfer|lend|loan|pay|give)\s+(?:me\s+)?(?:some\s+)?(?:money|cash|funds|a\s+loan|rent|bills?|fees|airtime|fare)\b|\b(?:i\s+(?:need|want|could\s+use|am\s+looking\s+for|would\s+like)\s+(?:some\s+)?(?:money|cash|funds|financial\s+(?:help|assistance)|a\s+loan)|(?:can|could|would)\s+you\s+(?:help|lend|send|transfer|give|pay)\s+me\b.{0,40}\b(?:money|cash|funds|rent|bills?|fees|airtime|fare|loan)|help\s+me\s+with\s+(?:my\s+)?(?:rent|bills?|fees|airtime|fare|medical\s+costs)|borrow(?:ing)?\s+money)\b/i
+  return MONEY_REQUEST.test(text)
+}
+
 export function isActivePremium(user: {
   premium?: number | null
   premiumExpiry?: number | null
@@ -66,6 +89,15 @@ export function canShareContactInfo(user: {
   premiumPriority?: number | null
 }): boolean {
   return user.fake === 1 || (isActivePremium(user) && (user.premiumPriority || 0) >= 2)
+}
+
+/** Active Priority 3+ Premium members can discuss financial help and payment details in chat. */
+export function canShareFinancialInfo(user: {
+  premium?: number | null
+  premiumExpiry?: number | null
+  premiumPriority?: number | null
+}): boolean {
+  return isActivePremium(user) && (user.premiumPriority || 0) >= 3
 }
 
 /** Error payload to send when contact info is detected in bio/name */
@@ -85,4 +117,11 @@ export const CONTACT_INFO_CHAT_ERROR = {
   error: "premium_required",
   message: "A Priority 2 Premium plan or higher is required to share contact details, social handles, or links in chat.",
   code: "contact_info_blocked" as const,
+}
+
+/** Error payload for financial-help and payment-detail sharing below Priority 3. */
+export const FINANCIAL_INFO_CHAT_ERROR = {
+  error: "premium_required",
+  message: "A Priority 3 Premium plan or higher is required to discuss financial help or share payment details in chat.",
+  code: "financial_info_blocked" as const,
 }

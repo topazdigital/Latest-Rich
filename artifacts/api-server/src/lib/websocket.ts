@@ -7,7 +7,12 @@ import { messagesTable, siteConfigTable, usersTable } from "@workspace/db/schema
 import { eq, and, desc } from "drizzle-orm"
 import { logger } from "./logger"
 import { connectVideoCall, endVideoCall, billVideoCall } from "../routes/video-calls"
-import { canShareContactInfo, containsContactInfo } from "./contact-filter"
+import {
+  canShareContactInfo,
+  canShareFinancialInfo,
+  containsContactInfo,
+  containsFinancialSharingInfo,
+} from "./contact-filter"
 import { withEffectivePremiumPriority } from "./premium-entitlements"
 import { queueChatmodzMessage } from "./chatmodz"
 
@@ -94,8 +99,21 @@ async function handleMessage(fromUserId: number, msg: any) {
       const [fromUser] = await db.select().from(usersTable).where(eq(usersTable.id, fromUserId)).limit(1)
       if (!fromUser) return
 
-      // Contact sharing is reserved for active Priority 2+ Premium members.
+      // Financial details and explicit requests for help are reserved for
+      // active Priority 3+ Premium members, including when they contain an
+      // email address that would otherwise pass the Priority 2 contact gate.
       const senderEntitlements = await withEffectivePremiumPriority(fromUser)
+      if (!canShareFinancialInfo(senderEntitlements) && containsFinancialSharingInfo(message.trim())) {
+        send(fromUserId, {
+          type: "error",
+          code: "financial_info_blocked",
+          message: "A Priority 3 Premium plan or higher is required to discuss financial help or share payment details in chat.",
+          tempId,
+        })
+        return
+      }
+
+      // Ordinary contact sharing remains reserved for active Priority 2+ members.
       if (!canShareContactInfo(senderEntitlements) && containsContactInfo(message.trim())) {
         send(fromUserId, {
           type: "error",

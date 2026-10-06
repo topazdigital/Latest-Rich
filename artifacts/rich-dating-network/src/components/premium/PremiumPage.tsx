@@ -51,9 +51,9 @@ export default function PremiumPage({
   const premiumPriority = Math.max(1, user?.premiumPriority || 1)
   const contactSharingPackage = packages.find(p => (p.priority || p.id) >= 2)
   const tierBenefits = premiumPriority >= 4
-    ? ['Top discovery placement', '5 daily Superlikes', 'Free monthly gift', 'Priority support']
+    ? ['Top discovery placement', 'Financial help & payment sharing', '5 daily Superlikes', 'Free monthly gift', 'Priority support']
     : premiumPriority >= 3
-      ? ['Enhanced discovery placement', '3 daily Superlikes', 'Free monthly gift']
+      ? ['Enhanced discovery placement', 'Financial help & payment sharing', '3 daily Superlikes', 'Free monthly gift']
       : premiumPriority >= 2
         ? ['Priority discovery placement', '2 daily Superlikes']
         : ['Standard premium access']
@@ -64,6 +64,7 @@ export default function PremiumPage({
   const features = [
     { icon: <Phone size={16} />, t: 'Contact Sharing (Priority 2+)', d: 'Send phone numbers & WhatsApp in chat', premium: true },
     { icon: <MessageCircle size={16} />, t: 'Social Sharing (Priority 2+)', d: 'Share Instagram, Telegram & more in chat', premium: true },
+    { icon: <Lock size={16} />, t: 'Financial Help Sharing (Priority 3+)', d: 'Discuss financial help and share payment details in chat', premium: true },
     { icon: <Eye size={16} />, t: 'See Profile Visitors', d: 'Know exactly who viewed your profile', premium: true },
     { icon: <Star size={16} />, t: 'Priority Placement', d: 'Appear at the top of search results', premium: true },
     { icon: <Check size={16} />, t: 'Read Receipts', d: 'Know when your messages are read', premium: false },
@@ -244,6 +245,9 @@ export default function PremiumPage({
                    {(pkg.priority || pkg.id) >= 2
                      ? <div className="text-[11px] font-semibold text-green-600 mt-1">✓ Contact sharing included</div>
                      : <div className="text-[11px] text-gray-400 mt-1">Contact sharing unavailable</div>}
+                   {(pkg.priority || pkg.id) >= 3
+                     ? <div className="text-[11px] font-semibold text-green-600 mt-1">✓ Financial help sharing included</div>
+                     : <div className="text-[11px] text-gray-400 mt-1">Financial help sharing starts at Priority 3</div>}
                   {formatLocalPrice && country && !useCard && (
                     <div className="text-xs text-gray-400">≈ ${pkg.price}</div>
                   )}
