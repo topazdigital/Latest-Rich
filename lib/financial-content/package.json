@@ -1,0 +1,15 @@
+{
+  "name": "@workspace/financial-content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test test/financial-content.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "catalog:"
+  }
+}

@@ -182,6 +182,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/financial-content':
+        specifier: workspace:*
+        version: link:../../lib/financial-content
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -574,6 +577,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/financial-content':
+        specifier: workspace:*
+        version: link:../../lib/financial-content
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -698,6 +704,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
+
+  lib/financial-content:
+    devDependencies:
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
 
   scripts:
     dependencies:
