@@ -21,6 +21,8 @@ test("blocks payment brands despite common spelling obfuscation", () => {
     "ＰａｙＰａｌ",
     "Money.Gram",
     "M-Pesa",
+    "mobile wallet",
+    "digital wallet",
     "Cash_App",
     "Bank-Transfer",
   ]
@@ -43,6 +45,8 @@ test("blocks obfuscated borrowing and financial-help requests", () => {
     "Help me pay my school fees",
     "Can you s3nd me c@sh?",
     "I can't afford my medical bills",
+    "Through a mobile wallet, I do not mind; give me what you can afford.",
+    "Send me whatever you can afford.",
   ]
 
   for (const message of blocked) {

@@ -73,6 +73,8 @@ const PAYMENT_METHOD_TERMS = [
   "airtel money",
   "mtn mobile money",
   "mobile money",
+  "mobile wallet",
+  "digital wallet",
   "bank transfer",
   "wire transfer",
   "bitcoin",
@@ -118,6 +120,7 @@ const MONEY_OR_EXPENSE = `(?:${MONEY_TERMS}|${FINANCIAL_EXPENSE})`
 const MONEY_REQUEST_PATTERNS = [
   new RegExp(`\\b(?:send|transfer|lend|loan|pay|give|cover)\\s+(?:(?:me|my)\\s+)?(?:some\\s+)?${MONEY_OR_EXPENSE}\\b`, "i"),
   new RegExp(`\\b(?:send|transfer|lend|loan|pay|give)\\s+(?:me\\s+)?${MONEY_AMOUNT}\\b`, "i"),
+  new RegExp(`\\b(?:give|send|transfer|pay)\\s+me\\s+(?:what|whatever)\\s+you\\s+can\\s+afford\\b`, "i"),
   new RegExp(`\\b(?:can|could|may|would)\\s+i\\s+(?:please\\s+)?borrow\\s+(?:(?:some|any|a\\s+little|a\\s+bit\\s+of)\\s+)?(?:${MONEY_TERMS}|${MONEY_AMOUNT})\\b`, "i"),
   new RegExp(`\\b(?:i|we)\\s+(?:really\\s+)?(?:want|need|would\\s+like|am\\s+looking)\\s+to\\s+borrow\\s+(?:(?:some|any|a\\s+little|a\\s+bit\\s+of)\\s+)?(?:money|cash|funds|${MONEY_AMOUNT})\\b`, "i"),
   new RegExp(`\\b(?:i|we)\\s+(?:(?:really|urgently)\\s+)?(?:need|want|could\\s+use|would\\s+(?:like|appreciate)|am\\s+looking\\s+for)\\s+(?:(?:some|a\\s+little|a\\s+bit\\s+of)\\s+)?${MONEY_TERMS}\\b`, "i"),
