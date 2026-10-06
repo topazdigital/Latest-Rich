@@ -66,11 +66,28 @@ export function containsFinancialSharingInfo(text: string): boolean {
     /\b(?:bank\s+details?|bank\s+account|account\s+(?:number|no\.?|details?)|iban|swift(?:\s*\/\s*bic)?|bic\s+code|routing\s+(?:number|no\.?)|sort\s+code|account\s+no\.?)\b/i
   if (BANK_DETAILS.test(text)) return true
 
-  // Require an explicit request for financial help rather than blocking
-  // ordinary conversation that merely mentions money.
-  const MONEY_REQUEST =
-    /\b(?:send|transfer|lend|loan|pay|give)\s+(?:me\s+)?(?:some\s+)?(?:money|cash|funds|a\s+loan|rent|bills?|fees|airtime|fare)\b|\b(?:i\s+(?:need|want|could\s+use|am\s+looking\s+for|would\s+like)\s+(?:some\s+)?(?:money|cash|funds|financial\s+(?:help|assistance)|a\s+loan)|(?:can|could|would)\s+you\s+(?:help|lend|send|transfer|give|pay)\s+me\b.{0,40}\b(?:money|cash|funds|rent|bills?|fees|airtime|fare|loan)|help\s+me\s+with\s+(?:my\s+)?(?:rent|bills?|fees|airtime|fare|medical\s+costs)|borrow(?:ing)?\s+money)\b/i
-  return MONEY_REQUEST.test(text)
+  // Match direct money requests and requests to cover common expenses. These
+  // patterns intentionally require money-related wording, not just "help".
+  const FINANCIAL_EXPENSE =
+    "(?:rent|bills?|fees|airtime|fare|school\\s+(?:fees|tuition|costs?|expenses?)|college\\s+(?:fees|tuition|costs?|expenses?)|university\\s+(?:fees|tuition|costs?|expenses?)|tuition|medical\\s+(?:costs?|bills?|expenses?)|treatment\\s+(?:costs?|expenses?))"
+  const MONEY_TERMS = "(?:money|cash|funds|financial\\s+(?:help|assistance)|(?:a\\s+)?loan)"
+  const MONEY_AMOUNT =
+    "(?:[$€£]\\s*\\d+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?\\s*(?:dollars?|bucks?|usd|cad|aud|(?:kenyan\\s+)?shillings?|shs?|kshs?|kes|tshs?|tzs|ugx|ngn|naira|cedis?|ghs|rand|zar|pounds?|euros?))"
+  const MONEY_OR_EXPENSE = `(?:${MONEY_TERMS}|${FINANCIAL_EXPENSE})`
+  const MONEY_REQUEST_PATTERNS = [
+    new RegExp(`\\b(?:send|transfer|lend|loan|pay|give|cover)\\s+(?:(?:me|my)\\s+)?(?:some\\s+)?${MONEY_OR_EXPENSE}\\b`, "i"),
+    new RegExp(`\\b(?:send|transfer|lend|loan|pay|give)\\s+(?:me\\s+)?${MONEY_AMOUNT}\\b`, "i"),
+    new RegExp(`\\b(?:can|could|may|would)\\s+i\\s+(?:please\\s+)?borrow\\s+(?:(?:some|any|a\\s+little|a\\s+bit\\s+of)\\s+)?(?:${MONEY_TERMS}|${MONEY_AMOUNT})\\b`, "i"),
+    new RegExp(`\\b(?:i|we)\\s+(?:really\\s+)?(?:want|need|would\\s+like|am\\s+looking)\\s+to\\s+borrow\\s+(?:(?:some|any|a\\s+little|a\\s+bit\\s+of)\\s+)?(?:money|cash|funds|${MONEY_AMOUNT})\\b`, "i"),
+    new RegExp(`\\b(?:i|we)\\s+(?:(?:really|urgently)\\s+)?(?:need|want|could\\s+use|would\\s+(?:like|appreciate)|am\\s+looking\\s+for)\\s+(?:(?:some|a\\s+little|a\\s+bit\\s+of)\\s+)?${MONEY_TERMS}\\b`, "i"),
+    new RegExp(`\\b(?:help|assist(?:ance)?)\\s+(?:me\\s+)?(?:with|pay(?:ing)?|cover(?:ing)?)\\s+(?:some\\s+|my\\s+)?${FINANCIAL_EXPENSE}\\b`, "i"),
+    new RegExp(`\\b(?:sponsor|fund|finance|cover|pay\\s+for)\\s+(?:(?:me|my|our)\\s+)?${FINANCIAL_EXPENSE}\\b`, "i"),
+    new RegExp(`\\b(?:can|could|would|will)\\s+you\\s+(?:please\\s+)?(?:help|assist|lend|send|transfer|give|pay|cover)\\s+me\\b.{0,40}\\b(?:${MONEY_TERMS}|${FINANCIAL_EXPENSE})\\b`, "i"),
+    new RegExp(`\\bborrow(?:ing)?\\s+(?:(?:some|any|a\\s+little)\\s+)?(?:money|cash|funds|${MONEY_AMOUNT})\\b`, "i"),
+    new RegExp(`\\b(?:i|we)\\s+(?:can't|cannot)\\s+(?:afford|pay|cover)\\s+(?:my\\s+)?${FINANCIAL_EXPENSE}\\b`, "i"),
+    new RegExp(`\\b(?:i\\s+am|i['’]m|we\\s+are|we['’]re)\\s+(?:short\\s+on|struggling\\s+to\\s+(?:pay|cover)|unable\\s+to\\s+(?:pay|cover|afford))\\s+(?:my\\s+)?${FINANCIAL_EXPENSE}\\b`, "i"),
+  ]
+  return MONEY_REQUEST_PATTERNS.some((pattern) => pattern.test(text))
 }
 
 export function isActivePremium(user: {
@@ -122,6 +139,6 @@ export const CONTACT_INFO_CHAT_ERROR = {
 /** Error payload for financial-help and payment-detail sharing below Priority 3. */
 export const FINANCIAL_INFO_CHAT_ERROR = {
   error: "premium_required",
-  message: "A Priority 3 Premium plan or higher is required to discuss financial help or share payment details in chat.",
+  message: "To help protect members from money-request scams, borrowing or lending money and sharing payment details in chat requires an active Priority 3+ Premium plan.",
   code: "financial_info_blocked" as const,
 }

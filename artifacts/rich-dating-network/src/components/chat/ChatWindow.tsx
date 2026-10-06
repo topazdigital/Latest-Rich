@@ -9,7 +9,8 @@ import FeedbackPrompt from '../engagement/FeedbackPrompt'
 import PaidVideoCallModal from '../common/PaidVideoCallModal'
 import {
   CONTACT_INFO_PATTERN,
-  FINANCIAL_INFO_PATTERN,
+  containsFinancialInfo,
+  FINANCIAL_INFO_UPGRADE_MESSAGE,
   canShareContactInfo,
   canShareFinancialInfo,
   isActivePremium,
@@ -285,7 +286,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
           <div className="text-2xl">👑</div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-gray-900 text-sm mb-1">Priority 3 Required</div>
-            <p className="text-xs text-gray-500 mb-2">Priority 3 Premium or higher is required to discuss financial help or share payment details in chat.</p>
+            <p className="text-xs text-gray-500 mb-2">{msg.message || FINANCIAL_INFO_UPGRADE_MESSAGE}</p>
             <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
               style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
           </div>
@@ -460,7 +461,7 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
               <div className="text-2xl">👑</div>
               <div className="flex-1">
                 <div className="font-bold text-gray-900 text-sm mb-1">Priority 3 Required</div>
-                <p className="text-xs text-gray-500 mb-2">Priority 3 Premium or higher is required to discuss financial help or share payment details in chat.</p>
+                <p className="text-xs text-gray-500 mb-2">{data.message || FINANCIAL_INFO_UPGRADE_MESSAGE}</p>
                 <a href="/premium" className="inline-block text-xs font-bold text-white px-3 py-1.5 rounded-lg"
                   style={{ background: 'linear-gradient(135deg, #FF192C, #ff5f6b)' }}>View Premium Plans</a>
               </div>
@@ -786,13 +787,13 @@ export default function ChatWindow({ me, other, initialMessages }: Props) {
             <Link href="/credits" className="text-xs font-semibold text-brand-500 hover:underline">Buy more</Link>
           </div>
         )}
-        {!canShareFinancialInfo(me) && (financialInfoBlocked || FINANCIAL_INFO_PATTERN.test(input)) && (
+        {!canShareFinancialInfo(me) && (financialInfoBlocked || containsFinancialInfo(input)) && (
           <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
-            <span className="text-xs font-semibold text-amber-800">👑 Priority 3 Premium is required to discuss financial help or share payment details</span>
-            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium plans</Link>
+            <span className="text-xs font-semibold text-amber-800">{FINANCIAL_INFO_UPGRADE_MESSAGE}</span>
+            <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium Plans</Link>
           </div>
         )}
-        {!canShareContactInfo(me) && !FINANCIAL_INFO_PATTERN.test(input) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
+        {!canShareContactInfo(me) && !containsFinancialInfo(input) && (contactInfoBlocked || CONTACT_INFO_PATTERN.test(input)) && (
           <div role="alert" className="mb-2 flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 shadow-sm">
            <span className="text-xs font-semibold text-amber-800">👑 Priority 2 Premium is required to share contact info</span>
             <Link href="/premium" className="flex-shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-brand-600">View Premium plans</Link>

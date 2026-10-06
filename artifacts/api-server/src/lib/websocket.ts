@@ -12,6 +12,7 @@ import {
   canShareFinancialInfo,
   containsContactInfo,
   containsFinancialSharingInfo,
+  FINANCIAL_INFO_CHAT_ERROR,
 } from "./contact-filter"
 import { withEffectivePremiumPriority } from "./premium-entitlements"
 import { queueChatmodzMessage } from "./chatmodz"
@@ -107,7 +108,7 @@ async function handleMessage(fromUserId: number, msg: any) {
         send(fromUserId, {
           type: "error",
           code: "financial_info_blocked",
-          message: "A Priority 3 Premium plan or higher is required to discuss financial help or share payment details in chat.",
+          message: FINANCIAL_INFO_CHAT_ERROR.message,
           tempId,
         })
         return
