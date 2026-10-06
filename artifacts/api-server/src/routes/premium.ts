@@ -4,6 +4,7 @@ import { usersTable, siteConfigTable } from "@workspace/db/schema"
 import { eq } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackages, premiumPackageList, MAX_PREMIUM_PACKAGES } from "../lib/premium-packages"
+import { recalculateActivePremiumSubscriptions } from "../lib/premium-entitlements"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -72,7 +73,19 @@ router.put("/packages", requireAuth, async (req, res) => {
        await upsert(`premium_pkg_${idx}_active`, "0")
     }
 
-    res.json({ success: true })
+    let recalculation
+    try {
+      recalculation = await recalculateActivePremiumSubscriptions()
+    } catch (err) {
+      console.error("Premium package settings saved, but active subscription recalculation failed:", err)
+      res.status(500).json({
+        error: "Package settings were saved, but active subscriptions could not be recalculated. Save the settings again to retry.",
+        packagesSaved: true,
+      })
+      return
+    }
+
+    res.json({ success: true, ...recalculation })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }

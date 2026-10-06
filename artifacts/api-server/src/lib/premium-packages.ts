@@ -1,5 +1,8 @@
 import { db } from "@workspace/db"
 import { siteConfigTable } from "@workspace/db/schema"
+import { parsePremiumDays } from "./premium-entitlement-calculation"
+
+export { parsePremiumDays } from "./premium-entitlement-calculation"
 
 export interface PremiumPackage {
   id: number
@@ -21,45 +24,54 @@ export const DEFAULT_PREMIUM_PACKAGES: PremiumPackage[] = [
 
 export const MAX_PREMIUM_PACKAGES = 50
 
-/** Convert a human-readable membership label to its calendar duration. */
-export function parsePremiumDays(label: string): number | null {
-  const match = String(label || "").match(/(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months|year|years)\b/i)
-  if (!match) return null
-  const quantity = Number(match[1])
-  if (!Number.isFinite(quantity) || quantity <= 0) return null
-  const unit = match[2].toLowerCase()
-  const multiplier = unit.startsWith("year") ? 365 : unit.startsWith("month") ? 30 : unit.startsWith("week") ? 7 : 1
-  return Math.max(1, Math.round(quantity * multiplier))
+async function readConfiguredPremiumPackages(includeInactive: boolean): Promise<Record<number, PremiumPackage>> {
+  const configs = await db.select().from(siteConfigTable)
+  const map = new Map<string, string>(
+    configs.map((c: any) => [String(c.key), String(c.value || "")] as [string, string])
+  )
+  const packages: Record<number, PremiumPackage> = {}
+
+  for (let i = 1; i <= MAX_PREMIUM_PACKAGES; i++) {
+    const nameKey = `premium_pkg_${i}_name`
+    const daysKey = `premium_pkg_${i}_days`
+    const priorityKey = `premium_pkg_${i}_priority`
+    const name = map.get(nameKey) || ""
+    const hasSettings = map.has(nameKey) || map.has(daysKey) || map.has(priorityKey)
+    if (!hasSettings || (!includeInactive && !name)) continue
+
+    const days = Math.max(1, parseInt(map.get(daysKey) || "30", 10) || 30)
+    const price = Math.max(0, parseFloat(map.get(`premium_pkg_${i}_price`) || "0") || 0)
+    const priority = Math.max(1, parseInt(map.get(priorityKey) || String(i), 10) || i)
+    const active = parseInt(map.get(`premium_pkg_${i}_active`) || "1", 10)
+    if (!includeInactive && active !== 1) continue
+
+    packages[i] = {
+      id: i,
+      name,
+      days,
+      price,
+      popular: parseInt(map.get(`premium_pkg_${i}_popular`) || "0", 10) || 0,
+      description: String(map.get(`premium_pkg_${i}_description`) || ""),
+      active,
+      priority,
+    }
+  }
+
+  return packages
 }
 
-export async function getPremiumPackages(): Promise<Record<number, PremiumPackage>> {
+/**
+ * Return persisted admin package settings, including disabled/removed slots.
+ * Subscription reconciliation needs their current durations and priorities.
+ * Unlike the customer-facing loader, this does not silently substitute defaults.
+ */
+export async function getPremiumPackageSettings(): Promise<Record<number, PremiumPackage>> {
+  return readConfiguredPremiumPackages(true)
+}
+
+export async function getPremiumPackages(options: { includeInactive?: boolean } = {}): Promise<Record<number, PremiumPackage>> {
   try {
-    const configs = await db.select().from(siteConfigTable)
-    const map = new Map<string, string>(
-      configs.map((c: any) => [String(c.key), String(c.value || "")] as [string, string])
-    )
-    const packages: Record<number, PremiumPackage> = {}
-
-    for (let i = 1; i <= MAX_PREMIUM_PACKAGES; i++) {
-      const name = map.get(`premium_pkg_${i}_name`)
-      if (!name) continue
-      const days = Math.max(1, parseInt(map.get(`premium_pkg_${i}_days`) || "30", 10) || 30)
-      const price = Math.max(0, parseFloat(map.get(`premium_pkg_${i}_price`) || "0") || 0)
-      const priority = Math.max(1, parseInt(map.get(`premium_pkg_${i}_priority`) || String(i), 10) || i)
-      const active = parseInt(map.get(`premium_pkg_${i}_active`) || "1", 10)
-      if (active !== 1) continue
-      packages[i] = {
-        id: i,
-        name: String(name),
-        days,
-        price,
-        popular: parseInt(map.get(`premium_pkg_${i}_popular`) || "0", 10) || 0,
-        description: String(map.get(`premium_pkg_${i}_description`) || ""),
-        active,
-        priority,
-      }
-    }
-
+    const packages = await readConfiguredPremiumPackages(options.includeInactive === true)
     return Object.keys(packages).length > 0
       ? packages
       : Object.fromEntries(DEFAULT_PREMIUM_PACKAGES.map(pkg => [pkg.id, pkg]))

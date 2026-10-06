@@ -205,8 +205,14 @@ export default function AdminSettings() {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packages })
       })
-      if (res.ok) toast.success("Premium packages saved!")
-      else toast.error("Failed to save packages")
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        const checked = Number(data.recalculatedSubscriptions || 0)
+        const expired = Number(data.expiredSubscriptions || 0)
+        toast.success(checked
+          ? `Packages saved. Rechecked ${checked} active subscriptions; ${expired} expired under the current settings.`
+          : "Premium packages saved!")
+      } else toast.error(data.error || "Failed to save packages")
     } catch { toast.error("Failed to save packages") } finally { setSavingPkg(false) }
   }
 
