@@ -23,6 +23,10 @@ test("blocks payment brands despite common spelling obfuscation", () => {
     "M-Pesa",
     "mobile wallet",
     "digital wallet",
+    "Google Pay",
+    "Xoom",
+    "OPay",
+    "USDT",
     "Cash_App",
     "Bank-Transfer",
   ]
@@ -32,6 +36,29 @@ test("blocks payment brands despite common spelling obfuscation", () => {
       containsFinancialSharingInfo(message),
       true,
       `Expected payment term to be blocked: ${message}`,
+    )
+  }
+})
+
+test("blocks payment provider names with a single missing, extra, swapped, or mistyped character", () => {
+  const blocked = [
+    "PayPa",
+    "PayPel",
+    "PayPla",
+    "Western Unio",
+    "Wester Union",
+    "MoneyGra",
+    "Cash Ap",
+    "Remitlly",
+    "Googl Pay",
+    "M-Pes",
+  ]
+
+  for (const message of blocked) {
+    assert.equal(
+      containsFinancialSharingInfo(message),
+      true,
+      `Expected misspelled payment term to be blocked: ${message}`,
     )
   }
 })
@@ -65,6 +92,7 @@ test("does not block ordinary conversation without a payment term or request", (
     "Could you help me move this weekend?",
     "I like western movies and union history.",
     "The app is cash-flowing well.",
+    "I met you in the western part of town.",
   ]
 
   for (const message of allowed) {

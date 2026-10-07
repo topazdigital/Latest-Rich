@@ -104,10 +104,64 @@ const BANK_DETAIL_TERMS = [
   "sort code",
 ]
 
-const PAYMENT_TERM_PATTERNS = [
+// Payment providers people commonly type in chat. The exact matcher above
+// catches normal spellings; this list also allows one typo in the full name
+// (for example, "PayPa" or "Western Unio") without fuzzy-matching short,
+// ordinary words such as "cash", "wise", or "btc".
+const PAYMENT_PROVIDER_ALIASES = [
+  "paypal",
+  "venmo",
+  "cash app",
+  "cashapp",
+  "zelle",
+  "western union",
+  "money gram",
+  "moneygram",
+  "transferwise",
+  "remitly",
+  "world remit",
+  "worldremit",
+  "payoneer",
+  "skrill",
+  "neteller",
+  "revolut",
+  "m pesa",
+  "mpesa",
+  "airtel money",
+  "mtn mobile money",
+  "mtn momo",
+  "apple pay",
+  "google pay",
+  "samsung pay",
+  "ria money transfer",
+  "xoom",
+  "paysend",
+  "paysera",
+  "payeer",
+  "chime",
+  "paystack",
+  "flutterwave",
+  "opay",
+  "orange money",
+  "tigo pesa",
+  "tether",
+  "ethereum",
+  "usdt",
+  "bitcoin",
+]
+
+const TYPO_TOLERANT_PAYMENT_TERMS = Array.from(new Set([
+  ...PAYMENT_PROVIDER_ALIASES,
+  ...PAYMENT_METHOD_TERMS.filter((term) => term.replace(/[^a-z0-9]/gi, "").length >= 7),
+  ...BANK_DETAIL_TERMS.filter((term) => term.replace(/[^a-z0-9]/gi, "").length >= 7),
+].map((term) => term.replace(/[^a-z0-9]/gi, "").toLowerCase())
+  .filter((term) => term.length >= 5)))
+
+const PAYMENT_TERM_PATTERNS = Array.from(new Set([
+  ...PAYMENT_PROVIDER_ALIASES,
   ...PAYMENT_METHOD_TERMS,
   ...BANK_DETAIL_TERMS,
-].map(makeObfuscatedTermPattern)
+])).map(makeObfuscatedTermPattern)
 
 // Match common direct requests and offers to cover expenses. These patterns
 // require money-related wording rather than a generic mention of "help".
@@ -182,6 +236,74 @@ function makeObfuscatedTermPattern(term: string): RegExp {
 }
 
 /**
+ * Allows one insertion, deletion, substitution, or adjacent-letter swap in a
+ * full payment term. Short generic words are excluded from the term list.
+ */
+function isWithinOneTypo(left: string, right: string): boolean {
+  if (Math.abs(left.length - right.length) > 1) return false
+
+  let leftIndex = 0
+  let rightIndex = 0
+  let edits = 0
+
+  while (leftIndex < left.length && rightIndex < right.length) {
+    if (left[leftIndex] === right[rightIndex]) {
+      leftIndex++
+      rightIndex++
+      continue
+    }
+
+    if (edits > 0) return false
+    edits++
+
+    if (
+      left.length === right.length &&
+      leftIndex + 1 < left.length &&
+      rightIndex + 1 < right.length &&
+      left[leftIndex] === right[rightIndex + 1] &&
+      left[leftIndex + 1] === right[rightIndex]
+    ) {
+      leftIndex += 2
+      rightIndex += 2
+    } else if (left.length > right.length) {
+      leftIndex++
+    } else if (right.length > left.length) {
+      rightIndex++
+    } else {
+      leftIndex++
+      rightIndex++
+    }
+  }
+
+  if (leftIndex < left.length || rightIndex < right.length) edits++
+  return edits <= 1
+}
+
+function containsTypoTolerantPaymentTerm(text: string): boolean {
+  const words = text.split(/\s+/).filter(Boolean)
+
+  for (let start = 0; start < words.length; start++) {
+    let candidate = ""
+    const maxWords = Math.min(3, words.length - start)
+
+    for (let count = 1; count <= maxWords; count++) {
+      candidate += words[start + count - 1]
+
+      for (const term of TYPO_TOLERANT_PAYMENT_TERMS) {
+        if (
+          Math.abs(candidate.length - term.length) <= 1 &&
+          isWithinOneTypo(candidate, term)
+        ) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+/**
  * Detects financial-help requests and off-platform payment details.
  *
  * Keep this matcher in the shared package so client hints, REST requests, and
@@ -209,6 +331,13 @@ export function containsFinancialSharingInfo(text: string): boolean {
           pattern.test(joinedLetters) ||
           pattern.test(squeezed),
       )
+    ) {
+      return true
+    }
+
+    if (
+      containsTypoTolerantPaymentTerm(joinedLetters) ||
+      containsTypoTolerantPaymentTerm(squeezed)
     ) {
       return true
     }
