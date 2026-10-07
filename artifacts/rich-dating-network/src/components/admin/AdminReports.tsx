@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { authFetch } from "../../lib/auth"
 import toast from "react-hot-toast"
 import { Flag, Trash2, UserX, RefreshCw } from "lucide-react"
+import { getPhotoUrl } from "../../lib/utils"
 
 interface Report {
   id: number
@@ -10,7 +11,30 @@ interface Report {
   reason: string
   time: number
   reporterName?: string
+  reporterPhoto?: string | null
   reportedName?: string
+  reportedPhoto?: string | null
+}
+
+function MemberAvatar({ name, photo, size = 28 }: { name?: string | null; photo?: string | null; size?: number }) {
+  return (
+    <img
+      src={getPhotoUrl(photo)}
+      alt={name ? `${name} profile photo` : ""}
+      onError={e => {
+        e.currentTarget.onerror = null
+        e.currentTarget.src = "/images/default-avatar.svg"
+      }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        objectFit: "cover",
+        flexShrink: 0,
+        background: "#1e293b",
+      }}
+    />
+  )
 }
 
 function timeAgo(ts: number): string {
@@ -39,7 +63,7 @@ export default function AdminReports() {
   useEffect(() => { load() }, [])
 
   const banUser = async (userId: number, name: string) => {
-    if (!confirm(`Ban user #${userId} (${name})?`)) return
+    if (!confirm(`Ban ${name} (ID ${userId})?`)) return
     const r = await authFetch(`/api/admin/users/${userId}/ban`, { method: "POST" })
     if (r.ok) toast.success(`${name} has been banned`)
     else toast.error("Failed to ban user")
@@ -99,17 +123,19 @@ export default function AdminReports() {
           {/* Grouped by reported user */}
           {Object.entries(grouped).map(([reportedId, reps]) => {
             const rep = reps[0]
+            const reportedName = rep.reportedName?.trim() || `User #${reportedId}`
             return (
               <div key={reportedId} style={{ background: '#0f172a', borderRadius: '0.875rem', border: '1px solid #1e293b', overflow: 'hidden' }}>
                 {/* Header */}
                 <div style={{ padding: '0.75rem 1rem', background: '#111827', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                    <div style={{ width: '1.75rem', height: '1.75rem', background: '#dc2626', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <UserX size={14} color="#fff" />
-                    </div>
+                    <MemberAvatar name={rep.reportedName} photo={rep.reportedPhoto} size={36} />
                     <div style={{ minWidth: 0 }}>
-                      <span style={{ color: '#f87171', fontWeight: 700, fontSize: '0.82rem' }}>
-                        User #{reportedId}
+                      <div style={{ color: '#f87171', fontWeight: 700, fontSize: '0.82rem' }}>
+                        {reportedName}
+                      </div>
+                      <span style={{ color: '#64748b', fontSize: '0.64rem' }}>
+                        Reported member · ID {reportedId}
                       </span>
                       <span style={{ color: '#475569', fontSize: '0.68rem', marginLeft: '0.5rem' }}>
                         {reps.length} report{reps.length !== 1 ? 's' : ''}
@@ -117,7 +143,7 @@ export default function AdminReports() {
                     </div>
                   </div>
                   <button
-                    onClick={() => banUser(Number(reportedId), `#${reportedId}`)}
+                    onClick={() => banUser(Number(reportedId), reportedName)}
                     style={{
                       padding: '0.3rem 0.75rem', background: '#dc2626', color: '#fff', border: 'none',
                       borderRadius: '0.4rem', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -145,9 +171,15 @@ export default function AdminReports() {
                           }}>
                             {r.reason}
                           </span>
-                          <span style={{ color: '#475569', fontSize: '0.65rem' }}>
-                            by User #{r.userId}
-                          </span>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+                            <MemberAvatar name={r.reporterName} photo={r.reporterPhoto} size={24} />
+                            <span style={{ color: '#cbd5e1', fontSize: '0.68rem', fontWeight: 600 }}>
+                              {r.reporterName?.trim() || `User #${r.userId}`}
+                            </span>
+                            <span style={{ color: '#64748b', fontSize: '0.62rem' }}>
+                              Reporter · ID {r.userId}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>

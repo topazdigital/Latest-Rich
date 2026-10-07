@@ -1272,8 +1272,33 @@ router.get("/orders", requireAuth, requireAdmin, async (req, res) => {
 // Reported users
 router.get("/reports", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const reports = await db.select().from(reportedUsersTable).orderBy(desc(reportedUsersTable.id)).limit(200)
-    res.json(reports)
+    type AdminReport = typeof reportedUsersTable.$inferSelect
+    type ReportUser = Pick<typeof usersTable.$inferSelect, "id" | "name" | "photo" | "photoThumb">
+    const reports: AdminReport[] = await db.select().from(reportedUsersTable)
+      .orderBy(desc(reportedUsersTable.id)).limit(200)
+    const userIds = Array.from(new Set(reports.flatMap((report: AdminReport) => [report.userId, report.reportedId])))
+    const users: ReportUser[] = userIds.length
+      ? await db.select({
+          id: usersTable.id,
+          name: usersTable.name,
+          photo: usersTable.photo,
+          photoThumb: usersTable.photoThumb,
+        }).from(usersTable).where(inArray(usersTable.id, userIds))
+      : []
+    const usersById = new Map<number, ReportUser>()
+    for (const user of users) usersById.set(user.id, user)
+
+    res.json(reports.map((report: AdminReport) => {
+      const reporter = usersById.get(report.userId)
+      const reported = usersById.get(report.reportedId)
+      return {
+        ...report,
+        reporterName: reporter?.name || "",
+        reporterPhoto: reporter?.photoThumb || reporter?.photo || "",
+        reportedName: reported?.name || "",
+        reportedPhoto: reported?.photoThumb || reported?.photo || "",
+      }
+    }))
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"
     res.status(500).json({ error: msg })
