@@ -3,9 +3,48 @@ import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import {
+  SEO_LANDING_PAGES,
+  SEO_MATRIX_COMMUNITIES,
+  SEO_MATRIX_INTENTS,
+  SEO_MATRIX_LOCATIONS,
+} from "./src/data/seoLandingPages";
 
 const isBuild = process.argv.includes("build");
+
+function seoLandingManifestPlugin() {
+  const manifest = JSON.stringify({
+    editorialPages: SEO_LANDING_PAGES.map((page) => ({
+      slug: page.slug,
+      h1: page.h1,
+      title: page.title,
+      description: page.description,
+      intro: page.intro,
+      country: page.country,
+      city: page.city,
+      category: page.category,
+      community: page.community,
+      intent: page.intent,
+      intentLabel: page.intentLabel,
+    })),
+    communities: SEO_MATRIX_COMMUNITIES,
+    intents: SEO_MATRIX_INTENTS,
+    locations: SEO_MATRIX_LOCATIONS,
+  });
+
+  return {
+    name: "seo-landing-manifest",
+    apply: "build" as const,
+    closeBundle() {
+      const manifestPath = path.resolve(import.meta.dirname, "dist/seo-pages.json.gz");
+      mkdirSync(path.dirname(manifestPath), { recursive: true });
+      writeFileSync(manifestPath, gzipSync(manifest));
+    },
+  };
+}
 
 const rawPort = process.env.PORT;
 if (!isBuild && !rawPort) {
@@ -152,6 +191,7 @@ export default defineConfig({
   base: basePath,
   plugins: [
     react(),
+    seoLandingManifestPlugin(),
     legacy({
       // Keep the modern bundle for current browsers, while also producing
       // a transpiled/polyfilled bundle for Edge Legacy and older Safari,

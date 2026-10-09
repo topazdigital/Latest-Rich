@@ -104,6 +104,12 @@ app.use((req, res, next) => {
 
 // ── SEO: sitemap.xml ─────────────────────────────────────────────────────────
 import sitemapRouter from "./routes/sitemap"
+import { gunzipSync } from "node:zlib"
+import {
+  buildSeoLandingHtml,
+  createSeoLandingResolver,
+  type SeoLandingManifest,
+} from "./lib/seo-landing-pages"
 app.use(sitemapRouter)
 
 // Serve old PHP uploads directory at the legacy URL path as well.
@@ -253,6 +259,39 @@ const frontendDir = possibleFrontendDirs.find(d => fs.existsSync(d));
 
 if (frontendDir) {
   const indexPath = path.join(frontendDir, "index.html");
+
+  // Build the same public SEO landing pages as HTML before the client bundle
+  // runs. This gives crawlers the route-specific title, canonical, H1, and
+  // useful text in the initial response while preserving the normal React app.
+  const seoManifestPath = path.resolve(frontendDir, "..", "seo-pages.json.gz");
+  if (fs.existsSync(seoManifestPath) && fs.existsSync(indexPath)) {
+    try {
+      const manifest = JSON.parse(
+        gunzipSync(fs.readFileSync(seoManifestPath)).toString("utf8"),
+      ) as SeoLandingManifest;
+      const resolveSeoPage = createSeoLandingResolver(manifest);
+      const htmlShell = fs.readFileSync(indexPath, "utf8");
+
+      app.get("/:slug", (req, res, next) => {
+        const page = resolveSeoPage(req.params.slug);
+        if (!page) return next();
+
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.type("html").send(buildSeoLandingHtml(htmlShell, page));
+      });
+      logger.info(
+        { editorialPages: manifest.editorialPages.length, matrixCommunities: manifest.communities.length },
+        "SEO landing pages are server-rendered",
+      );
+    } catch (err) {
+      logger.error({ err }, "Failed to load SEO landing-page manifest");
+    }
+  } else {
+    logger.warn(
+      { seoManifestPath },
+      "SEO landing-page manifest is missing; build the frontend before starting the production API",
+    );
+  }
 
   // Social crawler handler — intercepts /profile/:id and /@username for bots.
   // Serves a complete, self-contained HTML page with profile-specific OG/Twitter

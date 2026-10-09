@@ -1359,7 +1359,7 @@ export const SEO_MATRIX_INTENTS: SeoMatrixIntent[] = [
   { slug: 'generous-women', label: 'Generous Women', gender: 2, phrase: 'generous women' },
 ]
 
-interface SeoMatrixLocation {
+export interface SeoMatrixLocation {
   slug: string
   country?: string
   city?: string
@@ -1372,7 +1372,7 @@ for (const { city } of PLACES_LIST) {
   matrixCitySlugCounts.set(slug, (matrixCitySlugCounts.get(slug) ?? 0) + 1)
 }
 
-const matrixLocations: SeoMatrixLocation[] = [
+export const SEO_MATRIX_LOCATIONS: SeoMatrixLocation[] = [
   ...uniqueCountries.map(country => ({ slug: countryKey(country), country })),
   ...PLACES_LIST.map(({ city, country }) => {
     const citySlug = slugify(city)
@@ -1381,7 +1381,7 @@ const matrixLocations: SeoMatrixLocation[] = [
   }),
 ]
 
-const matrixLocationMap = new Map(matrixLocations.map(location => [location.slug, location]))
+const matrixLocationMap = new Map(SEO_MATRIX_LOCATIONS.map(location => [location.slug, location]))
 
 export function getSeoMatrixPageSlug(community: string, intent: string, location?: SeoMatrixLocation) {
   const base = `${community}-${intent}`

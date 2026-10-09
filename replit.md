@@ -12,6 +12,12 @@ A luxury dating web app for successful, ambitious singles. Supports real users, 
 - `pnpm --filter @workspace/db run push` — push DB schema changes (Replit dev / PostgreSQL only — NEVER run on production MySQL)
 - Required env: `DATABASE_URL` — PostgreSQL in Replit dev, MySQL on production server
 
+## Search indexing
+
+- Public SEO landing routes return route-specific titles, descriptions, canonicals, structured data, and page text in the initial HTML response; the frontend build emits the manifest consumed by the API server.
+- `robots.txt` advertises `https://richdatingnetwork.com/sitemap-index.xml`. Submit that sitemap once in Google Search Console; individual URLs do not need routine manual submission.
+- Community/intent matrix URLs enter the sitemap only when at least three matching public profiles exist. Google still decides which eligible pages it indexes and ranks.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
