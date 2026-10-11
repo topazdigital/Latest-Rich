@@ -1,7 +1,32 @@
 import { Link } from 'wouter'
 import { Heart } from 'lucide-react'
+import { useEffect, useState } from "react"
+import LegalPageView from "./LegalPageView"
+import { DEFAULT_LEGAL_PAGES, type LegalPageDocument } from "../lib/legal-pages"
 
 export default function PrivacyPage() {
+  const [legalDocument, setLegalDocument] = useState<LegalPageDocument | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetch("/api/legal-pages/privacy", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (active && data?.content) {
+          setLegalDocument({
+            ...DEFAULT_LEGAL_PAGES.privacy,
+            ...data,
+            title: data.title || DEFAULT_LEGAL_PAGES.privacy.title,
+            content: data.content,
+          })
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+
+  if (legalDocument) return <LegalPageView document={legalDocument} />
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100 px-4 py-4">

@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
-import { usersTable, userExtendedTable } from "@workspace/db/schema"
-import { eq, and, isNotNull, isNull, ne, gt, or } from "drizzle-orm"
+import { usersTable, userExtendedTable, siteConfigTable } from "@workspace/db/schema"
+import { eq, and, isNotNull, isNull, ne, gt, or, inArray } from "drizzle-orm"
 
 const router = Router()
 
@@ -271,9 +271,9 @@ function sitemapDoc(urls: string[]) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`
 }
 
-function sendXml(res: any, xml: string) {
+function sendXml(res: any, xml: string, maxAgeSeconds = 86400) {
   res.setHeader("Content-Type", "application/xml; charset=utf-8")
-  res.setHeader("Cache-Control", "public, max-age=86400")
+  res.setHeader("Cache-Control", `public, max-age=${maxAgeSeconds}`)
   res.send(xml)
 }
 
@@ -326,13 +326,30 @@ router.get("/sitemap-community-:page.xml", async (req, res) => {
 
 // ── Static sitemap ────────────────────────────────────────────────────────────
 // Static pages + generic keyword pages (no city suffix)
-router.get("/sitemap-static.xml", (_req, res) => {
+router.get("/sitemap-static.xml", async (_req, res) => {
   const mod = today()
   const urls: string[] = []
-  for (const p of STATIC_PAGES) urls.push(urlTag(`${BASE}${p}`, "0.9", "weekly", mod))
+  let noIndexTerms = false
+  let noIndexPrivacy = false
+  try {
+    const configs: Array<{ key: string; value: string | null }> = await db.select({
+      key: siteConfigTable.key,
+      value: siteConfigTable.value,
+    })
+      .from(siteConfigTable)
+      .where(inArray(siteConfigTable.key, ["legal_terms_noindex", "legal_privacy_noindex"]))
+    noIndexTerms = configs.some(row => row.key === "legal_terms_noindex" && row.value === "1")
+    noIndexPrivacy = configs.some(row => row.key === "legal_privacy_noindex" && row.value === "1")
+  } catch {
+    // Keep legal pages in the sitemap if settings cannot be read; pages default to indexable.
+  }
+  for (const p of STATIC_PAGES) {
+    if ((p === "/terms" && noIndexTerms) || (p === "/privacy" && noIndexPrivacy)) continue
+    urls.push(urlTag(`${BASE}${p}`, "0.9", "weekly", mod))
+  }
   for (const slug of GENERIC_SLUGS) urls.push(urlTag(`${BASE}/${slug}`, "0.7", "monthly", mod))
   for (const slug of ETHNICITY_SLUGS) urls.push(urlTag(`${BASE}/${slug}`, "0.7", "monthly", mod))
-  sendXml(res, sitemapDoc(urls))
+  sendXml(res, sitemapDoc(urls), 300)
 })
 
 // All unique countries (mirrors uniqueCountries in seoLandingPages.ts)

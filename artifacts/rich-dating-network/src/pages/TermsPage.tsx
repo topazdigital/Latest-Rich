@@ -1,7 +1,32 @@
 import { Link } from 'wouter'
 import { Heart } from 'lucide-react'
+import { useEffect, useState } from "react"
+import LegalPageView from "./LegalPageView"
+import { DEFAULT_LEGAL_PAGES, type LegalPageDocument } from "../lib/legal-pages"
 
 export default function TermsPage() {
+  const [legalDocument, setLegalDocument] = useState<LegalPageDocument | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetch("/api/legal-pages/terms", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (active && data?.content) {
+          setLegalDocument({
+            ...DEFAULT_LEGAL_PAGES.terms,
+            ...data,
+            title: data.title || DEFAULT_LEGAL_PAGES.terms.title,
+            content: data.content,
+          })
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+
+  if (legalDocument) return <LegalPageView document={legalDocument} />
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100 px-4 py-4">
@@ -15,7 +40,14 @@ export default function TermsPage() {
 
       <div className="max-w-3xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-        <p className="text-sm text-gray-400 mb-10">Last updated: June 1, 2025</p>
+        <p className="text-sm text-gray-400 mb-10">Last updated: October 11, 2026</p>
+
+        <aside className="mb-8 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
+          <strong className="block mb-1">Important: this is an entertainment service.</strong>
+          Some profiles or interactions may be fictional, simulated, or operated or assisted by staff,
+          moderators, or automated systems. You may not be communicating with the person pictured or named.
+          This disclosure does not replace any notice required by law.
+        </aside>
 
         <div className="prose prose-gray max-w-none text-gray-600 space-y-8">
 

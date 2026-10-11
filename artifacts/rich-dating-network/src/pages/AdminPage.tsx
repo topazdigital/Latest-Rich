@@ -20,6 +20,7 @@ import AdminChat from "../components/admin/AdminChat"
 import AdminContactMessages from "../components/admin/AdminContactMessages"
 import AdminFeedback from "../components/admin/AdminFeedback"
 import AdminModeratorPayroll from "../components/admin/AdminModeratorPayroll"
+import AdminLegalPages from "../components/admin/AdminLegalPages"
 
 type MenuItem = { key: string; label: string; icon: string }
 type MenuGroup = { group: string; icon: string; items: MenuItem[] }
@@ -71,6 +72,7 @@ const MENU: MenuEntry[] = [
     group: "System", icon: "⚙️",
     items: [
       { key: "activity", label: "Activity Log", icon: "📋" },
+      { key: "legal-pages", label: "Legal Pages", icon: "📄" },
       { key: "settings", label: "Settings",     icon: "⚙️" },
     ],
   },
@@ -355,6 +357,7 @@ export default function AdminPage() {
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "moderator-payroll" && <AdminModeratorPayroll />}
+          {tab === "legal-pages" && <AdminLegalPages />}
           {tab === "settings" && <AdminSettings />}
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
 import { useAuth } from '../../hooks/useAuth'
 import { getSeoLandingPage } from '../../data/seoLandingPages'
@@ -188,6 +188,24 @@ export default function SEOHead() {
   const countryCode = user?.countryCode?.toUpperCase() || 'DEFAULT'
   const userCity = user?.city || ''
   const seoData = COUNTRY_SEO[countryCode] || COUNTRY_SEO.DEFAULT
+  const [legalIndexState, setLegalIndexState] = useState<{ slug: string; noIndex: boolean } | null>(null)
+
+  useEffect(() => {
+    const slug = location === "/terms" ? "terms" : location === "/privacy" ? "privacy" : null
+    if (!slug) {
+      setLegalIndexState(null)
+      return
+    }
+    let active = true
+    setLegalIndexState(null)
+    fetch(`/api/legal-pages/${slug}`, { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (active && data) setLegalIndexState({ slug, noIndex: data.noIndex === true })
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [location])
 
   useEffect(() => {
     const routePage = getRouteSeoPage(location)
@@ -200,7 +218,9 @@ export default function SEOHead() {
       ...seoData.ageGroups,
       ...(userCity ? [`dating in ${userCity}`, `singles in ${userCity}`, `wealthy singles ${userCity}`] : []),
     ].join(', ')
-    const indexable = isIndexablePath(location)
+    const legalSlug = location === "/terms" ? "terms" : location === "/privacy" ? "privacy" : null
+    const legalNoIndex = !!legalSlug && legalIndexState?.slug === legalSlug && legalIndexState.noIndex
+    const indexable = isIndexablePath(location) && !legalNoIndex
 
     upsertMeta('description', description)
     upsertMeta('keywords', allKeywords)
@@ -227,7 +247,7 @@ export default function SEOHead() {
 
     // Canonical
     upsertLink('canonical', `https://richdatingnetwork.com${location}`)
-  }, [location, countryCode, userCity, seoData])
+  }, [location, countryCode, userCity, seoData, legalIndexState])
 
   return null
 }

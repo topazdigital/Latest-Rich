@@ -31,6 +31,7 @@ import contactMessagesRouter from "./contact-messages"
 import pushRouter from "./push"
 import engagementRouter from "./engagement"
 import chatmodzRouter from "./chatmodz"
+import legalPagesRouter from "./legal-pages"
 
 const router: IRouter = Router()
 
@@ -49,6 +50,7 @@ router.use("/payments", paymentsRouter)
 router.use("/stories", storiesRouter)
 router.use("/uploads", uploadsRouter)
 router.use("/admin", adminRouter)
+router.use("/legal-pages", legalPagesRouter)
 router.use("/gifts", giftsRouter)
 router.use("/visits", visitsRouter)
 router.use("/location", locationRouter)

@@ -6,7 +6,7 @@ import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { db } from "@workspace/db";
-import { usersTable, userExtendedTable, photosTable } from "@workspace/db/schema";
+import { usersTable, userExtendedTable, photosTable, siteConfigTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 const app: Express = express();
@@ -93,12 +93,24 @@ const SEO_NOINDEX_PATHS = [
   "/chat", "/profile", "/notifications", "/settings", "/premium",
   "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals", "/ref/",
 ]
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const pathName = req.path
   const noindex = SEO_NOINDEX_PATHS.some(prefix =>
     pathName === prefix || pathName.startsWith(`${prefix}/`)
   )
   if (noindex) res.setHeader("X-Robots-Tag", "noindex, nofollow")
+  const legalSlug = pathName === "/terms" ? "terms" : pathName === "/privacy" ? "privacy" : null
+  if (legalSlug) {
+    try {
+      const [setting] = await db.select({ value: siteConfigTable.value })
+        .from(siteConfigTable)
+        .where(eq(siteConfigTable.key, `legal_${legalSlug}_noindex`))
+        .limit(1)
+      if (setting?.value === "1") res.setHeader("X-Robots-Tag", "noindex, nofollow")
+    } catch {
+      // Legal pages remain indexable by default if the setting cannot be read.
+    }
+  }
   next()
 })
 
