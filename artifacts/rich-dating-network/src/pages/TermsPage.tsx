@@ -42,13 +42,6 @@ export default function TermsPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
         <p className="text-sm text-gray-400 mb-10">Last updated: October 11, 2026</p>
 
-        <aside className="mb-8 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
-          <strong className="block mb-1">Important: this is an entertainment service.</strong>
-          Some profiles or interactions may be fictional, simulated, or operated or assisted by staff,
-          moderators, or automated systems. You may not be communicating with the person pictured or named.
-          This disclosure does not replace any notice required by law.
-        </aside>
-
         <div className="prose prose-gray max-w-none text-gray-600 space-y-8">
 
           <section>
@@ -174,6 +167,14 @@ export default function TermsPage() {
               All other content on the Service, including but not limited to text, graphics, logos, icons, images,
               software, and the overall design of the platform, is the property of Rich Dating Network Limited
               and is protected by copyright, trademark, and other intellectual property laws.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 mt-5 mb-2">Fictitious and simulated content</h3>
+            <p className="leading-relaxed">
+              Certain content and interactions on the Service are provided for entertainment purposes. Some
+              profiles, profile details, images, messages, or other interactions may be fictitious, simulated,
+              AI-generated, or operated or assisted by our staff, moderators, or automated systems. A profile or
+              message may not represent a real member personally communicating with you, and it is not a promise
+              that you will meet someone, form a relationship, or receive a response from a real person.
             </p>
           </section>
 

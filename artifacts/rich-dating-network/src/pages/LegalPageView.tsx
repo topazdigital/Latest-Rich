@@ -25,15 +25,6 @@ export default function LegalPageView({ document }: { document: LegalPageDocumen
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{document.title}</h1>
         {dateLabel && <p className="text-sm text-gray-400 mb-6">Last updated: {dateLabel}</p>}
 
-        {isTerms && (
-          <aside className="mb-8 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
-            <strong className="block mb-1">Important: this is an entertainment service.</strong>
-            Some profiles or interactions may be fictional, simulated, or operated or assisted by staff,
-            moderators, or automated systems. You may not be communicating with the person pictured or named.
-            This disclosure does not replace any notice required by law.
-          </aside>
-        )}
-
         <article className="legal-document prose prose-gray max-w-none text-gray-600">
           {renderLegalContent(document.content)}
         </article>

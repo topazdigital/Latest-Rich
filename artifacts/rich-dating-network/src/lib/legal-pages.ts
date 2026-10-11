@@ -20,31 +20,29 @@ export const DEFAULT_LEGAL_PAGES: Record<LegalPageSlug, LegalPageDocument> = {
 
 These Terms apply to your access to and use of Rich Dating Network, including its website and related services (the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service. "Rich Dating Network Limited", "we", "us", and "our" refer to the provider of the Service.
 
-## 2. Entertainment service and simulated profiles
-
-Rich Dating Network is an online entertainment and social interaction service. Some profiles, profile details, images, messages, or other interactions may be fictional, simulated, generated, or operated or assisted by our staff, moderators, or automated systems. A profile or message may not represent a real member personally communicating with you. These profiles and interactions are not a promise that you will meet someone, form a relationship, or receive a response from a real person.
-
-Please consider this information before chatting or purchasing paid features. Do not send money, financial details, or sensitive personal information to another member. Report profiles or interactions that appear misleading or unsafe.
-
-## 3. Eligibility and accounts
+## 2. Eligibility and accounts
 
 The Service is for adults aged 18 or older. By registering, you confirm that you are at least 18 and that the information you provide is accurate and kept up to date. You are responsible for maintaining the security of your account and for activity carried out through it. Contact us promptly if you believe your account has been accessed without permission.
 
-## 4. User conduct
+## 3. User conduct
 
 Use the Service lawfully and respectfully. You must not harass, threaten, defraud, impersonate, exploit, or unlawfully contact another person; solicit money or financial information; publish unlawful or infringing content; scrape member data; use bots to access the Service; or interfere with its security or operation. We may investigate reports and restrict or remove content or accounts when appropriate.
 
-## 5. User content
+## 4. User content
 
 You retain any rights you have in content you submit. You give us permission to host, display, and process that content as reasonably necessary to operate, secure, and improve the Service. You confirm that you have the rights needed to submit it and that it does not violate another person's rights or applicable law.
 
-## 6. Paid features, subscriptions, and credits
+## 5. Paid features, subscriptions, and credits
 
 Some features require payment, a subscription, or credits. Prices, billing intervals, renewal terms, cancellation instructions, and applicable refund rules are provided at the point of purchase. Credits are for use within the Service and are not cash unless applicable law requires otherwise. Payment processing may be handled by third-party providers under their own terms. Nothing in these Terms limits rights that cannot legally be waived, including mandatory consumer refund or cancellation rights.
 
-## 7. Safety and member interactions
+## 6. Safety and member interactions
 
 You are responsible for your interactions with other users and should use caution when sharing information or meeting someone in person. We may provide reporting and verification tools, but a verification badge or profile information is not a guarantee of identity, safety, or accuracy. We do not guarantee that a profile is genuine or that the Service will produce a particular outcome.
+
+## 7. Content
+
+Certain content and interactions on the Service are provided for entertainment purposes. Some profiles, profile details, images, messages, or other interactions may be fictitious, simulated, AI-generated, or operated or assisted by our staff, moderators, or automated systems. A profile or message may not represent a real member personally communicating with you, and it is not a promise that you will meet someone, form a relationship, or receive a response from a real person.
 
 ## 8. Availability and liability
 
