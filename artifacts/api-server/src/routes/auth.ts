@@ -7,7 +7,12 @@ import {
 import { eq, or } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
-import { requireAuth } from "../lib/auth-middleware"
+import {
+  ACCOUNT_SUSPENDED_CODE,
+  ACCOUNT_SUSPENDED_ERROR,
+  getAccountAuthStatus,
+  requireAuth,
+} from "../lib/auth-middleware"
 import { containsContactInfo } from "../lib/contact-filter"
 import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
 import crypto from "crypto"
@@ -262,7 +267,7 @@ router.post("/login", async (req, res) => {
       return
     }
     if (user.banned === 1) {
-      res.status(403).json({ error: "Account suspended. Contact support." })
+      res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
       return
     }
     await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, user.id))
@@ -307,6 +312,15 @@ router.post("/verify-email", async (req, res) => {
     const [record] = await db.select().from(emailVerificationsTable).where(eq(emailVerificationsTable.token, token)).limit(1)
     if (!record || record.used === 1 || (record.expires ?? 0) < now()) {
       res.status(400).json({ error: "Invalid or expired verification link" }); return
+    }
+    const accountStatus = await getAccountAuthStatus(record.userId)
+    if (accountStatus === "banned") {
+      res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
+      return
+    }
+    if (accountStatus === "missing") {
+      res.status(404).json({ error: "Account not found" })
+      return
     }
     await db.update(usersTable).set({ emailVerified: 1 }).where(eq(usersTable.id, record.userId))
     await db.update(emailVerificationsTable).set({ used: 1 }).where(eq(emailVerificationsTable.id, record.id))

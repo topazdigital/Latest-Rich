@@ -3,7 +3,7 @@ import { db } from "@workspace/db"
 import { usersTable, userExtendedTable, activityTable, siteConfigTable } from "@workspace/db/schema"
 import { eq, sql } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
-import { requireAuth } from "../lib/auth-middleware"
+import { ACCOUNT_SUSPENDED_CODE, ACCOUNT_SUSPENDED_ERROR, requireAuth } from "../lib/auth-middleware"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -100,7 +100,10 @@ router.post("/google", async (req, res) => {
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Google registration", message: `${name} joined via Google`, time: now() }).catch(() => {})
     } else {
-      if (user.banned === 1) { res.status(403).json({ error: "Account suspended" }); return }
+      if (user.banned === 1) {
+        res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
+        return
+      }
       const updates: any = { lastAccess: String(now()), online: 1 }
       if (picture && !user.photo) updates.photo = picture
       await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id))
@@ -166,7 +169,10 @@ router.post("/facebook", async (req, res) => {
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Facebook registration", message: `${profile.name} joined via Facebook`, time: now() }).catch(() => {})
     } else {
-      if (user.banned === 1) { res.status(403).json({ error: "Account suspended" }); return }
+      if (user.banned === 1) {
+        res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
+        return
+      }
       await db.update(usersTable).set({ lastAccess: String(now()), online: 1 }).where(eq(usersTable.id, user.id))
     }
 

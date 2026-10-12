@@ -12,10 +12,11 @@ router.get("/", requireAuth, async (req, res) => {
     const stories = await db.select().from(storiesTable).where(gt(storiesTable.expires, now()))
     const enriched = await Promise.all(stories.map(async (s) => {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, s.userId)).limit(1)
+      if (!user || user.banned === 1) return null
       const { password, ...safe } = user || {}
       return { ...s, user: safe }
     }))
-    res.json(enriched)
+    res.json(enriched.filter(Boolean))
   } catch { res.status(500).json([]) }
 })
 

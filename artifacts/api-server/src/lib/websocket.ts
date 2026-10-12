@@ -16,6 +16,10 @@ import {
 } from "./contact-filter"
 import { withEffectivePremiumPriority } from "./premium-entitlements"
 import { queueChatmodzMessage } from "./chatmodz"
+import {
+  ACCOUNT_SUSPENDED_ERROR,
+  getAccountAuthStatus,
+} from "./auth-middleware"
 
 function now() { return Math.floor(Date.now() / 1000) }
 
@@ -52,6 +56,15 @@ export function setupWebSocket(server: Server) {
     if (!payload?.userId) { ws.close(1008, "Invalid token"); return }
 
     const userId = payload.userId
+    try {
+      const accountStatus = await getAccountAuthStatus(userId)
+      if (accountStatus === "missing") { ws.close(1008, "Invalid token"); return }
+      if (accountStatus === "banned") { ws.close(4003, ACCOUNT_SUSPENDED_ERROR); return }
+    } catch (err) {
+      logger.error({ err, userId }, "Could not verify account before WebSocket connection")
+      ws.close(1011, "Unable to verify account")
+      return
+    }
 
     const existing = clients.get(userId)
     if (existing) existing.ws.close(1000, "New connection")
@@ -74,14 +87,16 @@ export function setupWebSocket(server: Server) {
       }
     })
     ws.on("close", async () => {
-      clients.delete(userId)
-      await db.update(usersTable).set({ online: 0, lastAccess: String(now()) }).where(eq(usersTable.id, userId)).catch(() => {})
-      broadcastOnlineStatus(userId, false)
-      logger.info({ userId }, "WebSocket disconnected")
+      if (clients.get(userId) === client) {
+        clients.delete(userId)
+        await db.update(usersTable).set({ online: 0, lastAccess: String(now()) }).where(eq(usersTable.id, userId)).catch(() => {})
+        broadcastOnlineStatus(userId, false)
+        logger.info({ userId }, "WebSocket disconnected")
+      }
     })
     ws.on("error", (err) => {
       logger.error({ err, userId }, "WebSocket error")
-      clients.delete(userId)
+      if (clients.get(userId) === client) clients.delete(userId)
     })
 
     send(userId, { type: "connected", userId })
@@ -92,6 +107,12 @@ export function setupWebSocket(server: Server) {
 }
 
 async function handleMessage(fromUserId: number, msg: any) {
+  const accountStatus = await getAccountAuthStatus(fromUserId)
+  if (accountStatus !== "active") {
+    disconnectUser(fromUserId)
+    return
+  }
+
   switch (msg.type) {
     case "chat_message": {
       const { toUserId, message, tempId } = msg
@@ -243,6 +264,14 @@ function broadcastOnlineStatus(userId: number, online: boolean) {
 
 export function broadcastUserOnline(userId: number, online: boolean) {
   broadcastOnlineStatus(userId, online)
+}
+
+export function disconnectUser(userId: number) {
+  const client = clients.get(userId)
+  if (!client) return
+  clients.delete(userId)
+  broadcastOnlineStatus(userId, false)
+  client.ws.close(4003, ACCOUNT_SUSPENDED_ERROR)
 }
 
 export function send(userId: number, data: object) {

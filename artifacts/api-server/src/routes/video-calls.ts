@@ -1,8 +1,13 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { fakeVideoCallsTable, videoCallSessionsTable, usersTable, siteConfigTable } from "@workspace/db/schema"
-import { eq, and, desc, sql } from "drizzle-orm"
+import { eq, and, desc, sql, or } from "drizzle-orm"
 import { verifyToken } from "../lib/jwt"
+import {
+  ACCOUNT_SUSPENDED_CODE,
+  ACCOUNT_SUSPENDED_ERROR,
+  getAccountAuthStatus,
+} from "../lib/auth-middleware"
 
 const router = Router()
 const CALL_RATE = 5
@@ -10,11 +15,23 @@ const billingLocks = new Map<number, Promise<any>>()
 
 function now() { return Math.floor(Date.now() / 1000) }
 
-function auth(req: any, res: any): number | null {
+async function auth(req: any, res: any): Promise<number | null> {
   const h = req.headers.authorization
   if (!h) { res.status(401).json({ error: "Unauthorized" }); return null }
   const p = verifyToken(h.replace("Bearer ", ""))
   if (!p?.userId) { res.status(401).json({ error: "Unauthorized" }); return null }
+  try {
+    const status = await getAccountAuthStatus(p.userId)
+    if (status === "missing") { res.status(401).json({ error: "Unauthorized" }); return null }
+    if (status === "banned") {
+      res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
+      return null
+    }
+  } catch (err) {
+    console.error("[video-calls] Could not verify account status", err)
+    res.status(503).json({ error: "Unable to verify account status. Please try again." })
+    return null
+  }
   return p.userId
 }
 
@@ -102,9 +119,21 @@ export async function endVideoCall(sessionId: number, userId: number, reason = "
   })
 }
 
+export async function endActiveVideoCallsForUser(userId: number) {
+  const sessions = await db.select({ id: videoCallSessionsTable.id })
+    .from(videoCallSessionsTable)
+    .where(and(
+      or(eq(videoCallSessionsTable.callerId, userId), eq(videoCallSessionsTable.calleeId, userId)),
+      or(eq(videoCallSessionsTable.status, "ringing"), eq(videoCallSessionsTable.status, "connected")),
+    ))
+  await Promise.all(sessions.map((session: { id: number }) =>
+    endVideoCall(session.id, userId, "account_suspended", false),
+  ))
+}
+
 // Check for pending incoming video call for the current user
 router.get("/pending", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
 
   try {
@@ -155,7 +184,7 @@ router.get("/pending", async (req, res) => {
 
 // Start a caller-paid call. Ringing is free; billing begins after connection.
 router.post("/start", async (req, res) => {
-  const callerId = auth(req, res)
+  const callerId = await auth(req, res)
   if (!callerId) return
   const calleeId = Number(req.body?.toUserId)
   if (!Number.isInteger(calleeId) || calleeId === callerId) {
@@ -164,9 +193,9 @@ router.post("/start", async (req, res) => {
   try {
     const [caller] = await db.select({ id: usersTable.id, name: usersTable.name, photo: usersTable.photo, fake: usersTable.fake, credits: usersTable.credits })
       .from(usersTable).where(eq(usersTable.id, callerId)).limit(1)
-    const [callee] = await db.select({ id: usersTable.id, name: usersTable.name, age: usersTable.age, photo: usersTable.photo, fake: usersTable.fake })
+    const [callee] = await db.select({ id: usersTable.id, name: usersTable.name, age: usersTable.age, photo: usersTable.photo, fake: usersTable.fake, banned: usersTable.banned })
       .from(usersTable).where(eq(usersTable.id, calleeId)).limit(1)
-    if (!caller || !callee) { res.status(404).json({ error: "User not found" }); return }
+    if (!caller || !callee || callee.banned === 1) { res.status(404).json({ error: "User not found" }); return }
     if (caller.fake === 1) { res.status(403).json({ error: "Only real users can start paid calls" }); return }
     if ((caller.credits || 0) < CALL_RATE) {
       res.status(402).json({ error: "You need at least 5 credits to start a video call", creditsNeeded: CALL_RATE, creditsHave: caller.credits || 0 }); return
@@ -199,14 +228,14 @@ router.post("/start", async (req, res) => {
 })
 
 router.post("/:id/heartbeat", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
   const result = await billVideoCall(Number(req.params.id))
   res.json({ success: true, ...result })
 })
 
 router.post("/:id/end", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
   await endVideoCall(Number(req.params.id), userId, String(req.body?.reason || "hangup"))
   res.json({ success: true })
@@ -214,7 +243,7 @@ router.post("/:id/end", async (req, res) => {
 
 // Mark call as answered
 router.post("/:id/answer", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
   const callId = parseInt(req.params.id)
   try {
@@ -227,7 +256,7 @@ router.post("/:id/answer", async (req, res) => {
 
 // Mark call as dismissed
 router.post("/:id/dismiss", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
   const callId = parseInt(req.params.id)
   try {
@@ -240,7 +269,7 @@ router.post("/:id/dismiss", async (req, res) => {
 
 // Admin: trigger a video call from a fake user to a real user
 router.post("/trigger", async (req, res) => {
-  const userId = auth(req, res)
+  const userId = await auth(req, res)
   if (!userId) return
   const [me] = await db.select({ admin: usersTable.admin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1)
   if (!me?.admin) { res.status(403).json({ error: "Admin only" }); return }

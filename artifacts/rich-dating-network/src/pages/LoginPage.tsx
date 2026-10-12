@@ -124,6 +124,18 @@ export default function LoginPage() {
   const dialRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('reason') === 'suspended') {
+      toast.error('Account suspended. Contact support.', { id: 'account-suspended' })
+      params.delete('reason')
+      const query = params.toString()
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+      )
+    }
+
     fetch('/api/auth/social/config').then(r => r.json()).then(d => {
       setSocialConfig(d)
       // Attempt Google One Tap auto-prompt after config loads

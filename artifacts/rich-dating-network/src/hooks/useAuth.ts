@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react'
-import { getStoredAuth, setStoredAuth, clearStoredAuth } from '../lib/auth'
+import { getStoredAuth, setStoredAuth, clearStoredAuth, handleAccountSuspended } from '../lib/auth'
 
 interface AuthUser {
   id: number
@@ -53,7 +53,16 @@ export function useAuthState() {
       fetch('/api/users/me', {
         headers: { Authorization: `Bearer ${stored.token}` },
       })
-        .then(r => r.ok ? r.json() : null)
+        .then(async r => {
+          if (r.status === 403) {
+            const data = await r.clone().json().catch(() => null)
+            if (data?.code === 'ACCOUNT_SUSPENDED') {
+              handleAccountSuspended()
+              return null
+            }
+          }
+          return r.ok ? r.json() : null
+        })
         .then(data => {
           if (data) {
             setUser(data)

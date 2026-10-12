@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useAuth } from './useAuth'
+import { handleAccountSuspended } from '../lib/auth'
 
 type WSMessage = {
   type: string
@@ -57,9 +58,14 @@ function connectWS(token: string) {
     } catch {}
   }
 
-  sharedWS.onclose = () => {
+  sharedWS.onclose = (event) => {
     if (pingInterval) { clearInterval(pingInterval); pingInterval = null }
     emit({ type: '__disconnected' })
+    if (event.code === 4003) {
+      sharedToken = null
+      handleAccountSuspended()
+      return
+    }
     if (sharedToken) scheduleReconnect(sharedToken)
   }
 

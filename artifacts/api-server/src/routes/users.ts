@@ -386,7 +386,10 @@ router.get("/public/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     if (isNaN(id)) { res.status(404).json({ error: "Not found" }); return }
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    const [user] = await db.select().from(usersTable).where(and(
+      eq(usersTable.id, id),
+      or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+    )).limit(1)
     if (!user || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     let photo = user.photo || ''
@@ -429,7 +432,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!user || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
+    if (!user || user.banned === 1 || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     // Check if this user has an active boost
     const [activeBoost] = await db.select().from(profileBoostsTable)
@@ -454,6 +457,12 @@ router.get("/:id", requireAuth, async (req, res) => {
 router.get("/:id/photos", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
+    const [target] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+      .from(usersTable).where(eq(usersTable.id, id)).limit(1)
+    if (!target || target.banned === 1 || (target.admin ?? 0) > 0) {
+      res.status(404).json({ error: "Not found" })
+      return
+    }
     const photos = await db.select().from(photosTable).where(and(eq(photosTable.userId, id), eq(photosTable.approved, 1)))
     res.json(photos)
   } catch {
@@ -474,6 +483,12 @@ router.get("/:id/liked-status", requireAuth, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id as string)
     const myId = req.userId!
+    const [target] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+      .from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+    if (!target || target.banned === 1 || (target.admin ?? 0) > 0) {
+      res.status(404).json({ error: "Not found" })
+      return
+    }
     const [iLiked] = await db.select().from(likesTable).where(and(eq(likesTable.userId, myId), eq(likesTable.targetId, targetId))).limit(1)
     const [theyLiked] = await db.select().from(likesTable).where(and(eq(likesTable.userId, targetId), eq(likesTable.targetId, myId))).limit(1)
     res.json({ hasLiked: !!iLiked, isMatch: !!iLiked && !!theyLiked })
@@ -539,8 +554,12 @@ router.get("/by-username/:username", async (req, res) => {
       id: usersTable.id,
       name: usersTable.name,
       username: usersTable.username,
+      banned: usersTable.banned,
     }).from(usersTable)
-      .where(sql`lower(${usersTable.username}) = ${username}`)
+      .where(and(
+        sql`lower(${usersTable.username}) = ${username}`,
+        or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      ))
       .limit(1)
 
     // 2. Fallback: match by display name — exact full name OR starts with the given username
@@ -551,8 +570,12 @@ router.get("/by-username/:username", async (req, res) => {
           id: usersTable.id,
           name: usersTable.name,
           username: usersTable.username,
+          banned: usersTable.banned,
         }).from(usersTable)
-          .where(sql`lower(${usersTable.name}) = ${username} OR lower(${usersTable.name}) LIKE ${username + " %"}`)
+          .where(and(
+            sql`lower(${usersTable.name}) = ${username} OR lower(${usersTable.name}) LIKE ${username + " %"}`,
+            or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+          ))
           .limit(1)
       } catch (nameErr) {
         console.error("[by-username] name fallback query failed:", nameErr)
@@ -573,6 +596,12 @@ router.get("/by-username/:username", async (req, res) => {
 router.get("/:id/stories", async (req, res) => {
   try {
     const userId = parseInt(req.params.id)
+    const [profile] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+      .from(usersTable).where(eq(usersTable.id, userId)).limit(1)
+    if (!profile || profile.banned === 1 || (profile.admin ?? 0) > 0) {
+      res.status(404).json({ error: "Not found" })
+      return
+    }
     const stories = await db.select().from(storiesTable)
       .where(eq(storiesTable.userId, userId))
       .orderBy(desc(storiesTable.created))

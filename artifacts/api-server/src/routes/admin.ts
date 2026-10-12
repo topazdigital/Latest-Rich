@@ -337,7 +337,21 @@ router.post("/users/:id/ban", requireAuth, requireAdmin, async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
     if (!user) { res.status(404).json({ error: "User not found" }); return }
     const newBanned = user.banned === 1 ? 0 : 1
-    await db.update(usersTable).set({ banned: newBanned }).where(eq(usersTable.id, id))
+    await db.update(usersTable)
+      .set(newBanned === 1 ? { banned: newBanned, online: 0 } : { banned: newBanned })
+      .where(eq(usersTable.id, id))
+    if (newBanned === 1) {
+      try {
+        const [{ disconnectUser }, { endActiveVideoCallsForUser }] = await Promise.all([
+          import("../lib/websocket"),
+          import("./video-calls"),
+        ])
+        disconnectUser(id)
+        await endActiveVideoCallsForUser(id)
+      } catch (cleanupError) {
+        console.error(`[admin] Account ${id} was banned but active-session cleanup failed`, cleanupError)
+      }
+    }
     await db.insert(activityTable).values({
       type: "admin", userId: req.userId,
       title: `User ${newBanned === 1 ? "banned" : "unbanned"}`,
