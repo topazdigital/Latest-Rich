@@ -36,6 +36,7 @@ export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [notificationFailed, setNotificationFailed] = useState(false)
   const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +56,7 @@ export default function ContactPage() {
       const d = await r.json()
       if (r.ok) {
         setSent(true)
+        setNotificationFailed(d.notificationSent === false)
       } else {
         setError(d.error || "Failed to send message. Please try again.")
       }
@@ -127,8 +129,13 @@ export default function ContactPage() {
                 <p className="text-gray-500 text-sm">
                   We'll reply to <strong>{form.email}</strong> within 24–48 hours.
                 </p>
+                  {notificationFailed && (
+                    <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">
+                      Your message is saved in our support inbox, but the email alert could not be sent. For urgent help, email contact@richdatingnetwork.com directly.
+                    </p>
+                  )}
                 <button
-                  onClick={() => { setSent(false); setForm({ name: "", email: "", subject: "", message: "" }) }}
+                  onClick={() => { setSent(false); setNotificationFailed(false); setForm({ name: "", email: "", subject: "", message: "" }) }}
                   className="text-red-500 font-semibold text-sm hover:underline"
                 >
                   Send another message

@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { sendEmail } from "../lib/mailer"
-import { db } from "@workspace/db"
+import { db, isMysql } from "@workspace/db"
 import { contactSubmissionsTable, siteConfigTable } from "@workspace/db"
 import { eq } from "drizzle-orm"
 
@@ -34,20 +34,37 @@ router.post("/contact", async (req, res) => {
       return
     }
 
-    // Save to DB (wrapped so it never crashes the request even if table doesn't exist yet)
+    const createdAt = Math.floor(Date.now() / 1000)
+    let submissionId: number | undefined
+
+    // Persist first so a broken SMTP server cannot make a valid contact request disappear.
     try {
-      if (contactSubmissionsTable) {
-        await db.insert(contactSubmissionsTable).values({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          subject: subject?.trim() || "",
-          message: message.trim(),
-          emailSent: 0,
-          createdAt: Math.floor(Date.now() / 1000),
-        })
+      const values = {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        subject: subject?.trim() || "",
+        message: message.trim(),
+        emailSent: 0,
+        createdAt,
+      }
+
+      if (isMysql) {
+        const result = await db.insert(contactSubmissionsTable).values(values)
+        const id = Number((result as any).insertId ?? (result as any)[0]?.insertId)
+        if (Number.isFinite(id) && id > 0) submissionId = id
+      } else {
+        const [inserted] = await db
+          .insert(contactSubmissionsTable)
+          .values(values)
+          .returning({ id: contactSubmissionsTable.id })
+        submissionId = inserted?.id
       }
     } catch (dbErr) {
-      console.warn("[Contact] DB save failed (table may not exist yet — run MySQL migration):", (dbErr as any)?.message)
+      console.error("[Contact] Could not save submission:", dbErr)
+      res.status(503).json({
+        error: "We couldn't save your message. Please try again shortly or email us directly at contact@richdatingnetwork.com.",
+      })
+      return
     }
 
     const subjectLine = subject?.trim()
@@ -55,6 +72,10 @@ router.post("/contact", async (req, res) => {
       : `[Contact] Message from ${name.trim()}`
 
     const contactEmail = await getContactEmail()
+    const safeName = escapeHtml(name.trim())
+    const safeEmail = escapeHtml(email.trim())
+    const safeSubject = escapeHtml(subject?.trim() || "")
+    const safeMessage = escapeHtml(message.trim())
     const sent = await sendEmail({
       to: contactEmail,
       replyTo: email.trim(),
@@ -75,19 +96,19 @@ router.post("/contact", async (req, res) => {
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr><td style="padding:8px 0;border-bottom:1px solid #f3f4f6">
       <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase">From</span><br>
-      <span style="color:#111827;font-size:15px;font-weight:600">${name.trim()}</span>
+      <span style="color:#111827;font-size:15px;font-weight:600">${safeName}</span>
     </td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #f3f4f6">
       <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase">Email</span><br>
-      <a href="mailto:${email.trim()}" style="color:#FF192C;font-size:15px">${email.trim()}</a>
+      <a href="mailto:${safeEmail}" style="color:#FF192C;font-size:15px">${safeEmail}</a>
     </td></tr>
     ${subject?.trim() ? `<tr><td style="padding:8px 0;border-bottom:1px solid #f3f4f6">
       <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase">Subject</span><br>
-      <span style="color:#111827;font-size:15px">${subject.trim()}</span>
+      <span style="color:#111827;font-size:15px">${safeSubject}</span>
     </td></tr>` : ""}
     <tr><td style="padding:12px 0">
       <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase">Message</span><br>
-      <div style="color:#374151;font-size:15px;line-height:1.7;margin-top:8px;white-space:pre-wrap">${message.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+      <div style="color:#374151;font-size:15px;line-height:1.7;margin-top:8px;white-space:pre-wrap">${safeMessage}</div>
     </td></tr>
   </table>
   <div style="margin-top:24px;text-align:center">
@@ -108,17 +129,37 @@ router.post("/contact", async (req, res) => {
       text: `New contact form submission\n\nFrom: ${name.trim()}\nEmail: ${email.trim()}\n${subject?.trim() ? `Subject: ${subject.trim()}\n` : ""}Message:\n${message.trim()}`,
     })
 
+    if (submissionId) {
+      await db.update(contactSubmissionsTable)
+        .set({ emailSent: sent ? 1 : 0 })
+        .where(eq(contactSubmissionsTable.id, submissionId))
+        .catch((err: unknown) => console.error("[Contact] Could not record notification status:", err))
+    }
+
     if (sent) {
       console.log(`[Contact] Email sent to ${contactEmail} from ${name.trim()} <${email.trim()}>`)
     } else {
       console.log(`[Contact] SMTP not configured or send failed — saved to DB only. From: ${name.trim()} <${email.trim()}>`)
     }
 
-    res.json({ success: true, message: "Your message has been received! We'll reply within 24–48 hours." })
+    res.json({
+      success: true,
+      notificationSent: sent,
+      message: "Your message has been received! We'll reply within 24–48 hours.",
+    })
   } catch (err) {
     console.error("[Contact] Error:", err)
     res.status(500).json({ error: "Failed to send message. Please email us directly at contact@richdatingnetwork.com" })
   }
 })
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
 
 export default router

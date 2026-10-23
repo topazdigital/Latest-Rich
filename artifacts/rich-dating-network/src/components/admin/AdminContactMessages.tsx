@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { authFetch } from "../../lib/auth"
 import { formatDate, timeAgo } from "../../lib/utils"
 import toast from "react-hot-toast"
-import { Mail, MailOpen, Send, Trash2, X, Search } from "lucide-react"
+import { Mail, MailOpen, Send, Trash2, X, Search, RefreshCw } from "lucide-react"
 
 interface ContactMessage {
   id: number
@@ -47,19 +47,38 @@ export default function AdminContactMessages() {
   const [filter, setFilter] = useState<"all" | "pending" | "replied">("all")
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<ContactMessage | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState("")
+  const requestInFlight = useRef(false)
 
-  const load = async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (requestInFlight.current) return
+    requestInFlight.current = true
+    if (!silent) setLoading(true)
+    setRefreshing(true)
     try {
       const r = await authFetch("/api/admin/contact-messages")
-      const d = await r.json()
-      setMessages(Array.isArray(d) ? d : [])
-    } catch {
-      toast.error("Failed to load contact messages")
-    } finally { setLoading(false) }
-  }
+      const d = await r.json().catch(() => null)
+      if (!r.ok) throw new Error(d?.error || "Failed to load contact messages")
+      if (!Array.isArray(d)) throw new Error("The server returned an unexpected message list")
+      setMessages(d)
+      setLoadError("")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load contact messages"
+      setLoadError(message)
+      if (!silent) toast.error(message)
+    } finally {
+      if (!silent) setLoading(false)
+      setRefreshing(false)
+      requestInFlight.current = false
+    }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    void load()
+    const interval = window.setInterval(() => void load(true), 30_000)
+    return () => window.clearInterval(interval)
+  }, [load])
 
   const filtered = useMemo(() => {
     return messages.filter(m => {
@@ -99,12 +118,25 @@ export default function AdminContactMessages() {
             </button>
           ))}
         </div>
-        <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
-          <Search size={14} style={{ position: "absolute", left: 12, top: 10, color: "#94a3b8" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, message…"
-            style={{ width: "100%", padding: "8px 12px 8px 32px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 220px", justifyContent: "flex-end" }}>
+          <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
+            <Search size={14} style={{ position: "absolute", left: 12, top: 10, color: "#94a3b8" }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, message…"
+              style={{ width: "100%", padding: "8px 12px 8px 32px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+          </div>
+          <button onClick={() => void load()} disabled={refreshing} aria-label="Refresh contact messages" title="Refresh messages"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, flexShrink: 0, borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", cursor: refreshing ? "wait" : "pointer", opacity: refreshing ? 0.65 : 1 }}>
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
+
+      {loadError && (
+        <div role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13 }}>
+          <span>Could not refresh contact messages: {loadError}</span>
+          <button onClick={() => void load()} style={{ border: "none", background: "transparent", color: "#b91c1c", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Try again</button>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading…</div>

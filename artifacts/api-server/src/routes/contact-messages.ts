@@ -7,10 +7,16 @@ import { sendEmail, wrapBrandedHtml } from "../lib/mailer"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
+function parseMessageId(id: string | string[]) {
+  const value = Array.isArray(id) ? id[0] : id
+  const parsed = Number.parseInt(value || "", 10)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0
+}
 
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.userId) { res.status(401).json({ error: "Not authenticated" }); return }
-  db.select({ admin: usersTable.admin }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1).then(([u]) => {
+  db.select({ admin: usersTable.admin }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1).then((rows: any[]) => {
+    const u = rows[0]
     if (!u || (u.admin ?? 0) < 2) { res.status(403).json({ error: "Admin access required" }); return }
     next()
   }).catch(() => res.status(500).json({ error: "Auth check failed" }))
@@ -19,7 +25,8 @@ function requireAdmin(req: any, res: any, next: any) {
 // List all contact-form submissions, newest first
 router.get("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const rows = await db.select().from(contactSubmissionsTable).orderBy(desc(contactSubmissionsTable.id))
+    const rows = await db.select().from(contactSubmissionsTable)
+      .orderBy(desc(contactSubmissionsTable.createdAt), desc(contactSubmissionsTable.id))
     res.json(rows)
   } catch (err) {
     console.error("[ContactMessages] list error:", err)
@@ -29,7 +36,8 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.get("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseMessageId(req.params.id)
+    if (!id) { res.status(400).json({ error: "Invalid message ID" }); return }
     const [row] = await db.select().from(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id)).limit(1)
     if (!row) { res.status(404).json({ error: "Not found" }); return }
     res.json(row)
@@ -41,7 +49,8 @@ router.get("/:id", requireAuth, requireAdmin, async (req, res) => {
 // Send a reply email to the submitter and record it on the thread
 router.post("/:id/reply", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseMessageId(req.params.id)
+    if (!id) { res.status(400).json({ error: "Invalid message ID" }); return }
     const { subject, html } = req.body
     if (!html?.trim()) { res.status(400).json({ error: "Reply body is required" }); return }
 
@@ -50,7 +59,7 @@ router.post("/:id/reply", requireAuth, requireAdmin, async (req, res) => {
 
     const finalSubject = subject?.trim() || `Re: ${row.subject?.trim() || "Your message to us"}`
     const wrapped = wrapBrandedHtml({
-      title: finalSubject,
+      title: escapeHtml(finalSubject),
       emoji: "💬",
       bodyHtml: `<p style="margin:0 0 16px">Hi ${escapeHtml(row.name)},</p>${html}`,
       footerNote: "This is a reply to the message you sent us via our contact form.",
@@ -84,7 +93,8 @@ router.post("/:id/reply", requireAuth, requireAdmin, async (req, res) => {
 
 router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseMessageId(req.params.id)
+    if (!id) { res.status(400).json({ error: "Invalid message ID" }); return }
     await db.delete(contactSubmissionsTable).where(eq(contactSubmissionsTable.id, id))
     res.json({ success: true })
   } catch {
@@ -93,7 +103,12 @@ router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
 })
 
 function escapeHtml(s: string) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  return (s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
 
 export default router
