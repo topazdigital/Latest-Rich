@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db, isMysql } from "@workspace/db"
 import { usersTable, userExtendedTable, photosTable, likesTable, profileBoostsTable, storiesTable } from "@workspace/db/schema"
-import { eq, and, ne, desc, sql, gt, lt, or, isNull, inArray } from "drizzle-orm"
+import { eq, and, ne, desc, sql, gt, lt, or, isNull, inArray, count } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { hashPassword, verifyAndUpgrade } from "../lib/password"
 import { decodeHtml } from "../lib/html-decode"
@@ -138,7 +138,7 @@ router.put("/me/password", requireAuth, async (req, res) => {
 
 router.get("/search", requireAuth, async (req, res) => {
   try {
-    const q = String(req.query.q || "")
+    const q = String(req.query.q || "").trim().toLowerCase()
     const city = String(req.query.city || "")
     const country = String(req.query.country || "")
     const ageMin = parseInt(String(req.query.ageMin || "18"))
@@ -146,6 +146,14 @@ router.get("/search", requireAuth, async (req, res) => {
     const gender = parseInt(String(req.query.gender || "0"))
     const onlineOnly = req.query.online === "1"
     const mutualOnly = req.query.mutual === "1"
+    const premiumOnly = req.query.premium === "1"
+    const requestedPage = parseInt(String(req.query.page || "1"))
+    const requestedLimit = parseInt(String(req.query.limit || "40"))
+    const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 10000) : 1
+    const pageSize = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 40) : 40
+    const offset = (page - 1) * pageSize
+    const fallbackSeed = `${req.userId}-${Math.floor(now() / 86400)}`
+    const feedSeed = String(req.query.seed || fallbackSeed).slice(0, 64)
 
     const myUser = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
     const myCity = myUser[0]?.city || ""
@@ -156,52 +164,79 @@ router.get("/search", requireAuth, async (req, res) => {
     const effectiveGender = gender > 0 ? gender : (myUser[0]?.looking || 0)
 
     // Get currently boosted user IDs
-    const boostedRows = await db.select({ userId: profileBoostsTable.userId })
+    const boostedRows: Array<{ userId: number }> = await db.select({ userId: profileBoostsTable.userId })
       .from(profileBoostsTable)
       .where(and(eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
-    const boostedIds = new Set(boostedRows.map(b => b.userId))
+    const boostedIds = new Set<number>(boostedRows.map(b => Number(b.userId)))
 
-    let users = await db.select().from(usersTable)
-      .where(and(
-        ne(usersTable.id, req.userId!),
-        or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
-        or(isNull(usersTable.admin), eq(usersTable.admin, 0))
-      ))
-      .orderBy(desc(usersTable.lastAccess))
-      .limit(500)
+    const conditions: any[] = [
+      ne(usersTable.id, req.userId!),
+      or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      or(isNull(usersTable.admin), eq(usersTable.admin, 0)),
+    ]
+    if (q) {
+      const searchTerm = `%${q}%`
+      conditions.push(sql`(LOWER(${usersTable.name}) LIKE ${searchTerm} OR LOWER(${usersTable.city}) LIKE ${searchTerm})`)
+    }
+    if (city) conditions.push(sql`LOWER(${usersTable.city}) LIKE ${`%${city.toLowerCase()}%`}`)
+    if (country) conditions.push(eq(usersTable.country, country))
+    if (effectiveGender > 0) conditions.push(eq(usersTable.gender, effectiveGender))
+    // Mutual match: only show users who are also looking for my gender.
+    if (mutualOnly && myGender > 0) conditions.push(eq(usersTable.looking, myGender))
+    // Keep legacy profiles with an unset age eligible, matching the old behavior.
+    conditions.push(sql`(${usersTable.age} IS NULL OR ${usersTable.age} = 0 OR (${usersTable.age} >= ${ageMin} AND ${usersTable.age} <= ${ageMax}))`)
+    if (onlineOnly) conditions.push(eq(usersTable.online, 1))
+    if (premiumOnly) conditions.push(eq(usersTable.premium, 1))
 
-    users = users.filter(u => {
-      if (q && !u.name.toLowerCase().includes(q.toLowerCase()) && !u.city?.toLowerCase().includes(q.toLowerCase())) return false
-      if (city && !u.city?.toLowerCase().includes(city.toLowerCase())) return false
-      if (country && u.country !== country) return false
-      if (effectiveGender > 0 && u.gender !== effectiveGender) return false
-      // Mutual match: only show users who are also looking for my gender
-      if (mutualOnly && myGender > 0 && u.looking !== myGender) return false
-      const userAge = u.age ?? 0
-      if (userAge > 0 && (userAge < ageMin || userAge > ageMax)) return false
-      if (onlineOnly && u.online !== 1) return false
-      return true
-    })
+    const where = and(...conditions)
+    const [countRow] = await db.select({ total: count() }).from(usersTable).where(where)
+    const total = Number(countRow?.total || 0)
 
-    // Sort: boosts first, then paid discovery priority, then nearby, then recent activity.
-    users.sort((a, b) => {
-      const aBoost = boostedIds.has(a.id) ? 0 : 1
-      const bBoost = boostedIds.has(b.id) ? 0 : 1
-      if (aBoost !== bBoost) return aBoost - bBoost
-      const priorityDiff = premiumRank(b) - premiumRank(a)
-      if (priorityDiff !== 0) return priorityDiff
-      const aCity = a.city === myCity ? 0 : a.country === myCountry ? 1 : 2
-      const bCity = b.city === myCity ? 0 : b.country === myCountry ? 1 : 2
-      return aCity - bCity
-    })
+    const boostPriority = boostedIds.size > 0
+      ? sql`CASE WHEN ${inArray(usersTable.id, [...boostedIds])} THEN 1 ELSE 0 END`
+      : sql`0`
+    const premiumPriority = sql`CASE
+      WHEN ${usersTable.premium} = 1
+        AND (${usersTable.premiumExpiry} = 0 OR ${usersTable.premiumExpiry} > ${now()})
+      THEN CASE WHEN ${usersTable.premiumPriority} > 0 THEN ${usersTable.premiumPriority} ELSE 1 END
+      ELSE 0
+    END`
+    const locationPriority = sql`CASE
+      WHEN ${usersTable.city} = ${myCity} AND ${myCity} <> '' THEN 2
+      WHEN ${usersTable.country} = ${myCountry} AND ${myCountry} <> '' THEN 1
+      ELSE 0
+    END`
+    // Keep one randomized order for every page in this visit, but give each new visit
+    // a different seed so members can discover different profiles on return.
+    const visitOrder = sql`MD5(CONCAT(${req.userId}, ':', ${feedSeed}, ':', ${usersTable.id}))`
+    const pageRows: any[] = await db.select().from(usersTable)
+      .where(where)
+      .orderBy(desc(boostPriority), desc(premiumPriority), desc(locationPriority), visitOrder)
+      .limit(pageSize + 1)
+      .offset(offset)
+    const hasMore = pageRows.length > pageSize
 
-    let result = users.slice(0, 200).map(u => ({
+    let result: any[] = pageRows.slice(0, pageSize).map((u: any) => ({
       ...safeUser(u),
       isBoosted: boostedIds.has(u.id),
     }))
 
+    // Include only the interests needed by Discover's compatibility filter.
+    const resultIds = result.map(u => u.id)
+    if (resultIds.length > 0) {
+      const interestRows: Array<{ userId: number; interests: string | null }> = await db.select({
+        userId: userExtendedTable.userId,
+        interests: userExtendedTable.interests,
+      }).from(userExtendedTable).where(inArray(userExtendedTable.userId, resultIds))
+      const interestsByUser = new Map<number, string | null>(interestRows.map(row => [row.userId, row.interests]))
+      result = result.map((u: any) => ({
+        ...u,
+        userExtended: interestsByUser.has(u.id) ? { interests: interestsByUser.get(u.id) } : null,
+      }))
+    }
+
     // Enrich with photos table for users missing a profile photo
-    const missingPhotoIds = result.filter(u => !u.photo).map(u => u.id)
+    const missingPhotoIds = result.filter((u: any) => !u.photo).map((u: any) => u.id)
     if (missingPhotoIds.length > 0) {
       const fallbackPhotos = await db
         .select({ userId: photosTable.userId, photo: photosTable.photo, thumb: photosTable.thumb })
@@ -212,14 +247,14 @@ router.get("/search", requireAuth, async (req, res) => {
       for (const p of fallbackPhotos) {
         if (!photoMap.has(p.userId)) photoMap.set(p.userId, { photo: p.photo, thumb: p.thumb || p.photo })
       }
-      result = result.map(u => ({
+      result = result.map((u: any) => ({
         ...u,
         photo: u.photo || photoMap.get(u.id)?.photo || '',
         photoThumb: u.photoThumb || photoMap.get(u.id)?.thumb || '',
       }))
     }
 
-    res.json(result)
+    res.json({ profiles: result, hasMore, total, page, pageSize })
   } catch {
     res.status(500).json({ error: "Failed" })
   }

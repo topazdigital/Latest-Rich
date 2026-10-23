@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation } from 'wouter'
 import { getPhotoUrl, isOnline, truncate, profileUrl } from '../../lib/utils'
-import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent, ChevronUp } from 'lucide-react'
+import { Heart, MessageCircle, Search, SlidersHorizontal, BadgeCheck, Crown, MapPin, X, Loader2, Zap, Percent, ChevronUp, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import AdsterraNativeBanner from '../ui/AdsterraNativeBanner'
@@ -18,6 +18,12 @@ interface Props {
   myLooking?: number;
 }
 
+const DISCOVER_PAGE_SIZE = 40
+
+function createFeedSeed() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+}
+
 function calcCompatibility(myInterests: string[], theirInterests: string[]): number {
   if (!myInterests.length || !theirInterests.length) return 0
   const their = (() => { try { return JSON.parse(theirInterests as any) } catch { return theirInterests } })()
@@ -29,10 +35,20 @@ function calcCompatibility(myInterests: string[], theirInterests: string[]): num
 export default function DiscoverPage({ userId, myCity, myCountry, myInterests = [], myLooking }: Props) {
   const [, setLocation] = useLocation()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [feedSeed, setFeedSeed] = useState(createFeedSeed)
   const [filterGender, setFilterGender] = useState('0')
   const [genderInitialized, setGenderInitialized] = useState(false)
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const requestGenerationRef = useRef(0)
+  const loadingMoreRef = useRef(false)
 
   // Sync filterGender with user's "looking for" preference once it loads
   useEffect(() => {
@@ -75,29 +91,95 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     })
   })
 
-  function fetchUsers() {
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 400)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const buildSearchParams = useCallback((pageNumber: number) => new URLSearchParams({
+    q: debouncedSearch,
+    city: filterCity,
+    country: filterCountry,
+    ageMin: String(filterAgeMin),
+    ageMax: String(filterAgeMax),
+    gender: filterGender,
+    online: filterOnline ? '1' : '0',
+    mutual: filterMutual ? '1' : '0',
+    premium: filterPremium ? '1' : '0',
+    page: String(pageNumber),
+    limit: String(DISCOVER_PAGE_SIZE),
+    seed: feedSeed,
+  }), [debouncedSearch, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterGender, filterOnline, filterMutual, filterPremium, feedSeed])
+
+  useEffect(() => {
+    const requestGeneration = ++requestGenerationRef.current
+    loadingMoreRef.current = false
+    setUsers([])
+    setPage(1)
+    setHasMore(false)
+    setTotalCount(0)
     setLoading(true)
-    const params = new URLSearchParams({
-      q: search,
-      city: filterCity,
-      country: filterCountry,
-      ageMin: String(filterAgeMin),
-      ageMax: String(filterAgeMax),
-      gender: filterGender,
-      online: filterOnline ? '1' : '0',
-      mutual: filterMutual ? '1' : '0',
-    })
-    authFetch(`/api/users/search?${params}`)
-      .then(r => r.json())
+    setLoadingMore(false)
+    setLoadMoreError(false)
+
+    authFetch(`/api/users/search?${buildSearchParams(1)}`)
+      .then(async response => {
+        if (!response.ok) throw new Error('Profile search failed')
+        return response.json()
+      })
       .then(data => {
-        setUsers(Array.isArray(data) ? data : [])
+        if (requestGeneration !== requestGenerationRef.current) return
+        const profiles = Array.isArray(data.profiles) ? data.profiles : []
+        setUsers(profiles)
+        setHasMore(data.hasMore === true)
+        setTotalCount(Number(data.total) || profiles.length)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
-  }
+      .catch(() => {
+        if (requestGeneration !== requestGenerationRef.current) return
+        setLoading(false)
+        toast.error('Could not load profiles. Please try again.')
+      })
 
-  useEffect(() => { fetchUsers() }, [filterGender, filterCity, filterCountry, filterAgeMin, filterAgeMax, filterOnline, filterPremium, filterMutual])
-  useEffect(() => { const t = setTimeout(fetchUsers, 400); return () => clearTimeout(t) }, [search])
+    return () => {
+      if (requestGeneration === requestGenerationRef.current) requestGenerationRef.current += 1
+    }
+  }, [buildSearchParams])
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore || loadingMoreRef.current) return
+    loadingMoreRef.current = true
+    setLoadingMore(true)
+    setLoadMoreError(false)
+    const requestGeneration = requestGenerationRef.current
+    const nextPage = page + 1
+
+    try {
+      const response = await authFetch(`/api/users/search?${buildSearchParams(nextPage)}`)
+      if (!response.ok) throw new Error('Profile search failed')
+      const data = await response.json()
+      if (requestGeneration !== requestGenerationRef.current) return
+
+      const profiles = Array.isArray(data.profiles) ? data.profiles : []
+      setUsers(current => {
+        const existingIds = new Set(current.map(profile => profile.id))
+        return [...current, ...profiles.filter((profile: any) => !existingIds.has(profile.id))]
+      })
+      setPage(nextPage)
+      setHasMore(data.hasMore === true)
+      if (typeof data.total === 'number') setTotalCount(data.total)
+    } catch {
+      if (requestGeneration === requestGenerationRef.current) {
+        setLoadMoreError(true)
+        toast.error('Could not load more profiles. Please try again.')
+      }
+    } finally {
+      if (requestGeneration === requestGenerationRef.current) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
+    }
+  }, [buildSearchParams, hasMore, loading, page])
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -119,6 +201,19 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     })
   }, [users, filterPremium, filterCompatible, myInterests])
 
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current
+    if (!sentinel || loading || loadingMore || !hasMore || loadMoreError) return
+    // If compatibility filtering removes an entire batch, let the member choose
+    // to continue rather than automatically fetching the whole catalog.
+    if (filterCompatible && filtered.length === 0) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) void loadMore()
+    }, { rootMargin: '500px' })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [filtered.length, filterCompatible, hasMore, loadMore, loadMoreError, loading, loadingMore])
+
   const hasActiveFilters = filterGender !== '0' || filterCity || filterCountry || filterAgeMin > 18 || filterAgeMax < 99 || filterOnline || filterPremium || filterCompatible || filterMutual
 
   async function likeUser(targetId: number) {
@@ -135,7 +230,6 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     setFilterAgeMin(18); setFilterAgeMax(60); setFilterOnline(false); setFilterPremium(false); setFilterCompatible(false); setFilterMutual(false); setSearch('')
   }
 
-  const nearbyCount = filtered.filter(u => u.city === myCity || u.country === myCountry).length
   const boostedCount = filtered.filter(u => u.isBoosted).length
 
   return (
@@ -168,6 +262,16 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
             </button>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => setFeedSeed(createFeedSeed())}
+          title="Show a different mix of profiles"
+          aria-label="Show a different mix of profiles"
+          className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600 transition-all flex-shrink-0"
+        >
+          <RefreshCw size={16} />
+          <span className="hidden sm:inline text-sm">Refresh</span>
+        </button>
         <button onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border-2 font-medium text-sm transition-all flex-shrink-0 relative ${showFilters || hasActiveFilters ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
           <SlidersHorizontal size={16} />
@@ -245,9 +349,9 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
 
       {/* Context banners */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        {myCity && nearbyCount > 0 && !filterCity && (
+        {myCity && !filterCity && (
           <div className="flex items-center gap-1.5 bg-brand-50 text-brand-600 text-xs font-medium px-3 py-1.5 rounded-full">
-            <MapPin size={12} /> <span><strong>{nearbyCount}</strong> near {myCity}</span>
+            <MapPin size={12} /> <span>Profiles from {myCity}{myCountry ? ` and ${myCountry}` : ''} are prioritized</span>
           </div>
         )}
         {boostedCount > 0 && (
@@ -357,8 +461,12 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
           {filtered.length === 0 && (
             <div className="text-center py-20">
               <div className="text-5xl mb-4">🔍</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No members found</h2>
-              <p className="text-gray-500 text-sm mb-4">Try adjusting your search or filters</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                {filterCompatible && hasMore ? 'No compatible profiles in this group' : 'No members found'}
+              </h2>
+              <p className="text-gray-500 text-sm mb-4">
+                {filterCompatible && hasMore ? 'There may be compatible members further down the feed.' : 'Try adjusting your search or filters'}
+              </p>
               {hasActiveFilters && (
                 <button onClick={clearFilters} className="btn-primary text-sm py-2 px-5">Clear all filters</button>
               )}
@@ -367,8 +475,28 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
 
           {filtered.length > 0 && (
             <p className="text-center text-sm text-gray-400 mt-8">
-              Showing <span className="font-medium text-gray-600">{filtered.length}</span> members
+              Showing <span className="font-medium text-gray-600">{filtered.length}</span>
+              {!filterCompatible && totalCount > 0 && <> of <span className="font-medium text-gray-600">{totalCount}</span></>}
+              {' '}members{hasMore ? ' · keep scrolling for more' : ''}
             </p>
+          )}
+
+          {hasMore && !loading && (
+            <div ref={loadMoreSentinelRef} className="flex flex-col items-center gap-2 py-6">
+              {loadingMore ? (
+                <span className="flex items-center gap-2 text-sm text-gray-400">
+                  <Loader2 size={16} className="animate-spin text-brand-500" /> Finding more profiles...
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  className="px-5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-brand-300 hover:text-brand-600 transition-colors"
+                >
+                  {loadMoreError ? 'Retry loading profiles' : 'Load more profiles'}
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
