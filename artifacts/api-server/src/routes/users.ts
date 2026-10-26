@@ -43,11 +43,7 @@ router.get("/me/full", requireAuth, async (req, res) => {
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, req.userId!)).limit(1)
     const photos = await db.select().from(photosTable).where(eq(photosTable.userId, req.userId!))
     res.json({ ...safeUser(await withEffectivePremiumPriority(user)), userExtended: extended || {}, photos })
-  } catch (error) {
-    const message = error instanceof Error
-      ? error.message.split(/\nparams:/i)[0].slice(0, 400)
-      : "Unknown error"
-    console.error("[users/search] Discover request failed:", message)
+  } catch {
     res.status(500).json({ error: "Failed" })
   }
 })
@@ -259,7 +255,11 @@ router.get("/search", requireAuth, async (req, res) => {
     }
 
     res.json({ profiles: result, hasMore, total, page, pageSize })
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message.split(/\nparams:/i)[0].slice(0, 400)
+      : "Unknown error"
+    console.error("[users/search] Discover request failed:", message)
     res.status(500).json({ error: "Failed" })
   }
 })
