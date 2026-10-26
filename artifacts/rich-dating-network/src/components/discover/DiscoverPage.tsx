@@ -38,6 +38,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchError, setSearchError] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState(false)
   const [hasMore, setHasMore] = useState(false)
@@ -118,6 +119,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
     setPage(1)
     setHasMore(false)
     setTotalCount(0)
+    setSearchError(false)
     setLoading(true)
     setLoadingMore(false)
     setLoadMoreError(false)
@@ -137,6 +139,7 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
       })
       .catch(() => {
         if (requestGeneration !== requestGenerationRef.current) return
+        setSearchError(true)
         setLoading(false)
         toast.error('Could not load profiles. Please try again.')
       })
@@ -373,6 +376,19 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
             <Loader2 size={28} className="animate-spin text-brand-500" />
             <span className="text-sm text-gray-400">Finding members...</span>
           </div>
+        </div>
+      ) : searchError ? (
+        <div className="text-center py-20" role="alert">
+          <div className="text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profiles couldn’t load</h2>
+          <p className="text-gray-500 text-sm mb-4">Your search didn’t complete. Try again in a moment.</p>
+          <button
+            type="button"
+            onClick={() => setFeedSeed(createFeedSeed())}
+            className="btn-primary text-sm py-2 px-5 inline-flex items-center gap-2"
+          >
+            <RefreshCw size={14} /> Try again
+          </button>
         </div>
       ) : (
         <>
