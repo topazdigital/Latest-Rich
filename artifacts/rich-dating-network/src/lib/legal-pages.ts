@@ -122,7 +122,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const pieces = text.split(/(\*\*.*?\*\*)/g)
   return pieces.map((piece, index) =>
     piece.startsWith("**") && piece.endsWith("**")
-      ? createElement("strong", { key: `${keyPrefix}-${index}` }, piece.slice(2, -2))
+      ? createElement("strong", { key: `${keyPrefix}-${index}`, className: "font-semibold text-gray-800" }, piece.slice(2, -2))
       : piece
   )
 }
@@ -136,7 +136,13 @@ export function renderLegalContent(content: string): ReactNode[] {
   const flushParagraph = () => {
     if (!paragraph.length) return
     const text = paragraph.join(" ").trim()
-    if (text) blocks.push(createElement("p", { key: `p-${blocks.length}` }, renderInline(text, `p-${blocks.length}`)))
+    if (text) {
+      blocks.push(createElement(
+        "p",
+        { key: `p-${blocks.length}`, className: "mb-4 leading-relaxed" },
+        renderInline(text, `p-${blocks.length}`)
+      ))
+    }
     paragraph = []
   }
   const flushList = () => {
@@ -144,8 +150,15 @@ export function renderLegalContent(content: string): ReactNode[] {
     const ListTag = list.type
     blocks.push(createElement(
       ListTag,
-      { key: `list-${blocks.length}` },
-      list.items.map((item, index) => createElement("li", { key: index }, renderInline(item, `list-${blocks.length}-${index}`)))
+      {
+        key: `list-${blocks.length}`,
+        className: `${list.type === "ol" ? "list-decimal" : "list-disc"} my-3 ml-6 space-y-1`,
+      },
+      list.items.map((item, index) => createElement(
+        "li",
+        { key: index, className: "pl-1 leading-relaxed" },
+        renderInline(item, `list-${blocks.length}-${index}`)
+      ))
     ))
     list = null
   }
@@ -163,7 +176,10 @@ export function renderLegalContent(content: string): ReactNode[] {
       flushParagraph()
       flushList()
       const Tag = heading[1].length === 1 ? "h2" : heading[1].length === 2 ? "h2" : "h3"
-      blocks.push(createElement(Tag, { key: `h-${index}` }, renderInline(heading[2], `h-${index}`)))
+      const className = Tag === "h2"
+        ? "mt-8 mb-3 text-xl font-semibold text-gray-900"
+        : "mt-6 mb-2 text-lg font-semibold text-gray-900"
+      blocks.push(createElement(Tag, { key: `h-${index}`, className }, renderInline(heading[2], `h-${index}`)))
       continue
     }
 
