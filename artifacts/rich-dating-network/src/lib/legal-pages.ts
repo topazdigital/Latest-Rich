@@ -50,7 +50,7 @@ We work to keep the Service available but do not promise uninterrupted or error-
 
 ## 9. Suspension and account closure
 
-You may stop using the Service and request account deletion through the available account settings or by contacting support. We may suspend or close an account for a serious or repeated breach of these Terms, security concerns, or where required by law. Data handling after closure is described in the Privacy Policy and remains subject to applicable retention obligations.
+You may deactivate your profile in Settings to hide it from discovery and public profile pages while keeping your account and existing conversations. You can reactivate it in Settings. To request permanent account deletion, contact privacy@richdatingnetwork.com. We may suspend or close an account for a serious or repeated breach of these Terms, security concerns, or where required by law. Data handling after closure is described in the Privacy Policy and remains subject to applicable retention obligations.
 
 ## 10. Changes and applicable law
 
@@ -86,7 +86,7 @@ Information may be used to create and manage accounts, provide profiles and mess
 
 ## 4. Profiles, messages, and moderation
 
-Profile information you choose to make visible may be shown to other members according to the Service's features and settings. Messages are not public by default, but may be accessed by authorized staff or moderators when needed for safety, support, service operation, or legal compliance. Some profiles or interactions may be fictional, simulated, or staff- or automated-system-assisted, as explained in the Terms of Service.
+Profile information you choose to make visible may be shown to other members according to the Service's features and settings. Deactivating your profile in Settings hides it from discovery and public profile pages but does not delete your account information or existing conversations. Messages are not public by default, but may be accessed by authorized staff or moderators when needed for safety, support, service operation, or legal compliance. Some profiles or interactions may be fictional, simulated, or staff- or automated-system-assisted, as explained in the Terms of Service.
 
 ## 5. When information may be shared
 
@@ -98,11 +98,11 @@ The Service may use necessary storage to support login and core features, and ma
 
 ## 7. Retention and security
 
-Information is retained for as long as needed for the purposes described here, and longer where required or permitted by law. Retention periods may differ by data type and purpose. We use safeguards intended to protect information, but no method of storage or transmission can be guaranteed completely secure.
+Information is retained for as long as needed for the purposes described here, and longer where required or permitted by law. Deactivation does not delete your account or personal information. If you request permanent account deletion, we will process the request under our retention practices and applicable law. Retention periods may differ by data type and purpose. We use safeguards intended to protect information, but no method of storage or transmission can be guaranteed completely secure.
 
 ## 8. Your choices and rights
 
-Depending on where you live, you may be able to request access to, correction of, deletion of, or a copy of your personal information, or object to or restrict certain processing. You may also withdraw consent where processing is based on consent. Contact privacy@richdatingnetwork.com to make a request. We may need to verify your identity before acting on a request.
+Depending on where you live, you may be able to request access to, correction of, deletion of, or a copy of your personal information, or object to or restrict certain processing. You may also withdraw consent where processing is based on consent. Contact privacy@richdatingnetwork.com to make a request. Deactivating your profile is not a permanent deletion request. We may need to verify your identity before acting on a request.
 
 ## 9. International processing
 

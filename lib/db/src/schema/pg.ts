@@ -28,6 +28,7 @@ export const usersTable = pgTable("users", {
   fake: integer("fake").default(0),
   admin: integer("admin").default(0),
   banned: integer("banned").default(0),
+  deactivated: integer("deactivated").default(0),
   lastAccess: text("last_access").default("0"),
   created: integer("created").default(0),
   lat: text("lat").default("0"),

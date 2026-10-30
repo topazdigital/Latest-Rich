@@ -102,7 +102,11 @@ router.get("/daily", requireAuth, async (req, res) => {
       const [previous] = await db.select().from(engagementDailyTable)
         .where(and(eq(engagementDailyTable.userId, userId), eq(engagementDailyTable.dayKey, yesterday))).limit(1)
       const streak = previous ? Math.min((previous.streakDays || 1) + 1, 3) : 1
-      const candidates = await db.select().from(usersTable).where(and(lt(usersTable.id, 2147483647), eq(usersTable.banned, 0))).limit(100)
+      const candidates = await db.select().from(usersTable).where(and(
+        lt(usersTable.id, 2147483647),
+        eq(usersTable.banned, 0),
+        or(eq(usersTable.deactivated, 0), sql`${usersTable.deactivated} IS NULL`),
+      )).limit(100)
       const available = candidates.filter((candidate: any) => candidate.id !== userId)
       const match = available.length ? available[Math.floor((Date.now() / 86400000) % available.length)] : null
       const createdAt = now()

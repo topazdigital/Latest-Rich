@@ -237,9 +237,11 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Termination</h2>
             <p className="leading-relaxed">
-              You may delete your account at any time by going to Settings → Account → Delete Account. Upon
-              deletion, your profile and personal information will be removed from the Service in accordance with
-              our data retention policy described in our Privacy Policy.
+              You may deactivate your profile at any time in Settings. Deactivation hides your profile from
+              discovery and public profile pages while keeping your account and existing conversations. You can
+              reactivate your profile from Settings. To request permanent account deletion, contact
+              privacy@richdatingnetwork.com; requests are handled under the data retention policy in our Privacy
+              Policy and applicable law.
             </p>
             <p className="leading-relaxed mt-3">
               We reserve the right to suspend or terminate your account at any time, with or without notice, for

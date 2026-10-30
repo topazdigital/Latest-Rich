@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { likesTable, notificationsTable, usersTable, photosTable } from "@workspace/db/schema"
-import { eq, and, desc, inArray } from "drizzle-orm"
+import { eq, and, desc, inArray, isNull, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send } from "../lib/websocket"
 import { toEffectivePremiumUser } from "../lib/premium-entitlements"
@@ -25,7 +25,10 @@ router.get("/", requireAuth, async (req, res) => {
       user: usersTable,
     }).from(likesTable)
       .leftJoin(usersTable, eq(likesTable.userId, usersTable.id))
-      .where(eq(likesTable.targetId, myId))
+      .where(and(
+        eq(likesTable.targetId, myId),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
+      ))
       .orderBy(desc(likesTable.created))
       .limit(100)
 
@@ -34,7 +37,10 @@ router.get("/", requireAuth, async (req, res) => {
       user: usersTable,
     }).from(likesTable)
       .leftJoin(usersTable, eq(likesTable.targetId, usersTable.id))
-      .where(eq(likesTable.userId, myId))
+      .where(and(
+        eq(likesTable.userId, myId),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
+      ))
       .orderBy(desc(likesTable.created))
       .limit(100)
 
@@ -93,10 +99,15 @@ router.post("/", requireAuth, async (req, res) => {
       return
     }
 
+    const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+    if (!target || target.deactivated === 1 || target.banned === 1) {
+      res.status(404).json({ error: "Profile not found" })
+      return
+    }
+
     await db.insert(likesTable).values({ userId: myId, targetId, superlike: superlike ? 1 : 0, created: now() })
 
     const [me] = await db.select().from(usersTable).where(eq(usersTable.id, myId)).limit(1)
-    const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
 
     // --- Fake user: schedule a delayed like-back, then return immediately without declaring a match.
     // The match notification arrives via WebSocket after the random delay fires.

@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db } from "@workspace/db"
 import { userVisitsTable, usersTable, notificationsTable } from "@workspace/db/schema"
-import { eq, desc, and, gte } from "drizzle-orm"
+import { eq, desc, and, gte, isNull, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { send } from "../lib/websocket"
 import { sendVisitEmail } from "../lib/mailer"
@@ -14,6 +14,11 @@ router.post("/:id", requireAuth, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id as string)
     if (targetId === req.userId) { res.json({ success: true }); return }
+    const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
+    if (!target || target.deactivated === 1 || target.banned === 1) {
+      res.status(404).json({ error: "Profile not found" })
+      return
+    }
 
     // Only record one visit per hour per visitor
     const oneHourAgo = now() - 3600
@@ -27,7 +32,6 @@ router.post("/:id", requireAuth, async (req, res) => {
     if (!recentVisit) {
       await db.insert(userVisitsTable).values({ visitorId: req.userId!, targetId, time: now() })
 
-      const [target] = await db.select().from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
       const [visitor] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
 
       if (target && visitor && target.fake !== 1) {
@@ -77,7 +81,10 @@ router.get("/", requireAuth, async (req, res) => {
       }
     }).from(userVisitsTable)
       .leftJoin(usersTable, eq(userVisitsTable.visitorId, usersTable.id))
-      .where(eq(userVisitsTable.targetId, req.userId!))
+      .where(and(
+        eq(userVisitsTable.targetId, req.userId!),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
+      ))
       .orderBy(desc(userVisitsTable.id)).limit(100)
     res.json(visits)
   } catch (err: any) {

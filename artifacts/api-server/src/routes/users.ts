@@ -176,6 +176,7 @@ router.get("/search", requireAuth, async (req, res) => {
     const conditions: any[] = [
       ne(usersTable.id, req.userId!),
       or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
       or(isNull(usersTable.admin), eq(usersTable.admin, 0)),
     ]
     if (q) {
@@ -309,6 +310,7 @@ router.get("/suggested", requireAuth, async (req, res) => {
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
         or(isNull(usersTable.admin), eq(usersTable.admin, 0))
       ))
       .orderBy(desc(usersTable.lastAccess))
@@ -345,6 +347,7 @@ router.get("/meet", requireAuth, async (req, res) => {
       .where(and(
         ne(usersTable.id, req.userId!),
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
         or(isNull(usersTable.admin), eq(usersTable.admin, 0))
       ))
       .orderBy(sql.raw(isMysql ? "RAND()" : "RANDOM()"))
@@ -384,6 +387,7 @@ router.get("/public/members", async (req, res) => {
 
     const conditions: any[] = [
       or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
       or(isNull(usersTable.admin), eq(usersTable.admin, 0)),
     ]
     if (fakeOnly) conditions.push(eq(usersTable.fake, 1))
@@ -458,6 +462,7 @@ router.get("/public/:id", async (req, res) => {
     const [user] = await db.select().from(usersTable).where(and(
       eq(usersTable.id, id),
       or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+      or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
     )).limit(1)
     if (!user || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
@@ -501,7 +506,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!user || user.banned === 1 || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
+    if (!user || user.banned === 1 || user.deactivated === 1 || (user.admin ?? 0) > 0) { res.status(404).json({ error: "Not found" }); return }
     const [extended] = await db.select().from(userExtendedTable).where(eq(userExtendedTable.userId, id)).limit(1)
     // Check if this user has an active boost
     const [activeBoost] = await db.select().from(profileBoostsTable)
@@ -526,9 +531,9 @@ router.get("/:id", requireAuth, async (req, res) => {
 router.get("/:id/photos", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id as string)
-    const [target] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+    const [target] = await db.select({ banned: usersTable.banned, deactivated: usersTable.deactivated, admin: usersTable.admin })
       .from(usersTable).where(eq(usersTable.id, id)).limit(1)
-    if (!target || target.banned === 1 || (target.admin ?? 0) > 0) {
+    if (!target || target.banned === 1 || target.deactivated === 1 || (target.admin ?? 0) > 0) {
       res.status(404).json({ error: "Not found" })
       return
     }
@@ -539,22 +544,37 @@ router.get("/:id/photos", requireAuth, async (req, res) => {
   }
 })
 
-router.delete("/me", requireAuth, async (req, res) => {
-  try {
-    await db.delete(usersTable).where(eq(usersTable.id, req.userId!))
-    res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+router.patch("/me/deactivation", requireAuth, async (req, res) => {
+  const deactivated = req.body?.deactivated
+  if (typeof deactivated !== "boolean") {
+    res.status(400).json({ error: "deactivated must be a boolean" })
+    return
   }
+
+  try {
+    await db.update(usersTable)
+      .set({ deactivated: deactivated ? 1 : 0, online: deactivated ? 0 : 1 })
+      .where(eq(usersTable.id, req.userId!))
+    res.json({ success: true, deactivated: deactivated ? 1 : 0 })
+  } catch (error) {
+    console.error("[users/me/deactivation] Failed to update profile visibility:", error)
+    res.status(500).json({ error: "Failed to update profile visibility" })
+  }
+})
+
+router.delete("/me", requireAuth, (_req, res) => {
+  res.status(410).json({
+    error: "Self-service deletion is unavailable. Request permanent deletion at privacy@richdatingnetwork.com.",
+  })
 })
 
 router.get("/:id/liked-status", requireAuth, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id as string)
     const myId = req.userId!
-    const [target] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+    const [target] = await db.select({ banned: usersTable.banned, deactivated: usersTable.deactivated, admin: usersTable.admin })
       .from(usersTable).where(eq(usersTable.id, targetId)).limit(1)
-    if (!target || target.banned === 1 || (target.admin ?? 0) > 0) {
+    if (!target || target.banned === 1 || target.deactivated === 1 || (target.admin ?? 0) > 0) {
       res.status(404).json({ error: "Not found" })
       return
     }
@@ -624,10 +644,12 @@ router.get("/by-username/:username", async (req, res) => {
       name: usersTable.name,
       username: usersTable.username,
       banned: usersTable.banned,
+      deactivated: usersTable.deactivated,
     }).from(usersTable)
       .where(and(
         sql`lower(${usersTable.username}) = ${username}`,
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
       ))
       .limit(1)
 
@@ -640,10 +662,12 @@ router.get("/by-username/:username", async (req, res) => {
           name: usersTable.name,
           username: usersTable.username,
           banned: usersTable.banned,
+          deactivated: usersTable.deactivated,
         }).from(usersTable)
           .where(and(
             sql`lower(${usersTable.name}) = ${username} OR lower(${usersTable.name}) LIKE ${username + " %"}`,
             or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+            or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
           ))
           .limit(1)
       } catch (nameErr) {
@@ -665,9 +689,9 @@ router.get("/by-username/:username", async (req, res) => {
 router.get("/:id/stories", async (req, res) => {
   try {
     const userId = parseInt(req.params.id)
-    const [profile] = await db.select({ banned: usersTable.banned, admin: usersTable.admin })
+    const [profile] = await db.select({ banned: usersTable.banned, deactivated: usersTable.deactivated, admin: usersTable.admin })
       .from(usersTable).where(eq(usersTable.id, userId)).limit(1)
-    if (!profile || profile.banned === 1 || (profile.admin ?? 0) > 0) {
+    if (!profile || profile.banned === 1 || profile.deactivated === 1 || (profile.admin ?? 0) > 0) {
       res.status(404).json({ error: "Not found" })
       return
     }

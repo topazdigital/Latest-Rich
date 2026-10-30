@@ -29,6 +29,7 @@ export const usersTable = mysqlTable("users", {
   fake: int("fake").default(0),
   admin: int("admin").default(0),
   banned: int("banned").default(0),
+  deactivated: int("deactivated").default(0),
   lastAccess: text("last_access").default("0"),
   created: int("created").default(0),
   lat: text("lat").default("0"),

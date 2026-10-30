@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { User, Camera, Lock, LogOut, Save, Loader2, X, Shield, Trash2, Bell, MapPin, BadgeCheck, Heart, CheckCircle2, Circle, ChevronRight } from 'lucide-react'
+import { User, Camera, Lock, LogOut, Save, Loader2, X, Shield, Trash2, Bell, MapPin, BadgeCheck, Heart, CheckCircle2, Circle, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react'
 import { getPhotoUrl } from '../../lib/utils'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -362,6 +362,8 @@ function ProfileStrength({
 export default function SettingsPage({ user: initialUser }: Props) {
   const [tab, setTab] = useState('Profile')
   const [saving, setSaving] = useState(false)
+  const [profileDeactivated, setProfileDeactivated] = useState(Number(initialUser?.deactivated) === 1)
+  const [deactivationPending, setDeactivationPending] = useState(false)
   const [form, setForm] = useState({
     name: initialUser?.name || '',
     bio: initialUser?.bio?.replace(/<[^>]*>/g, '') || '',
@@ -448,6 +450,32 @@ export default function SettingsPage({ user: initialUser }: Props) {
       else toast.error(data.error || 'Failed')
     } catch { toast.error('Error') }
     finally { setSaving(false) }
+  }
+
+  async function toggleProfileDeactivation() {
+    const nextValue = !profileDeactivated
+    if (nextValue && !window.confirm('Hide your profile from Discover and public profile pages? Your account and existing conversations will remain, and you can reactivate anytime.')) return
+
+    setDeactivationPending(true)
+    try {
+      const res = await fetch('/api/users/me/deactivation', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ deactivated: nextValue }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || 'Could not update profile visibility')
+        return
+      }
+      setProfileDeactivated(Number(data.deactivated) === 1)
+      await refreshUser()
+      toast.success(nextValue ? 'Your profile is now hidden' : 'Your profile is visible again')
+    } catch {
+      toast.error('Could not update profile visibility')
+    } finally {
+      setDeactivationPending(false)
+    }
   }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -800,20 +828,39 @@ export default function SettingsPage({ user: initialUser }: Props) {
             </div>
           </div>
 
-          <div className="card p-5 border border-red-100">
-            <h3 className="font-semibold text-red-600 flex items-center gap-2 mb-2"><Trash2 size={17} /> Danger Zone</h3>
-            <p className="text-sm text-gray-500 mb-4">Permanently delete your account. This action is irreversible.</p>
-            <button onClick={async () => {
-              if (!confirm('Are you sure you want to permanently delete your account?')) return
-              if (!confirm('This will delete all your data, messages, and matches. Continue?')) return
-              try {
-                await fetch('/api/users/me', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-                logout()
-                toast.success('Account deleted')
-              } catch { toast.error('Failed to delete account') }
-            }} className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors border border-red-200">
-              <Trash2 size={15} /> Delete My Account
+          <div className="card p-5 border border-amber-100">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-2">
+              {profileDeactivated ? <Eye size={17} className="text-brand-500" /> : <EyeOff size={17} className="text-brand-500" />}
+              Profile visibility
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {profileDeactivated
+                ? 'Your profile is hidden from Discover and public profile pages. Your account and existing conversations are kept.'
+                : 'Hide your profile from Discover and public profile pages without deleting your account or existing conversations.'}
+            </p>
+            <button
+              onClick={toggleProfileDeactivation}
+              disabled={deactivationPending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-50 text-brand-700 rounded-xl text-sm font-semibold hover:bg-brand-100 transition-colors border border-brand-200 disabled:opacity-50"
+            >
+              {deactivationPending
+                ? <Loader2 size={15} className="animate-spin" />
+                : profileDeactivated ? <Eye size={15} /> : <EyeOff size={15} />}
+              {deactivationPending ? 'Saving…' : profileDeactivated ? 'Reactivate profile' : 'Deactivate profile'}
             </button>
+          </div>
+
+          <div className="card p-5 border border-red-100">
+            <h3 className="font-semibold text-red-600 flex items-center gap-2 mb-2"><Shield size={17} /> Permanent account deletion</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              To permanently delete your account and request removal of your personal information, contact our privacy team. We may need to verify your identity.
+            </p>
+            <a
+              href="mailto:privacy@richdatingnetwork.com?subject=Permanent%20account%20deletion%20request"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors border border-red-200"
+            >
+              <Mail size={15} /> Request account deletion
+            </a>
           </div>
         </div>
       )}

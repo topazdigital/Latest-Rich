@@ -21,6 +21,7 @@ interface AuthUser {
   bio?: string
   fake?: number
   admin?: number
+  deactivated?: number
 }
 
 interface AuthContextType {

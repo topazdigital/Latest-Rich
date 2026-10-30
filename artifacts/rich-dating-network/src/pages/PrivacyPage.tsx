@@ -130,6 +130,10 @@ export default function PrivacyPage() {
               <li><strong>With your consent:</strong> We may share your information for any other purpose with
                 your explicit consent.</li>
             </ul>
+            <p className="leading-relaxed mt-3">
+              You can deactivate your profile in Settings to hide it from discovery and public profile pages.
+              Deactivation keeps your account information and existing conversations; it does not delete your data.
+            </p>
           </section>
 
           <section>
@@ -152,9 +156,10 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Data Retention</h2>
             <p className="leading-relaxed">
               We retain your personal information for as long as your account is active or as needed to provide
-              the Service. If you delete your account, we will delete or anonymise your personal information
-              within 30 days, except where we are required to retain it for legitimate legal or business purposes
-              (for example, to resolve disputes, prevent fraud, or comply with legal obligations).
+              the Service. Deactivating your profile does not delete your account or personal information. If you
+              request permanent account deletion, we will delete or anonymise your personal information within
+              30 days, except where we are required to retain it for legitimate legal or business purposes (for
+              example, to resolve disputes, prevent fraud, or comply with legal obligations).
             </p>
             <p className="leading-relaxed mt-3">
               Messages sent to other members may remain visible in those members' inboxes after you delete your
@@ -169,8 +174,8 @@ export default function PrivacyPage() {
               <li><strong>Access:</strong> Request a copy of the personal information we hold about you;</li>
               <li><strong>Correction:</strong> Update or correct inaccurate information via your account
                 settings or by contacting us;</li>
-              <li><strong>Deletion:</strong> Request deletion of your personal information by deleting your
-                account or contacting us directly;</li>
+              <li><strong>Deletion:</strong> Request permanent deletion of your personal information by
+                contacting our privacy team; deactivating your profile is not a deletion request;</li>
               <li><strong>Portability:</strong> Receive your personal data in a structured, machine-readable
                 format;</li>
               <li><strong>Objection:</strong> Object to the processing of your data for marketing purposes at

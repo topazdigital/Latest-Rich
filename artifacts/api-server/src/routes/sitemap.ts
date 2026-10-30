@@ -199,6 +199,7 @@ async function getIndexableMatrixUrls() {
       .leftJoin(userExtendedTable, eq(usersTable.id, userExtendedTable.userId))
       .where(and(
         or(eq(usersTable.banned, 0), isNull(usersTable.banned)),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
         isNotNull(usersTable.photo),
         ne(usersTable.photo, ""),
       ))
@@ -294,7 +295,13 @@ router.get("/sitemap-index.xml", async (_req, res) => {
     const allPublic = await db
       .select({ id: usersTable.id, photo: usersTable.photo, lastAccess: usersTable.lastAccess })
       .from(usersTable)
-      .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0), isNotNull(usersTable.photo), ne(usersTable.photo, "")))
+      .where(and(
+        eq(usersTable.fake, 0),
+        eq(usersTable.banned, 0),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
+        isNotNull(usersTable.photo),
+        ne(usersTable.photo, ""),
+      ))
     const activeCount = allPublic.filter(u => Number(u.lastAccess) >= EIGHTEEN_MONTHS_AGO()).length
     profilePageCount = Math.max(1, Math.ceil(activeCount / PROFILE_PAGE_SIZE))
     imagePageCount = Math.max(1, Math.ceil(allPublic.length / IMAGE_PAGE_SIZE))
@@ -457,7 +464,13 @@ router.get("/sitemap-images-:page.xml", async (req, res) => {
     const rows = await db
       .select({ id: usersTable.id, username: usersTable.username, name: usersTable.name, photo: usersTable.photo })
       .from(usersTable)
-      .where(and(eq(usersTable.fake, 0), eq(usersTable.banned, 0), isNotNull(usersTable.photo), ne(usersTable.photo, "")))
+      .where(and(
+        eq(usersTable.fake, 0),
+        eq(usersTable.banned, 0),
+        or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
+        isNotNull(usersTable.photo),
+        ne(usersTable.photo, ""),
+      ))
       .limit(IMAGE_PAGE_SIZE)
       .offset((page - 1) * IMAGE_PAGE_SIZE)
 
@@ -496,6 +509,7 @@ router.get("/sitemap-profiles-:page.xml", async (req, res) => {
         and(
           eq(usersTable.fake, 0),
           eq(usersTable.banned, 0),
+          or(eq(usersTable.deactivated, 0), isNull(usersTable.deactivated)),
           isNotNull(usersTable.photo),
           ne(usersTable.photo, ""),
           gt(usersTable.lastAccess, String(EIGHTEEN_MONTHS_AGO())),

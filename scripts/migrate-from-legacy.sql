@@ -692,6 +692,7 @@ ALTER TABLE `users`
   ADD COLUMN IF NOT EXISTS `verification_photo` text DEFAULT '',
   ADD COLUMN IF NOT EXISTS `verification_note` text DEFAULT '',
   ADD COLUMN IF NOT EXISTS `banned` tinyint(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `deactivated` tinyint(1) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `referral_code` varchar(50) DEFAULT '',
   ADD COLUMN IF NOT EXISTS `referred_by` int(11) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `username` varchar(255) DEFAULT '',
