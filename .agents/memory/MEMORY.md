@@ -7,3 +7,4 @@
 - [Workflow config preservation](workflow-config-preservation.md) — preserve the full .replit when validating workflow changes; metadata updates can remove existing settings
 - [Imported workspace dependencies](imported-workspace-deps.md) — scoped installs can bootstrap runtime packages when a full frozen install hits the package firewall on unused codegen tools
 - [Premium entitlement recovery](premium-entitlements.md) — resolve active paid tier access from completed order history when the user row lacks a reliable priority
+- [Discover feed fallback](discover-feed-fallback.md) — preserve a suggestions fallback for unfiltered discovery and keep gender and age constraints
