@@ -167,6 +167,10 @@ router.get("/search", requireAuth, async (req, res) => {
     const boostedRows: Array<{ userId: number }> = await db.select({ userId: profileBoostsTable.userId })
       .from(profileBoostsTable)
       .where(and(eq(profileBoostsTable.active, 1), gt(profileBoostsTable.endTime, now())))
+      .catch((error: unknown) => {
+        console.warn("[users/search] Boost ranking unavailable; continuing without it:", error)
+        return []
+      })
     const boostedIds = new Set<number>(boostedRows.map(b => Number(b.userId)))
 
     const conditions: any[] = [
@@ -189,8 +193,15 @@ router.get("/search", requireAuth, async (req, res) => {
     if (premiumOnly) conditions.push(eq(usersTable.premium, 1))
 
     const where = and(...conditions)
-    const [countRow] = await db.select({ total: count() }).from(usersTable).where(where)
-    const total = Number(countRow?.total || 0)
+    let total: number | null = null
+    try {
+      const [countRow] = await db.select({ total: count() }).from(usersTable).where(where)
+      total = Number(countRow?.total || 0)
+    } catch (error) {
+      // The count only powers the result total; pagination can still use the
+      // extra row fetched below to determine whether another page exists.
+      console.warn("[users/search] Profile count unavailable; continuing with paged results:", error)
+    }
 
     const boostPriority = boostedIds.size > 0
       ? sql`CASE WHEN ${inArray(usersTable.id, [...boostedIds])} THEN 1 ELSE 0 END`
@@ -209,11 +220,23 @@ router.get("/search", requireAuth, async (req, res) => {
     // Keep one randomized order for every page in this visit, but give each new visit
     // a different seed so members can discover different profiles on return.
     const visitOrder = sql`MD5(CONCAT(${req.userId}, ':', ${feedSeed}, ':', ${usersTable.id}))`
-    const pageRows: any[] = await db.select().from(usersTable)
-      .where(where)
-      .orderBy(desc(boostPriority), desc(premiumPriority), desc(locationPriority), visitOrder)
-      .limit(pageSize + 1)
-      .offset(offset)
+    let pageRows: any[]
+    try {
+      pageRows = await db.select().from(usersTable)
+        .where(where)
+        .orderBy(desc(boostPriority), desc(premiumPriority), desc(locationPriority), visitOrder)
+        .limit(pageSize + 1)
+        .offset(offset)
+    } catch (error) {
+      // A problem with the optional ranking expressions must not blank the
+      // discovery page. Keep all requested filters and use stable ID ordering.
+      console.warn("[users/search] Ranked profile query failed; using basic ordering:", error)
+      pageRows = await db.select().from(usersTable)
+        .where(where)
+        .orderBy(desc(usersTable.id))
+        .limit(pageSize + 1)
+        .offset(offset)
+    }
     const hasMore = pageRows.length > pageSize
 
     let result: any[] = pageRows.slice(0, pageSize).map((u: any) => ({
@@ -227,7 +250,10 @@ router.get("/search", requireAuth, async (req, res) => {
       const interestRows: Array<{ userId: number; interests: string | null }> = await db.select({
         userId: userExtendedTable.userId,
         interests: userExtendedTable.interests,
-      }).from(userExtendedTable).where(inArray(userExtendedTable.userId, resultIds))
+      }).from(userExtendedTable).where(inArray(userExtendedTable.userId, resultIds)).catch((error: unknown) => {
+        console.warn("[users/search] Profile interests unavailable:", error)
+        return []
+      })
       const interestsByUser = new Map<number, string | null>(interestRows.map(row => [row.userId, row.interests]))
       result = result.map((u: any) => ({
         ...u,
@@ -243,6 +269,10 @@ router.get("/search", requireAuth, async (req, res) => {
         .from(photosTable)
         .where(and(inArray(photosTable.userId, missingPhotoIds), eq(photosTable.approved, 1)))
         .orderBy(desc(photosTable.main), photosTable.id)
+        .catch((error: unknown) => {
+          console.warn("[users/search] Photo enrichment unavailable:", error)
+          return []
+        })
       const photoMap = new Map<number, { photo: string; thumb: string }>()
       for (const p of fallbackPhotos) {
         if (!photoMap.has(p.userId)) photoMap.set(p.userId, { photo: p.photo, thumb: p.thumb || p.photo })

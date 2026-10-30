@@ -134,11 +134,60 @@ export default function DiscoverPage({ userId, myCity, myCountry, myInterests = 
         const profiles = Array.isArray(data.profiles) ? data.profiles : []
         setUsers(profiles)
         setHasMore(data.hasMore === true)
-        setTotalCount(Number(data.total) || profiles.length)
+        setTotalCount(typeof data.total === 'number' && Number.isFinite(data.total) ? Math.max(0, data.total) : 0)
         setLoading(false)
       })
       .catch(() => {
         if (requestGeneration !== requestGenerationRef.current) return
+        const canUseSuggestedFallback =
+          !debouncedSearch &&
+          !filterCity &&
+          !filterCountry &&
+          filterAgeMin === 18 &&
+          filterAgeMax === 99 &&
+          !filterOnline &&
+          !filterPremium &&
+          !filterCompatible &&
+          !filterMutual
+
+        if (canUseSuggestedFallback) {
+          authFetch('/api/users/suggested')
+            .then(async response => {
+              if (!response.ok) throw new Error('Suggested profiles failed')
+              return response.json()
+            })
+            .then((suggestions: any) => {
+              if (requestGeneration !== requestGenerationRef.current) return
+              const preferredGender = Number(filterGender) || Number(myLooking) || 0
+              const profiles = (Array.isArray(suggestions) ? suggestions : []).filter((profile: any) => {
+                const age = Number(profile.age) || 0
+                return (!preferredGender || Number(profile.gender) === preferredGender) &&
+                  (!age || (age >= filterAgeMin && age <= filterAgeMax))
+              })
+
+              if (profiles.length > 0) {
+                console.warn('[discover] Search failed; showing suggested profiles as a fallback.')
+                setUsers(profiles)
+                setHasMore(false)
+                setTotalCount(profiles.length)
+                setSearchError(false)
+                setLoading(false)
+                return
+              }
+
+              setSearchError(true)
+              setLoading(false)
+              toast.error('Could not load profiles. Please try again.')
+            })
+            .catch(() => {
+              if (requestGeneration !== requestGenerationRef.current) return
+              setSearchError(true)
+              setLoading(false)
+              toast.error('Could not load profiles. Please try again.')
+            })
+          return
+        }
+
         setSearchError(true)
         setLoading(false)
         toast.error('Could not load profiles. Please try again.')
