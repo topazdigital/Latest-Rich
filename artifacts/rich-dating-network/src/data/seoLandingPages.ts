@@ -815,10 +815,10 @@ const CATEGORIES: CategoryDef[] = [
     label: 'Rich Men',
     gender: 1,
     h1: c => `Meet Rich Men in ${c}`,
-    title: (c, co) => `Rich Men in ${c} | Meet Wealthy Men in ${c} — Rich Dating Network`,
-    description: (c, co) => `Looking to meet rich men in ${c}? Join Rich Dating Network free and connect with verified, wealthy men in ${c}, ${co}. Real profiles, real success stories.`,
+    title: (c, co) => `Rich Men in ${c} | Browse Profiles — Rich Dating Network`,
+    description: (c, co) => `Browse men's profiles in ${c}, ${co} on Rich Dating Network. Create a free profile, set your preferences, and decide who to contact.`,
     keywords: c => [`rich men ${c}`, `rich men in ${c}`, `meet rich men ${c}`, `wealthy men ${c}`, `wealthy men in ${c}`, `millionaire men ${c}`, `affluent men ${c}`, `successful men ${c}`, `date rich men ${c}`, `find rich men ${c}`, `rich guys ${c}`, `wealthy guys ${c}`, `rich boyfriend ${c}`, `wealthy boyfriend ${c}`, `financially stable men ${c}`, `well off men ${c}`, `high earning men ${c}`, `rich singles ${c}`],
-    intro: (c, co) => `Rich Dating Network is the most trusted platform for meeting genuine wealthy men in ${c}. Whether you're looking for a long-term relationship with a successful man or simply want to connect with financially stable, ambitious men in ${c}, ${co}, our verified community makes it possible. Join free and browse real profiles today.`,
+    intro: (c, co) => `Explore men's public profiles in ${c}, ${co}, review the information each person shares, and connect at your own pace. Profile verification is optional and does not independently confirm wealth or intentions. Registration is free; paid features and their terms are shown before purchase.`,
   },
   {
     prefix: 'rich-women',
@@ -964,7 +964,9 @@ const countryPages: SeoLandingPage[] = uniqueCountries.flatMap(country => {
     title: dedup(cat.title(country, country)),
     description: dedup(cat.description(country, country)),
     keywords: cat.keywords(country),
-    intro: dedup(cat.intro(country, country)),
+    intro: country === "Kenya" && cat.prefix === "rich-men"
+      ? "Looking to meet men in Kenya? Browse public profiles, choose a city, and review the information each person shares before deciding whom to contact. A verification badge shows completion of the platform’s verification step; it does not prove wealth, intentions, or guarantee a match. Registration is free. M-Pesa may be available for eligible paid features; confirm the price and terms before purchase."
+      : dedup(cat.intro(country, country)),
   }))
 })
 
@@ -989,7 +991,9 @@ const cityPageRaw: SeoLandingPage[] = PLACES_LIST.flatMap(({ city, country }) =>
     title: cat.title(city, country),
     description: cat.description(city, country),
     keywords: cat.keywords(city),
-    intro: cat.intro(city, country),
+    intro: country === "Kenya" && city === "Nairobi" && cat.prefix === "rich-men"
+      ? "Looking to meet men in Nairobi? Browse public profiles, review the information each person shares, and set your own preferences before connecting. A verification badge shows completion of the platform’s verification step; it does not prove wealth, intentions, or guarantee a match. Registration is free. M-Pesa may be available for eligible paid features; confirm the price and terms before purchase."
+      : cat.intro(city, country),
   }))
 })
 

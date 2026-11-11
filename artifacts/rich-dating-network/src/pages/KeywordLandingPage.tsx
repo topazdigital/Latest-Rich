@@ -39,7 +39,6 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
     if (!page) return
     document.title = page.title
     upsertMeta('description', page.description)
-    upsertMeta('keywords', page.keywords.join(', '))
     upsertMeta('robots', 'index, follow, max-image-preview:large')
     upsertMeta('og:title', page.title, true)
     upsertMeta('og:description', page.description, true)
@@ -97,6 +96,10 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
   const isCityPage = !!page.city && !!page.country
   const isEthnicityPage = !!page.ethnicity
   const isMatrixPage = !!page.community && !!page.intent
+  const isKenyaRichMenPage =
+    page.country === 'Kenya' &&
+    page.category === 'rich-men' &&
+    (!page.city || page.city === 'Nairobi')
 
   // Category prefix — stored in page.category for country/city pages
   const catPrefix = page.category && CATEGORY_PREFIXES.includes(page.category)
@@ -181,9 +184,9 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
             Join Free Now <ChevronRight className="w-5 h-5" />
           </Link>
           <div className="flex items-center justify-center gap-6 mt-8 text-sm text-white/80 flex-wrap">
-            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> 100% Free to Join</span>
-            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> Verified Profiles</span>
-            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> 180+ Countries</span>
+            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> Free registration</span>
+            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> Optional profile verification</span>
+            <span className="flex items-center gap-1"><Check className="w-4 h-4 text-yellow-300" /> Local and worldwide discovery</span>
           </div>
         </div>
       </section>
@@ -193,18 +196,18 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
         <div className="grid sm:grid-cols-3 gap-6 mb-14">
           <div className="text-center p-6 rounded-2xl bg-gray-50">
             <Shield className="w-8 h-8 text-[#FF192C] mx-auto mb-3" />
-            <h3 className="font-bold mb-1">Verified & Safe</h3>
-            <p className="text-sm text-gray-600">Every profile is reviewed to keep the community genuine.</p>
+            <h3 className="font-bold mb-1">Optional Verification</h3>
+            <p className="text-sm text-gray-600">A badge shows that a member completed the platform’s verification step.</p>
           </div>
           <div className="text-center p-6 rounded-2xl bg-gray-50">
             <Users className="w-8 h-8 text-[#FF192C] mx-auto mb-3" />
-            <h3 className="font-bold mb-1">Real Members</h3>
-            <p className="text-sm text-gray-600">Thousands of active, verified members across 180+ countries.</p>
+            <h3 className="font-bold mb-1">Browse by Location</h3>
+            <p className="text-sm text-gray-600">Explore public profiles locally or in other locations.</p>
           </div>
           <div className="text-center p-6 rounded-2xl bg-gray-50">
             <Heart className="w-8 h-8 text-[#FF192C] mx-auto mb-3" />
-            <h3 className="font-bold mb-1">Real Connections</h3>
-            <p className="text-sm text-gray-600">Meaningful relationships built on trust and mutual respect.</p>
+            <h3 className="font-bold mb-1">Connect at Your Pace</h3>
+            <p className="text-sm text-gray-600">Review profile details and decide who you want to contact.</p>
           </div>
         </div>
 
@@ -268,15 +271,30 @@ export default function KeywordLandingPage({ params }: { params: { slug: string 
         <h2 className="text-2xl font-bold mb-4">Why join Rich Dating Network?</h2>
         <p className="text-gray-700 leading-relaxed mb-4">{page.description}</p>
         <p className="text-gray-700 leading-relaxed mb-8">
-          Registration takes less than a minute — no hidden fees to sign up. Browse profiles, send likes, and start
-          chatting with genuine, verified members today. Rich Dating Network is trusted by members across Kenya,
-          Nigeria, Ghana, South Africa, Uganda, Tanzania, the Philippines, the UK, the USA, the UAE and 180+ other
-          countries.
+          Create a free profile, browse public member profiles, and choose who to contact. Profile verification is
+          optional and does not independently confirm wealth, intentions, or a dating outcome. Paid features and their
+          prices are shown before purchase.
         </p>
+
+        {isKenyaRichMenPage && (
+          <section className="mb-10 rounded-2xl border border-rose-100 bg-rose-50/60 p-6 sm:p-8">
+            <h2 className="text-xl font-bold mb-3">Dating in {page.city ? `${page.city}, ` : ''}Kenya</h2>
+            <p className="text-gray-700 leading-relaxed mb-3">
+              Set your location and preferences, read the information each person shares, and decide whom to contact.
+              A verification badge shows completion of the platform’s verification step; it does not prove wealth or
+              intentions and cannot guarantee a match.
+            </p>
+            <p className="text-gray-700 leading-relaxed">
+              Registration is free. M-Pesa may be available for eligible paid features in Kenya; confirm the amount
+              and terms before purchase. Never share your M-Pesa PIN or one-time codes, and meet in a public place if
+              you decide to meet offline.
+            </p>
+          </section>
+        )}
 
         <div className="bg-gray-50 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold mb-2">Ready to find your match?</h3>
-          <p className="text-gray-600 mb-6">Join free in under a minute — no credit card required.</p>
+          <p className="text-gray-600 mb-6">Create a free profile and browse members at your own pace.</p>
           <Link href="/register" className="inline-flex items-center gap-2 bg-[#FF192C] text-white font-bold px-8 py-4 rounded-xl hover:bg-[#e01526] transition-colors">
             Create Your Free Account <ChevronRight className="w-5 h-5" />
           </Link>

@@ -10,25 +10,19 @@ declare global {
 }
 
 const FEATURES = [
-  { icon: MapPin, title: 'Location-Based Matches', desc: 'Find singles near you or explore worldwide with advanced location filters.' },
-  { icon: Shield, title: 'Verified Profiles', desc: 'Every member is verified to ensure authenticity and your safety.' },
-  { icon: Zap, title: 'Real-Time Messaging', desc: 'Instant chat with typing indicators and zero delays.' },
-  { icon: Star, title: 'Elite Matching', desc: 'Advanced algorithms connect you with compatible, successful singles.' },
-  { icon: Crown, title: 'VIP Features', desc: 'Stand out with superlikes, profile boosts, and priority placement.' },
-  { icon: Heart, title: 'Real Connections', desc: 'Thousands of success stories. Find meaningful love that lasts.' },
+  { icon: MapPin, title: 'Search by Location', desc: 'Browse nearby profiles or explore people in other cities and countries.' },
+  { icon: Shield, title: 'Optional Verification', desc: 'Some members complete profile verification; the badge identifies accounts that completed the available check.' },
+  { icon: MessageCircle, title: 'In-App Messaging', desc: 'Get to know members through the platform before deciding whether to meet.' },
+  { icon: Star, title: 'Your Preferences', desc: 'Set your interests and relationship goals, then browse profiles at your own pace.' },
+  { icon: Crown, title: 'Optional Premium Features', desc: 'Paid plans and credits can unlock additional features; review their terms before purchase.' },
+  { icon: Heart, title: 'Local and Global Discovery', desc: 'Search in Kenya or keep your options open to people around the world.' },
 ]
 
-const TESTIMONIALS = [
-  { name: 'Sarah M.', city: 'New York', text: 'Found my dream partner in just 2 weeks! The quality of members here is incredible.', rating: 5 },
-  { name: 'James K.', city: 'London', text: 'Finally a dating platform that matches serious, successful people. Worth every penny.', rating: 5 },
-  { name: 'Priya R.', city: 'Dubai', text: 'Location-based matching is genius. Met someone amazing just 10 miles away!', rating: 5 },
-]
-
-const STATS = [
-  { n: '7,000+', l: 'Members' },
-  { n: '50K+', l: 'Connections' },
-  { n: '180+', l: 'Countries' },
-  { n: '98%', l: 'Satisfaction' },
+const HIGHLIGHTS = [
+  { n: 'Kenya', l: 'local discovery' },
+  { n: 'Worldwide', l: 'profile browsing' },
+  { n: 'Free', l: 'registration' },
+  { n: 'M-Pesa', l: 'eligible purchases' },
 ]
 
 // Quick mini registration form embedded in hero
@@ -252,28 +246,22 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-bold text-white mb-4 leading-[1.1]">
-              Where Affluent<br />Singles Find{' '}
-              <span className="text-yellow-300 relative">
-                Real Love
-                <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 8" preserveAspectRatio="none" style={{ height: '5px' }}>
-                  <path d="M0 6 Q50 0 100 4 Q150 8 200 2" stroke="#fde047" strokeWidth="3" fill="none" strokeLinecap="round" />
-                </svg>
-              </span>
+              Meet Wealthy Singles in Kenya and Worldwide
             </h1>
 
             <p className="text-base text-white/80 max-w-lg mb-6 leading-relaxed">
-              Join thousands of successful, verified singles. Real-time matching based on your location, lifestyle, and preferences.
+              Create a free profile, browse by location, and choose the relationship goals and connections that suit you.
             </p>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/70 mb-6">
-              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> 100% Free to Join</span>
-              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Verified Profiles</span>
-              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> 180+ Countries</span>
-              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Real-Time Messaging</span>
+              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Free registration</span>
+              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Optional profile verification</span>
+              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Kenya and worldwide</span>
+              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> In-app messaging</span>
             </div>
 
             <div className="grid grid-cols-4 gap-3 max-w-sm">
-              {STATS.map((s, i) => (
+              {HIGHLIGHTS.map((s, i) => (
                 <div key={i} className="text-center">
                   <div className="text-xl font-bold text-white">{s.n}</div>
                   <div className="text-white/50 text-[11px] mt-0.5">{s.l}</div>
@@ -382,42 +370,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials — horizontal scroll carousel */}
-      <section className="py-8 bg-gray-50">
+      {/* Kenya-focused guidance that also supports safer conversions */}
+      <section className="py-10 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-5 px-4">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Real Success Stories</h2>
-            <p className="text-gray-500 text-xs">Join thousands who found their perfect match</p>
-          </div>
-          {/* Horizontally scrollable row, cards snap into place */}
-          <div className="flex gap-4 overflow-x-auto px-4 pb-4" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
-              <div key={i} className="flex-shrink-0 w-72 md:w-80 card p-5 border border-gray-100 rounded-3xl" style={{ scrollSnapAlign: 'start' }}>
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} size={12} className="text-yellow-400 fill-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-base font-bold text-brand-600 flex-shrink-0">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">{t.name}</div>
-                    <div className="text-xs text-gray-400 flex items-center gap-1">
-                      <MapPin size={10} /> {t.city}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Scroll hint dots */}
-          <div className="flex justify-center gap-2 mt-3">
-            {TESTIMONIALS.map((_, i) => (
-              <div key={i} className={`h-1.5 rounded-full bg-brand-300 transition-all ${i === 0 ? 'w-5' : 'w-1.5 opacity-40'}`} />
-            ))}
+          <div className="max-w-3xl">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Dating in Kenya with clear expectations</h2>
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              Browse profiles in Nairobi or another location, review the details each person shares, and decide who to contact.
+              A verification badge shows that a member completed the platform’s verification step; it does not prove wealth,
+              intentions, or guarantee a match.
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              Registration is free. M-Pesa may be available for eligible paid features in Kenya; check the amount and terms
+              before confirming a purchase. Never share your M-Pesa PIN or one-time codes, and meet in a public place if you
+              decide to meet offline.
+            </p>
+            <Link href="/rich-men-nairobi" className="text-sm font-semibold text-brand-600 hover:underline">
+              Explore profiles of men in Nairobi
+            </Link>
           </div>
         </div>
       </section>
@@ -429,26 +399,24 @@ export default function LandingPage() {
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-3">Where Ambition Meets Attraction</h2>
               <p className="text-sm text-gray-500 leading-relaxed mb-3">
-                Rich Dating Network is a premium dating platform built exclusively for successful, motivated singles
-                who understand the value of a genuine connection. Our members are accomplished professionals —
-                executives, entrepreneurs, doctors, lawyers, and high-achievers — from Kenya, Nigeria, South Africa,
-                the UK, USA, Dubai, and 180+ countries worldwide.
+                Rich Dating Network is a dating platform for people seeking connections with successful and ambitious
+                singles. Browse public profiles by location, review the information members choose to share, and set
+                preferences that reflect the relationship you want.
               </p>
               <p className="text-sm text-gray-500 leading-relaxed">
-                Whether you are seeking a long-term relationship, a meaningful companionship, or simply someone
-                who matches your drive and lifestyle, Rich Dating Network brings together people who have standards —
-                and the means to enjoy life together.
+                You can focus on people in Kenya or explore profiles internationally. Take time to get to know someone
+                and make your own decisions about whether a connection is right for you.
               </p>
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-3">Why Members Choose Us</h2>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Verified profiles</strong> — members go through identity checks for authenticity</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa, Paystack &amp; card payments</strong> — convenient African and global payment options</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>180+ countries</strong> — connect locally or discover love across borders</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Free to join</strong> — browse and receive messages at no cost</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Privacy first</strong> — your data is encrypted and never sold to third parties</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Real-time messaging</strong> — instant chat with no delays or hidden barriers</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Optional profile verification</strong> — a badge indicates completion of the platform’s verification step</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa in Kenya</strong> — available for eligible paid purchases; payment options and terms are shown at checkout</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Local and global discovery</strong> — browse by location and explore connections worldwide</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Free registration</strong> — paid plans and credits are optional</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Review privacy controls</strong> — choose what profile information you share with other members</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>In-app messaging</strong> — get to know members before deciding whether to meet</span></li>
               </ul>
             </div>
           </div>
@@ -458,7 +426,7 @@ export default function LandingPage() {
               { label: 'Successful Men', icon: '👨‍💼', desc: 'Established professionals seeking genuine connections' },
               { label: 'Successful Women', icon: '👩‍💼', desc: 'Independent, accomplished women open to real love' },
               { label: 'High Achievers', icon: '💎', desc: 'Driven individuals who want a partner to match their pace' },
-              { label: 'Global Singles', icon: '🌍', desc: 'Members from 180+ countries, all walks of life' },
+              { label: 'Worldwide Discovery', icon: '🌍', desc: 'Keep your search local or explore other locations' },
             ].map((c, i) => (
               <div key={i} className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
                 <div className="text-2xl mb-2">{c.icon}</div>
@@ -479,7 +447,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto text-center relative z-10">
           <div className="text-3xl mb-3">💝</div>
           <h2 className="text-xl md:text-2xl font-bold mb-2">Ready to Find Your Perfect Match?</h2>
-          <p className="text-white/80 mb-5 text-sm">Join the most exclusive dating network for successful singles. Free to join, always.</p>
+          <p className="text-white/80 mb-5 text-sm">Create a free profile, explore members by location, and decide which connections are right for you.</p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/register"
               className="bg-white text-brand-600 font-bold px-7 py-2.5 rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:-translate-y-1 inline-flex items-center gap-2 text-sm">
@@ -490,7 +458,7 @@ export default function LandingPage() {
               Sign In
             </Link>
           </div>
-          <p className="text-white/60 text-xs mt-3">No credit card required • Join in 30 seconds</p>
+          <p className="text-white/60 text-xs mt-3">Free registration • Paid features are optional</p>
         </div>
       </section>
 

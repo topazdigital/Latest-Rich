@@ -68,10 +68,10 @@ function buildSeoTitle(gender: string, country: string, city: string): string {
 }
 
 function buildSeoDescription(gender: string, country: string, city: string): string {
-  const who = gender === 'male' ? 'wealthy men and successful bachelors' : gender === 'female' ? 'affluent women and successful ladies' : 'wealthy singles, sugar daddies, sugar mummies, and affluent partners'
+  const who = gender === 'male' ? 'men' : gender === 'female' ? 'women' : 'singles'
   const where = city || country
-  if (where) return `Browse verified profiles of ${who} in ${where} on Rich Dating Network. Find your perfect match today — 100% free to join.`
-  return `Browse verified profiles of ${who} worldwide on Rich Dating Network. The #1 luxury dating platform for successful, ambitious singles. Join free today.`
+  if (where) return `Browse public profiles of ${who} in ${where}. Set your preferences and choose whom to contact. Free registration; verification is optional.`
+  return `Browse public profiles of singles worldwide. Search by location and preferences, then choose whom to contact. Free registration; verification is optional.`
 }
 
 export default function MembersPage() {

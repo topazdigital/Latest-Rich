@@ -118,7 +118,9 @@ app.use(async (req, res, next) => {
 import sitemapRouter from "./routes/sitemap"
 import { gunzipSync } from "node:zlib"
 import {
+  buildSeoHomeHtml,
   buildSeoLandingHtml,
+  buildSeoMembersHtml,
   createSeoLandingResolver,
   type SeoLandingManifest,
 } from "./lib/seo-landing-pages"
@@ -271,6 +273,7 @@ const frontendDir = possibleFrontendDirs.find(d => fs.existsSync(d));
 
 if (frontendDir) {
   const indexPath = path.join(frontendDir, "index.html");
+  const htmlShell = fs.existsSync(indexPath) ? fs.readFileSync(indexPath, "utf8") : "";
 
   // Build the same public SEO landing pages as HTML before the client bundle
   // runs. This gives crawlers the route-specific title, canonical, H1, and
@@ -282,7 +285,11 @@ if (frontendDir) {
         gunzipSync(fs.readFileSync(seoManifestPath)).toString("utf8"),
       ) as SeoLandingManifest;
       const resolveSeoPage = createSeoLandingResolver(manifest);
-      const htmlShell = fs.readFileSync(indexPath, "utf8");
+
+      app.get("/members", (_req, res) => {
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.type("html").send(buildSeoMembersHtml(htmlShell));
+      });
 
       app.get("/:slug", (req, res, next) => {
         const page = resolveSeoPage(req.params.slug);
@@ -303,6 +310,13 @@ if (frontendDir) {
       { seoManifestPath },
       "SEO landing-page manifest is missing; build the frontend before starting the production API",
     );
+  }
+
+  if (htmlShell) {
+    app.get("/", (_req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.type("html").send(buildSeoHomeHtml(htmlShell));
+    });
   }
 
   // Social crawler handler — intercepts /profile/:id and /@username for bots.

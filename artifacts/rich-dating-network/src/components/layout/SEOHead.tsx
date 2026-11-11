@@ -133,7 +133,11 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   const siteTitle = COUNTRY_SEO[countryCode]?.siteTitle || COUNTRY_SEO.DEFAULT.siteTitle
   const loc = city || countryName
 
-  if (path === '/') return `${siteTitle} | Find Rich Singles${loc ? ` in ${loc}` : ''}`
+  if (path === '/') {
+    return c
+      ? `${siteTitle} | Find Rich Singles in ${loc || countryName}`
+      : 'Rich Dating Network | Meet Wealthy Singles in Kenya & Worldwide'
+  }
   if (path === '/discover') return `Discover Wealthy Singles${loc ? ` in ${loc}` : ' Worldwide'} | Rich Dating Network`
   if (path === '/meet') return `Meet Affluent Singles${loc ? ` in ${loc}` : ''} | Rich Dating Network`
   if (path === '/likes') return `Your Likes & Matches${loc ? ` in ${loc}` : ''} | Rich Dating Network`
@@ -147,7 +151,7 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   if (path === '/credits') return `Credits & Payments | Rich Dating Network`
   if (path === '/boost') return `Boost Your Profile | Rich Dating Network`
   if (path === '/home') return `Your Matches${loc ? ` in ${loc}` : ''} | Rich Dating Network`
-  if (path === '/members') return `Browse Wealthy Singles Worldwide | Rich Dating Network`
+  if (path === '/members') return `Browse Dating Profiles in Kenya & Worldwide | Rich Dating Network`
   if (path === '/locations') return `Find Wealthy Singles Near You | Rich Dating Network`
   if (path === '/settings') return `Settings | Rich Dating Network`
   if (path === '/referrals') return `Referrals | Rich Dating Network`
@@ -158,7 +162,13 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   return `${siteTitle}${loc ? ` — ${loc}` : ''}`
 }
 
-function buildDescription(countryCode: string, city: string): string {
+function buildDescription(path: string, countryCode: string, city: string): string {
+  if (path === '/') {
+    return 'Meet singles in Kenya and worldwide. Create a free profile, browse by location, and choose the relationship goals that matter to you.'
+  }
+  if (path === '/members') {
+    return 'Browse public member profiles by location and preferences. Registration is free, profile verification is optional, and international discovery remains available.'
+  }
   const seoData = COUNTRY_SEO[countryCode] || COUNTRY_SEO.DEFAULT
   if (city) {
     return seoData.description.replace(
@@ -187,7 +197,6 @@ export default function SEOHead() {
   const { user } = useAuth()
   const countryCode = user?.countryCode?.toUpperCase() || 'DEFAULT'
   const userCity = user?.city || ''
-  const seoData = COUNTRY_SEO[countryCode] || COUNTRY_SEO.DEFAULT
   const [legalIndexState, setLegalIndexState] = useState<{ slug: string; noIndex: boolean } | null>(null)
 
   useEffect(() => {
@@ -212,18 +221,12 @@ export default function SEOHead() {
     const title = routePage?.title || buildTitle(location, countryCode, userCity)
     document.title = title
 
-    const description = routePage?.description || buildDescription(countryCode, userCity)
-    const allKeywords = routePage?.keywords.join(', ') || [
-      ...seoData.keywords,
-      ...seoData.ageGroups,
-      ...(userCity ? [`dating in ${userCity}`, `singles in ${userCity}`, `wealthy singles ${userCity}`] : []),
-    ].join(', ')
+    const description = routePage?.description || buildDescription(location, countryCode, userCity)
     const legalSlug = location === "/terms" ? "terms" : location === "/privacy" ? "privacy" : null
     const legalNoIndex = !!legalSlug && legalIndexState?.slug === legalSlug && legalIndexState.noIndex
     const indexable = isIndexablePath(location) && !legalNoIndex
 
     upsertMeta('description', description)
-    upsertMeta('keywords', allKeywords)
     upsertMeta('robots', indexable ? 'index, follow, max-image-preview:large' : 'noindex, nofollow')
     upsertMeta('author', 'Rich Dating Network')
     upsertMeta('geo.region', countryCode !== 'DEFAULT' ? countryCode : '')
