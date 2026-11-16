@@ -61,6 +61,9 @@ function MemberCard({ member }: { member: any }) {
 }
 
 function buildSeoTitle(gender: string, country: string, city: string): string {
+  if (!gender && !country && !city) {
+    return 'Browse Dating Profiles in Kenya & Worldwide | Rich Dating Network'
+  }
   const who = gender === 'male' ? 'Wealthy Men' : gender === 'female' ? 'Affluent Women' : 'Wealthy Singles'
   const where = city || country
   if (where) return `${who} in ${where} | Rich Dating Network`
@@ -303,7 +306,7 @@ export default function MembersPage() {
             {city ? ` in ${city}` : country ? ` in ${country}` : ''}?
           </h2>
           <p className="text-white/80 mb-6 max-w-xl mx-auto text-sm leading-relaxed">
-            Join thousands of verified wealthy singles on Rich Dating Network. Create your free profile in 30 seconds and start connecting with successful, ambitious people near you.
+            Create a free profile, browse public member profiles, and choose who to contact. Profile verification is optional, and paid features are explained before purchase.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register" className="bg-white text-brand-600 font-bold px-8 py-3 rounded-2xl hover:bg-gray-50 transition-colors">
@@ -315,15 +318,12 @@ export default function MembersPage() {
           </div>
         </div>
 
-        {/* SEO keyword text */}
-        <div className="mt-10 prose prose-sm max-w-none text-gray-400 text-xs leading-relaxed">
+        <div className="mt-10 max-w-3xl mx-auto text-center text-sm text-gray-600 leading-relaxed">
+          <h2 className="font-semibold text-gray-800 mb-2">Browse profiles in Kenya and worldwide</h2>
           <p>
-            Rich Dating Network is the leading luxury dating platform connecting verified wealthy singles worldwide.
-            Whether you're looking for a successful partner{city ? ` in ${city}` : country ? ` in ${country}` : ''},
-            a high-net-worth companion, or a meaningful relationship with an affluent individual,
-            our platform offers a curated community of genuine, ambitious people.
-            Browse {gender === 'male' ? 'wealthy men' : gender === 'female' ? 'affluent women' : 'successful men and women'},
-            view their full profiles, and connect — completely free to join.
+            Use the location and preference filters to narrow your search. Registration is free; optional paid features
+            and their terms are shown before purchase. A verification badge reflects completion of the platform’s
+            verification step, not proof of wealth or a guaranteed dating outcome.
           </p>
         </div>
       </div>

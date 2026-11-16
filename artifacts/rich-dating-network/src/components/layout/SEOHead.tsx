@@ -250,7 +250,7 @@ export default function SEOHead() {
 
     // Canonical
     upsertLink('canonical', `https://richdatingnetwork.com${location}`)
-  }, [location, countryCode, userCity, seoData, legalIndexState])
+  }, [location, countryCode, userCity, legalIndexState])
 
   return null
 }
