@@ -1,4 +1,4 @@
-import { mysqlTable, int, text, float, boolean, varchar, serial, bigint, uniqueIndex } from "drizzle-orm/mysql-core"
+import { mysqlTable, int, text, float, boolean, varchar, serial, bigint, index, uniqueIndex } from "drizzle-orm/mysql-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -348,6 +348,38 @@ export const referralsTable = mysqlTable("referrals", {
   reward: text("reward").default(""),
   created: int("created").default(0),
 })
+
+export const affiliatePartnersTable = mysqlTable("affiliate_partners", {
+  id: serial("id").primaryKey(),
+  username: varchar("username", { length: 64 }).notNull().unique(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  passwordVersion: int("password_version").notNull().default(1),
+  referralCode: varchar("referral_code", { length: 64 }).notNull().unique(),
+  parentPartnerId: int("parent_partner_id").default(0),
+  active: int("active").notNull().default(1),
+  createdBy: int("created_by").default(0),
+  createdAt: int("created_at").default(0),
+  lastLogin: int("last_login").default(0),
+  lastActivity: int("last_activity").default(0),
+})
+
+export const affiliateReferralsTable = mysqlTable("affiliate_referrals", {
+  id: serial("id").primaryKey(),
+  partnerId: int("partner_id").notNull(),
+  userId: int("user_id").notNull().unique(),
+  createdAt: int("created_at").default(0),
+})
+
+export const affiliateActivityTable = mysqlTable("affiliate_activity", {
+  id: serial("id").primaryKey(),
+  partnerId: int("partner_id").notNull(),
+  eventType: varchar("event_type", { length: 32 }).notNull(),
+  detail: text("detail").default(""),
+  createdAt: int("created_at").default(0),
+}, table => ({
+  partnerCreatedIdx: index("affiliate_activity_partner_created_idx").on(table.partnerId, table.createdAt),
+}))
 
 export const emailCampaignsTable = mysqlTable("email_campaigns", {
   id: serial("id").primaryKey(),

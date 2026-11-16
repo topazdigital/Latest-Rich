@@ -15,6 +15,51 @@ SET foreign_key_checks = 0;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 
 -- ---------------------------------------------------------------------------
+-- AFFILIATE PARTNERS — separate login and referral attribution from members
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `affiliate_partners` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `display_name` varchar(255) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `password_version` int(11) NOT NULL DEFAULT 1,
+  `referral_code` varchar(64) NOT NULL,
+  `parent_partner_id` int(11) NOT NULL DEFAULT 0,
+  `active` int(11) NOT NULL DEFAULT 1,
+  `created_by` int(11) NOT NULL DEFAULT 0,
+  `created_at` int(11) NOT NULL DEFAULT 0,
+  `last_login` int(11) NOT NULL DEFAULT 0,
+  `last_activity` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `affiliate_partners_username_uq` (`username`),
+  UNIQUE KEY `affiliate_partners_referral_code_uq` (`referral_code`),
+  KEY `affiliate_partners_parent_idx` (`parent_partner_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_referrals` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `partner_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `created_at` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `affiliate_referrals_user_uq` (`user_id`),
+  KEY `affiliate_referrals_partner_idx` (`partner_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `affiliate_activity` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `partner_id` int(11) NOT NULL,
+  `event_type` varchar(32) NOT NULL,
+  `detail` text NOT NULL,
+  `created_at` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `affiliate_activity_partner_created_idx` (`partner_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `affiliate_partners`
+  ADD COLUMN IF NOT EXISTS `password_version` int(11) NOT NULL DEFAULT 1;
+
+-- ---------------------------------------------------------------------------
 -- 1. USERS — role bump
 --    Old site: admin=1 means full admin.
 --    New app:  admin=2 = admin, admin=1 = moderator.

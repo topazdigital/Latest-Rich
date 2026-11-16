@@ -4,6 +4,7 @@ import { usersTable, userExtendedTable, activityTable, siteConfigTable } from "@
 import { eq, sql } from "drizzle-orm"
 import { signToken } from "../lib/jwt"
 import { ACCOUNT_SUSPENDED_CODE, ACCOUNT_SUSPENDED_ERROR, requireAuth } from "../lib/auth-middleware"
+import { getAffiliateReferralCode, recordAffiliateSignup } from "../lib/affiliate-service"
 
 const router = Router()
 function now() { return Math.floor(Date.now() / 1000) }
@@ -99,6 +100,12 @@ router.post("/google", async (req, res) => {
       user = newUser
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Google registration", message: `${name} joined via Google`, time: now() }).catch(() => {})
+      const partnerReferralCode = getAffiliateReferralCode(req.headers.cookie || "")
+      if (partnerReferralCode) {
+        try { await recordAffiliateSignup(user.id, partnerReferralCode) }
+        catch (trackingError) { console.error("[affiliate] Could not attribute Google registration", trackingError) }
+        res.clearCookie("rdn_partner_referral", { path: "/" })
+      }
     } else {
       if (user.banned === 1) {
         res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })
@@ -168,6 +175,12 @@ router.post("/facebook", async (req, res) => {
       user = newUser
       await db.insert(userExtendedTable).values({ userId: user.id }).catch(() => {})
       await db.insert(activityTable).values({ type: "register", userId: user.id, title: "Facebook registration", message: `${profile.name} joined via Facebook`, time: now() }).catch(() => {})
+      const partnerReferralCode = getAffiliateReferralCode(req.headers.cookie || "")
+      if (partnerReferralCode) {
+        try { await recordAffiliateSignup(user.id, partnerReferralCode) }
+        catch (trackingError) { console.error("[affiliate] Could not attribute Facebook registration", trackingError) }
+        res.clearCookie("rdn_partner_referral", { path: "/" })
+      }
     } else {
       if (user.banned === 1) {
         res.status(403).json({ error: ACCOUNT_SUSPENDED_ERROR, code: ACCOUNT_SUSPENDED_CODE })

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, real, boolean, uniqueIndex } from "drizzle-orm/pg-core"
+import { pgTable, serial, text, integer, real, boolean, index, uniqueIndex } from "drizzle-orm/pg-core"
 import { createInsertSchema } from "drizzle-zod"
 import { z } from "zod/v4"
 
@@ -347,6 +347,38 @@ export const referralsTable = pgTable("referrals", {
   reward: text("reward").default(""),
   created: integer("created").default(0),
 })
+
+export const affiliatePartnersTable = pgTable("affiliate_partners", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  passwordVersion: integer("password_version").notNull().default(1),
+  referralCode: text("referral_code").notNull().unique(),
+  parentPartnerId: integer("parent_partner_id").default(0),
+  active: integer("active").notNull().default(1),
+  createdBy: integer("created_by").default(0),
+  createdAt: integer("created_at").default(0),
+  lastLogin: integer("last_login").default(0),
+  lastActivity: integer("last_activity").default(0),
+})
+
+export const affiliateReferralsTable = pgTable("affiliate_referrals", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").notNull(),
+  userId: integer("user_id").notNull().unique(),
+  createdAt: integer("created_at").default(0),
+})
+
+export const affiliateActivityTable = pgTable("affiliate_activity", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").notNull(),
+  eventType: text("event_type").notNull(),
+  detail: text("detail").default(""),
+  createdAt: integer("created_at").default(0),
+}, table => ({
+  partnerCreatedIdx: index("affiliate_activity_partner_created_idx").on(table.partnerId, table.createdAt),
+}))
 
 export const emailCampaignsTable = pgTable("email_campaigns", {
   id: serial("id").primaryKey(),

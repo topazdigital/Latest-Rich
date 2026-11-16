@@ -6,5 +6,6 @@
 - [Artifact preview ports](artifact-preview-ports.md) — generated artifact workflows may serve on an internal port different from the configured 5000 preview port
 - [Workflow config preservation](workflow-config-preservation.md) — preserve the full .replit when validating workflow changes; metadata updates can remove existing settings
 - [Imported workspace dependencies](imported-workspace-deps.md) — scoped installs can bootstrap runtime packages when a full frozen install hits the package firewall on unused codegen tools
+- [Partner account model](partner-account-model.md) — partners get admin-issued usernames/passwords without email; dating-member registration remains separate
 - [Premium entitlement recovery](premium-entitlements.md) — resolve active paid tier access from completed order history when the user row lacks a reliable priority
 - [Discover feed fallback](discover-feed-fallback.md) — preserve a suggestions fallback for unfiltered discovery and keep gender and age constraints

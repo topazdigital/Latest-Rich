@@ -15,6 +15,7 @@ import {
 } from "../lib/auth-middleware"
 import { containsContactInfo } from "../lib/contact-filter"
 import { withEffectivePremiumPriority } from "../lib/premium-entitlements"
+import { getAffiliateReferralCode, recordAffiliateSignup } from "../lib/affiliate-service"
 import crypto from "crypto"
 
 const router = Router()
@@ -180,6 +181,15 @@ router.post("/register", async (req, res) => {
       message: `${user.name} joined from ${country || "unknown"}`,
       time: now()
     })
+    const partnerReferralCode = getAffiliateReferralCode(req.headers.cookie || "")
+    if (partnerReferralCode) {
+      try {
+        await recordAffiliateSignup(user.id, partnerReferralCode)
+      } catch (trackingError) {
+        console.error("[affiliate] Could not attribute registration", trackingError)
+      }
+      res.clearCookie("rdn_partner_referral", { path: "/" })
+    }
 
     const requireEmailVerification = await getConfig("require_email_verification")
     if (requireEmailVerification === "1") {

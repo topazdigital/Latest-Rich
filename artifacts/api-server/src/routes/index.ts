@@ -25,6 +25,8 @@ import moderatorRouter from "./moderator"
 import customPaymentsRouter from "./custom-payments"
 import verificationRouter from "./verification"
 import referralsRouter from "./referrals"
+import affiliateRouter from "./affiliate"
+import adminPartnersRouter from "./admin-partners"
 import emailCampaignsRouter from "./email-campaigns"
 import contactRouter from "./contact"
 import contactMessagesRouter from "./contact-messages"
@@ -49,6 +51,7 @@ router.use("/credits", creditsRouter)
 router.use("/payments", paymentsRouter)
 router.use("/stories", storiesRouter)
 router.use("/uploads", uploadsRouter)
+router.use("/admin/partners", adminPartnersRouter)
 router.use("/admin", adminRouter)
 router.use("/legal-pages", legalPagesRouter)
 router.use("/gifts", giftsRouter)
@@ -61,6 +64,7 @@ router.use("/moderator", moderatorRouter)
 router.use("/custom-payments", customPaymentsRouter)
 router.use("/verification", verificationRouter)
 router.use("/referrals", referralsRouter)
+router.use("/partner", affiliateRouter)
 router.use("/push", pushRouter)
 router.use("/engagement", engagementRouter)
 router.use("/chatmodz", chatmodzRouter)

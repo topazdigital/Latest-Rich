@@ -40,6 +40,9 @@ const VisitorsPage = lazy(() => import("./pages/VisitorsPage"))
 const LikesPage = lazy(() => import("./pages/LikesPage"))
 const BoostPage = lazy(() => import("./pages/BoostPage"))
 const ReferralsPage = lazy(() => import("./pages/ReferralsPage"))
+const PartnerDashboardPage = lazy(() => import("./pages/PartnerDashboardPage"))
+const PartnerLoginPage = lazy(() => import("./pages/PartnerLoginPage"))
+const PartnerReferralLandingPage = lazy(() => import("./pages/PartnerReferralLandingPage"))
 const MembersPage = lazy(() => import("./pages/MembersPage"))
 const EventsPage = lazy(() => import("./pages/EventsPage"))
 import { getSeoLandingPage } from "./data/seoLandingPages"
@@ -53,6 +56,7 @@ import PaidVideoCallModal from "./components/common/PaidVideoCallModal"
 import CookieConsent from "./components/common/CookieConsent"
 import NotFound from "./pages/not-found"
 import { getStoredAuth, authFetch } from "./lib/auth"
+import { getStoredPartnerAuth } from "./lib/affiliate-auth"
 import { useWebSocket, useWSEvent } from "./hooks/useWebSocket"
 
 const PROTECTED_PREFIXES = ["/home", "/discover", "/meet", "/chat", "/profile", "/@", "/notifications", "/settings", "/premium", "/credits", "/gifts", "/visitors", "/likes", "/boost", "/referrals", "/events"]
@@ -73,6 +77,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
   const search = useSearch()
   const { user, loading } = useAuth()
+  const hasPartnerSession = !!getStoredPartnerAuth()?.token
   usePushNotifications(user?.id)
 
   useEffect(() => {
@@ -84,17 +89,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     // Allow logged-in users to stay on /register?social=1 for profile completion
     const isSocialCompletion = location === "/register" && search.includes("social=1")
     // Profile pages (/profile/:id and /@username) are public — Google can crawl them without auth
-    if (!user && (isAuthRequired || isAdmin || isModerator)) setLocation("/login")
-    else if (user && (location === "/" || location === "/login" || location === "/register") && !isSocialCompletion) setLocation("/discover")
-    else if (user && (user.admin ?? 0) === 1 && !isModerator) setLocation("/moderator")
-    else if (user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
-    else if (user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
+    if (hasPartnerSession && location !== "/referrals") setLocation("/referrals")
+    else if (!hasPartnerSession && !user && (isAuthRequired || isAdmin || isModerator)) setLocation("/login")
+    else if (!hasPartnerSession && user && (location === "/" || location === "/login" || location === "/register") && !isSocialCompletion) setLocation("/discover")
+    else if (!hasPartnerSession && user && (user.admin ?? 0) === 1 && !isModerator) setLocation("/moderator")
+    else if (!hasPartnerSession && user && isAdmin && (user.admin ?? 0) < 2) setLocation("/discover")
+    else if (!hasPartnerSession && user && isModerator && (user.admin ?? 0) < 1) setLocation("/discover")
     // If a logged-in user has no age set (birthday never filled — incomplete social profile),
     // send them to the profile completion form instead of letting them browse
-    else if (user && isProtected && (user.age === 0 || !user.age) && !user.fake && (user.admin ?? 0) === 0) {
+    else if (!hasPartnerSession && user && isProtected && (user.age === 0 || !user.age) && !user.fake && (user.admin ?? 0) === 0) {
       setLocation("/register?social=1")
     }
-  }, [user, loading, location, search])
+  }, [user, loading, location, search, hasPartnerSession])
 
   if (loading) {
     return (
@@ -109,6 +115,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+  if (hasPartnerSession && location !== "/referrals") return null
 
   return <>{children}</>
 }
@@ -546,7 +553,13 @@ function Router() {
           <Route path="/visitors" component={VisitorsPage} />
           <Route path="/likes" component={LikesPage} />
           <Route path="/boost" component={BoostPage} />
-          <Route path="/referrals" component={ReferralsPage} />
+          <Route path="/referrals">
+            {() => getStoredPartnerAuth()?.token ? <PartnerDashboardPage /> : <ReferralsPage />}
+          </Route>
+          <Route path="/partner/login" component={PartnerLoginPage} />
+          <Route path="/partner/:code">
+            {(params: { code: string }) => <PartnerReferralLandingPage params={params} />}
+          </Route>
           <Route path="/ref/:code" component={ReferralsPage} />
           <Route path="/events" component={EventsPage} />
           <Route path="/events/:id">

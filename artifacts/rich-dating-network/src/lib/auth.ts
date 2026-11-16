@@ -40,6 +40,7 @@ export function getStoredAuth(): AuthState {
 }
 
 export function setStoredAuth(state: AuthState) {
+  localStorage.removeItem('rdn_partner_auth')
   localStorage.setItem('rdn_auth', JSON.stringify(state))
 }
 

@@ -22,6 +22,7 @@ import AdminFeedback from "../components/admin/AdminFeedback"
 import AdminModeratorPayroll from "../components/admin/AdminModeratorPayroll"
 import AdminLegalPages from "../components/admin/AdminLegalPages"
 import AdminEvents from "../components/admin/AdminEvents"
+import AdminPartners from "../components/admin/AdminPartners"
 
 type MenuItem = { key: string; label: string; icon: string }
 type MenuGroup = { group: string; icon: string; items: MenuItem[] }
@@ -66,6 +67,7 @@ const MENU: MenuEntry[] = [
   {
     group: "Marketing", icon: "📧",
     items: [
+      { key: "partners", label: "Affiliate Partners", icon: "↗" },
       { key: "events", label: "Events", icon: "📅" },
       { key: "email-campaigns", label: "Email Campaigns", icon: "📧" },
     ],
@@ -357,6 +359,7 @@ export default function AdminPage() {
           {tab === "custom-payments" && <AdminCustomPayments />}
           {tab === "email-campaigns" && <AdminEmailCampaigns />}
           {tab === "events" && <AdminEvents />}
+          {tab === "partners" && <AdminPartners />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "moderator-payroll" && <AdminModeratorPayroll />}

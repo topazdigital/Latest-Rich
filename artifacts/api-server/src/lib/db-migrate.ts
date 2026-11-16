@@ -7,6 +7,21 @@
 import { pool, isMysql } from "@workspace/db"
 
 export async function runMigrations() {
+  // Partner tables are independent of the legacy member schema. Create them
+  // before the older migrations so partner link handling can initialize even
+  // when an empty Replit development database has no imported member tables.
+  if (!isMysql) {
+    try {
+      for (const statement of [
+        "CREATE TABLE IF NOT EXISTS affiliate_partners (id serial PRIMARY KEY, username text NOT NULL UNIQUE, display_name text NOT NULL, password_hash text NOT NULL, password_version integer NOT NULL DEFAULT 1, referral_code text NOT NULL UNIQUE, parent_partner_id integer NOT NULL DEFAULT 0, active integer NOT NULL DEFAULT 1, created_by integer NOT NULL DEFAULT 0, created_at integer NOT NULL DEFAULT 0, last_login integer NOT NULL DEFAULT 0, last_activity integer NOT NULL DEFAULT 0)",
+        "CREATE TABLE IF NOT EXISTS affiliate_referrals (id serial PRIMARY KEY, partner_id integer NOT NULL, user_id integer NOT NULL UNIQUE, created_at integer NOT NULL DEFAULT 0)",
+        "CREATE TABLE IF NOT EXISTS affiliate_activity (id serial PRIMARY KEY, partner_id integer NOT NULL, event_type text NOT NULL, detail text NOT NULL DEFAULT '', created_at integer NOT NULL DEFAULT 0)",
+        "CREATE INDEX IF NOT EXISTS affiliate_activity_partner_created_idx ON affiliate_activity (partner_id, created_at)",
+      ]) await pool.query(statement)
+    } catch (error) {
+      console.warn("[db-migrate] Affiliate schema setup skipped:", (error as any)?.message)
+    }
+  }
   try {
     if (isMysql) {
       // MySQL: catch the duplicate column error (code ER_DUP_FIELDNAME)
