@@ -62,7 +62,7 @@ function MemberCard({ member }: { member: any }) {
 
 function buildSeoTitle(gender: string, country: string, city: string): string {
   if (!gender && !country && !city) {
-    return 'Browse Dating Profiles in Kenya & Worldwide | Rich Dating Network'
+    return 'Browse Dating Profiles Worldwide | Rich Dating Network'
   }
   const who = gender === 'male' ? 'Wealthy Men' : gender === 'female' ? 'Affluent Women' : 'Wealthy Singles'
   const where = city || country
@@ -319,7 +319,7 @@ export default function MembersPage() {
         </div>
 
         <div className="mt-10 max-w-3xl mx-auto text-center text-sm text-gray-600 leading-relaxed">
-          <h2 className="font-semibold text-gray-800 mb-2">Browse profiles in Kenya and worldwide</h2>
+          <h2 className="font-semibold text-gray-800 mb-2">Browse profiles around the world</h2>
           <p>
             Use the location and preference filters to narrow your search. Registration is free; optional paid features
             and their terms are shown before purchase. A verification badge reflects completion of the platform’s

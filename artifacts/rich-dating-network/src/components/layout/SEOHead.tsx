@@ -151,7 +151,7 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   if (path === '/credits') return `Credits & Payments | Rich Dating Network`
   if (path === '/boost') return `Boost Your Profile | Rich Dating Network`
   if (path === '/home') return `Your Matches${loc ? ` in ${loc}` : ''} | Rich Dating Network`
-  if (path === '/members') return `Browse Dating Profiles in Kenya & Worldwide | Rich Dating Network`
+  if (path === '/members') return `Browse Dating Profiles Worldwide | Rich Dating Network`
   if (path === '/locations') return `Find Wealthy Singles Near You | Rich Dating Network`
   if (path === '/settings') return `Settings | Rich Dating Network`
   if (path === '/referrals') return `Referrals | Rich Dating Network`
@@ -167,7 +167,7 @@ function buildDescription(path: string, countryCode: string, city: string): stri
     return 'Meet singles in Kenya and worldwide. Create a free profile, browse by location, and choose the relationship goals that matter to you.'
   }
   if (path === '/members') {
-    return 'Browse public member profiles by location and preferences. Registration is free, profile verification is optional, and international discovery remains available.'
+    return 'Browse dating profiles worldwide by location and preferences. Create a free profile, explore members, and choose who to contact. Verification is optional.'
   }
   const seoData = COUNTRY_SEO[countryCode] || COUNTRY_SEO.DEFAULT
   if (city) {

@@ -47,9 +47,9 @@ const SITE_URL = "https://richdatingnetwork.com"
 const HOME_TITLE = "Rich Dating Network | Meet Wealthy Singles in Kenya & Worldwide"
 const HOME_DESCRIPTION =
   "Meet singles in Kenya and worldwide. Create a free profile, browse by location, and choose the relationship goals that matter to you."
-const MEMBERS_TITLE = "Browse Dating Profiles in Kenya & Worldwide | Rich Dating Network"
+const MEMBERS_TITLE = "Browse Dating Profiles Worldwide | Rich Dating Network"
 const MEMBERS_DESCRIPTION =
-  "Browse public member profiles by location and preferences. Registration is free, profile verification is optional, and international discovery remains available."
+  "Browse dating profiles worldwide by location and preferences. Create a free profile, explore members, and choose who to contact. Verification is optional."
 
 function slugify(value: string): string {
   return value.toLowerCase().replace(/['']/g, "").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
@@ -205,9 +205,9 @@ function makeHomeContent(): string {
 
 function makeMembersContent(): string {
   return `<main style="max-width:960px;margin:0 auto;padding:40px 24px;color:#1f2937;font-family:Arial,Helvetica,sans-serif;line-height:1.65">
-  <h1 style="font-size:2rem;line-height:1.2">Browse dating profiles in Kenya and worldwide</h1>
-  <p>Explore public member profiles by location and preferences. Review the information each person shares and decide whom to contact. Profile verification is optional and does not independently confirm wealth or intentions.</p>
-  <p><a href="/register">Create a free profile</a> · <a href="/rich-men-nairobi">Explore men’s profiles in Nairobi</a> · <a href="/locations">Browse locations worldwide</a></p>
+  <h1 style="font-size:2rem;line-height:1.2">Browse dating profiles worldwide</h1>
+  <p>Explore public member profiles from around the world by location and preferences. Review the information each person shares and decide whom to contact. Profile verification is optional and does not independently confirm wealth or intentions.</p>
+  <p><a href="/register">Create a free profile</a> · <a href="/locations">Browse locations worldwide</a></p>
 </main>`
 }
 
