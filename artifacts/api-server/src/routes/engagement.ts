@@ -1,12 +1,19 @@
 import { Router } from "express"
 import { db, engagementDailyTable, engagementEventsTable, engagementFeedbackTable, engagementReactionsTable, eventAttendeesTable, likesTable, messagesTable, notificationsTable, ordersTable, siteConfigTable, userExtendedTable, usersTable } from "@workspace/db"
-import { and, desc, eq, gte, lt, or, sql } from "drizzle-orm"
+import { and, desc, eq, gt, gte, lt, or, sql } from "drizzle-orm"
 import { optionalAuth, requireAuth } from "../lib/auth-middleware"
 import { hasCompletedStarterOrder } from "../lib/starter-trial"
 
 const router = Router()
 const now = () => Math.floor(Date.now() / 1000)
 const dayKey = () => new Date().toISOString().slice(0, 10)
+const visibleEventsWhere = (timestamp = now()) => and(
+  eq(engagementEventsTable.active, 1),
+  or(
+    gte(engagementEventsTable.startsAt, timestamp),
+    gt(engagementEventsTable.endTime, timestamp),
+  ),
+)
 const PROMPTS = [
   "What's one thing you could talk about for hours?",
   "How did you find your first match?",
@@ -267,7 +274,7 @@ router.post("/feedback", requireAuth, async (req, res) => {
 router.get("/events", requireAuth, async (req, res) => {
   try {
     const events = await db.select().from(engagementEventsTable)
-      .where(eq(engagementEventsTable.active, 1))
+      .where(visibleEventsWhere())
       .orderBy(engagementEventsTable.startsAt)
       .limit(20)
     return res.json(await Promise.all(events.map((event: any) => eventView(event, req.userId!))))
@@ -276,10 +283,22 @@ router.get("/events", requireAuth, async (req, res) => {
   }
 })
 
+router.get("/events/availability", requireAuth, async (_req, res) => {
+  try {
+    const [event] = await db.select({ id: engagementEventsTable.id })
+      .from(engagementEventsTable)
+      .where(visibleEventsWhere())
+      .limit(1)
+    return res.json({ hasUpcomingEvents: Boolean(event) })
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to check event availability" })
+  }
+})
+
 router.get("/events/:id", requireAuth, async (req, res) => {
   try {
     const [event] = await db.select().from(engagementEventsTable)
-      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), eq(engagementEventsTable.active, 1))).limit(1)
+      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), visibleEventsWhere())).limit(1)
     if (!event) return res.status(404).json({ error: "Event not found" })
     return res.json(await eventView(event, req.userId!))
   } catch (err: any) {
@@ -305,7 +324,7 @@ router.get("/my-events", requireAuth, async (req, res) => {
 router.post("/events/:id/attend", requireAuth, async (req, res) => {
   try {
     const [event] = await db.select().from(engagementEventsTable)
-      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), eq(engagementEventsTable.active, 1))).limit(1)
+      .where(and(eq(engagementEventsTable.id, Number(req.params.id)), visibleEventsWhere())).limit(1)
     if (!event) return res.status(404).json({ error: "Event not found" })
     if (Number(event.ticketPrice || 0) > 0) return res.status(402).json({ error: "Payment is required for this event", requiresPayment: true })
     const existing = await db.select().from(eventAttendeesTable)
@@ -337,7 +356,7 @@ router.delete("/events/:id/attend", requireAuth, async (req, res) => {
 })
 
 router.get("/offers", optionalAuth, async (req, res) => {
-  const events = await db.select().from(engagementEventsTable).where(eq(engagementEventsTable.active, 1)).orderBy(engagementEventsTable.startsAt).limit(20).catch(() => [])
+  const events = await db.select().from(engagementEventsTable).where(visibleEventsWhere()).orderBy(engagementEventsTable.startsAt).limit(20).catch(() => [])
   const starterUsed = req.userId ? await hasCompletedStarterOrder(req.userId) : false
   return res.json({
     starter: starterUsed ? null : { id: "starter", title: "Try the network", description: "3 chat credits for $1", price: 1, credits: 3 },
@@ -391,22 +410,86 @@ router.patch("/admin/feedback/:id", requireAuth, requireAdmin, async (req, res) 
   return res.json({ success: true })
 })
 
+router.get("/admin/events", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const events = await db.select().from(engagementEventsTable)
+      .orderBy(desc(engagementEventsTable.startsAt))
+      .limit(100)
+    return res.json(events)
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to load events" })
+  }
+})
+
+router.patch("/admin/events/:id", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id)
+  const active = Number(req.body?.active)
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "Invalid event ID" })
+  if (active !== 0 && active !== 1) return res.status(400).json({ error: "Active must be 0 or 1" })
+  try {
+    await db.update(engagementEventsTable).set({ active }).where(eq(engagementEventsTable.id, id))
+    return res.json({ success: true })
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to update event" })
+  }
+})
+
 router.post("/admin/events", requireAuth, requireAdmin, async (req, res) => {
-  const title = String(req.body?.title || "").trim()
+  const title = String(req.body?.title || "").trim().slice(0, 255)
+  const description = String(req.body?.description || "").trim().slice(0, 5000)
+  const image = String(req.body?.image || "").trim().slice(0, 2000)
+  const location = String(req.body?.location || "").trim().slice(0, 255)
+  const timezone = String(req.body?.timezone || "Africa/Nairobi").trim().slice(0, 80)
+  const startsAt = Number(req.body?.startsAt)
+  const endTime = Number(req.body?.endTime)
+  const registrationDeadline = Number(req.body?.registrationDeadline || 0)
+  const ticketPrice = Number(req.body?.ticketPrice ?? 200)
+  const capacity = Number(req.body?.capacity ?? 0)
+
   if (!title) return res.status(400).json({ error: "Title is required" })
-  await db.insert(engagementEventsTable).values({
-    title,
-    description: String(req.body?.description || ""),
-    ticketPrice: Number(req.body?.ticketPrice || 200),
-    startsAt: Number(req.body?.startsAt || 0),
-    endTime: Number(req.body?.endTime || 0),
-    location: String(req.body?.location || ""),
-    timezone: String(req.body?.timezone || "Africa/Nairobi"),
-    registrationDeadline: Number(req.body?.registrationDeadline || 0),
-    capacity: Number(req.body?.capacity || 0),
-    active: 1,
-  } as any)
-  return res.json({ success: true })
+  if (!location) return res.status(400).json({ error: "Location is required" })
+  if (!Number.isInteger(startsAt) || startsAt <= now()) return res.status(400).json({ error: "Choose a future start date and time" })
+  if (!Number.isInteger(endTime) || endTime <= startsAt) return res.status(400).json({ error: "End time must be after the start time" })
+  if (!Number.isFinite(ticketPrice) || ticketPrice < 1) return res.status(400).json({ error: "Ticket price must be at least 1" })
+  if (!Number.isInteger(capacity) || capacity < 0) return res.status(400).json({ error: "Capacity must be zero or a positive whole number" })
+  if (!Number.isInteger(registrationDeadline) || registrationDeadline < 0) {
+    return res.status(400).json({ error: "Registration deadline must be a valid date and time" })
+  }
+  if (registrationDeadline > 0 && (registrationDeadline <= now() || registrationDeadline > startsAt)) {
+    return res.status(400).json({ error: "Registration deadline must be in the future and no later than the event start" })
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone })
+  } catch {
+    return res.status(400).json({ error: "Choose a valid time zone" })
+  }
+  if (image) {
+    try {
+      const parsedImage = new URL(image)
+      if (parsedImage.protocol !== "https:" && parsedImage.protocol !== "http:") throw new Error()
+    } catch {
+      return res.status(400).json({ error: "Image must be a valid HTTP or HTTPS URL" })
+    }
+  }
+
+  try {
+    await db.insert(engagementEventsTable).values({
+      title,
+      description,
+      image,
+      ticketPrice,
+      startsAt,
+      endTime,
+      location,
+      timezone,
+      registrationDeadline,
+      capacity,
+      active: 1,
+    } as any)
+    return res.status(201).json({ success: true })
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Unable to create event" })
+  }
 })
 
 export default router

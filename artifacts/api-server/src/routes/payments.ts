@@ -1,7 +1,7 @@
 import { Router, Response } from "express"
 import { db, engagementEventsTable, eventAttendeesTable } from "@workspace/db"
 import { usersTable, ordersTable, siteConfigTable } from "@workspace/db/schema"
-import { eq, and } from "drizzle-orm"
+import { eq, and, gt, gte, or } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
 import { activatePremiumEntitlement } from "../lib/premium-entitlements"
@@ -51,8 +51,16 @@ async function getEventPayment(eventId: number, userId: number): Promise<
   | { event: any }
   | { error: string; status: number }
 > {
+  const currentTime = now()
   const [event] = await db.select().from(engagementEventsTable)
-    .where(and(eq(engagementEventsTable.id, eventId), eq(engagementEventsTable.active, 1)))
+    .where(and(
+      eq(engagementEventsTable.id, eventId),
+      eq(engagementEventsTable.active, 1),
+      or(
+        gte(engagementEventsTable.startsAt, currentTime),
+        gt(engagementEventsTable.endTime, currentTime),
+      ),
+    ))
     .limit(1)
   if (!event) return { error: "Event not found", status: 404 }
 

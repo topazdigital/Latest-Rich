@@ -4,6 +4,7 @@ import { getPhotoUrl, isOnline } from '../../lib/utils'
 import { useNotifications } from '../../hooks/useNotifications'
 import { useAuth } from '../../hooks/useAuth'
 import { isActivePremium } from '../../lib/contact-info'
+import { authFetch } from '../../lib/auth'
 import NotificationDropdown from './NotificationDropdown'
 import { useEffect, useState, useRef } from 'react'
 
@@ -12,6 +13,7 @@ export default function MainNav() {
   const { user, logout } = useAuth()
   const { chatUnread } = useNotifications()
   const [feedEnabled, setFeedEnabled] = useState(false)
+  const [hasUpcomingEvents, setHasUpcomingEvents] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
 
@@ -31,11 +33,40 @@ export default function MainNav() {
     }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    const refreshEventAvailability = async () => {
+      try {
+        const response = await authFetch('/api/engagement/events/availability')
+        if (!response.ok) throw new Error('Event availability request failed')
+        const result = await response.json()
+        if (!cancelled) setHasUpcomingEvents(result?.hasUpcomingEvents === true)
+      } catch (error) {
+        if (!cancelled) setHasUpcomingEvents(false)
+        console.warn('Could not check event availability', error)
+      }
+    }
+
+    if (!user?.id) {
+      setHasUpcomingEvents(false)
+      return
+    }
+
+    void refreshEventAvailability()
+    const interval = setInterval(refreshEventAvailability, 60_000)
+    window.addEventListener('focus', refreshEventAvailability)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      window.removeEventListener('focus', refreshEventAvailability)
+    }
+  }, [user?.id])
+
   const navItems = [
     ...(feedEnabled ? [{ href: '/home', icon: Heart, label: 'Feed' }] : []),
     { href: '/discover', icon: Search, label: 'Discover' },
     { href: '/meet', icon: Flame, label: 'Meet' },
-    { href: '/events', icon: CalendarDays, label: 'Events' },
+    ...(hasUpcomingEvents ? [{ href: '/events', icon: CalendarDays, label: 'Events' }] : []),
     { href: '/likes', icon: Heart, label: 'Likes' },
     { href: '/chat', icon: MessageCircle, label: 'Chat' },
   ]
@@ -43,7 +74,7 @@ export default function MainNav() {
   const mobileItems = [
     { href: '/discover', icon: Search, label: 'Discover' },
     { href: '/meet', icon: Flame, label: 'Meet' },
-    { href: '/events', icon: CalendarDays, label: 'Events' },
+    { href: '/visitors', icon: Eye, label: 'Visitors' },
     { href: '/likes', icon: Heart, label: 'Likes' },
     { href: '/chat', icon: MessageCircle, label: 'Chat', badge: chatUnread },
   ]

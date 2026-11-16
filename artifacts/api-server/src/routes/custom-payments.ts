@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { db, isMysql } from "@workspace/db"
 import { customPaymentsTable, customPaymentOrdersTable, engagementEventsTable, eventAttendeesTable, usersTable, siteConfigTable } from "@workspace/db/schema"
-import { eq, desc, and, sql } from "drizzle-orm"
+import { eq, desc, and, gt, gte, or, sql } from "drizzle-orm"
 import { requireAuth } from "../lib/auth-middleware"
 import { getPremiumPackage, getPremiumPackages } from "../lib/premium-packages"
 import { activatePremiumEntitlement } from "../lib/premium-entitlements"
@@ -105,8 +105,16 @@ router.post("/submit", requireAuth, async (req, res) => {
       if (!pp) { res.status(400).json({ error: "Invalid package" }); return }
       pkg = pp; premiumDays = pp.days
     } else if (type === "event") {
+      const currentTime = now()
       const [event] = await db.select().from(engagementEventsTable)
-        .where(and(eq(engagementEventsTable.id, parseInt(packageId)), eq(engagementEventsTable.active, 1)))
+        .where(and(
+          eq(engagementEventsTable.id, parseInt(packageId)),
+          eq(engagementEventsTable.active, 1),
+          or(
+            gte(engagementEventsTable.startsAt, currentTime),
+            gt(engagementEventsTable.endTime, currentTime),
+          ),
+        ))
         .limit(1)
       if (!event) { res.status(400).json({ error: "Invalid event" }); return }
       const [existing] = await db.select().from(eventAttendeesTable)

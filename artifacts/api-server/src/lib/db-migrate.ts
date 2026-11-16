@@ -79,9 +79,7 @@ export async function runMigrations() {
       await pool.execute("ALTER TABLE event_attendees ADD KEY event_attendees_event_status_idx (event_id, status)").catch((e: any) => {
         if (e?.code !== "ER_DUP_KEYNAME") throw e
       })
-      await pool.execute("INSERT INTO engagement_events (title, description, ticket_price, active, starts_at, end_time, location, timezone, registration_deadline, capacity) SELECT 'Nairobi Elite Rooftop Mixer', 'An intimate evening for verified members to meet, dine, and make meaningful connections.', 200.00, 1, UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)), UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 30 DAY)) + 10800, 'Nairobi, Kenya', 'Africa/Nairobi', UNIX_TIMESTAMP(DATE_ADD(NOW(), INTERVAL 29 DAY)), 80 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM engagement_events WHERE title = 'Nairobi Elite Rooftop Mixer')")
     } else {
-      await pool.query("INSERT INTO engagement_events (title, description, ticket_price, active, starts_at, end_time, location, timezone, registration_deadline, capacity) SELECT 'Nairobi Elite Rooftop Mixer', 'An intimate evening for verified members to meet, dine, and make meaningful connections.', 200.00, 1, EXTRACT(EPOCH FROM (NOW() + INTERVAL '30 days'))::int, EXTRACT(EPOCH FROM (NOW() + INTERVAL '30 days'))::int + 10800, 'Nairobi, Kenya', 'Africa/Nairobi', EXTRACT(EPOCH FROM (NOW() + INTERVAL '29 days'))::int, 80 WHERE NOT EXISTS (SELECT 1 FROM engagement_events WHERE title = 'Nairobi Elite Rooftop Mixer')")
     }
   } catch (err) {
     // Non-fatal: log but don't crash startup

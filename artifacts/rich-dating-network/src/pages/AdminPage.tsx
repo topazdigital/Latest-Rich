@@ -21,6 +21,7 @@ import AdminContactMessages from "../components/admin/AdminContactMessages"
 import AdminFeedback from "../components/admin/AdminFeedback"
 import AdminModeratorPayroll from "../components/admin/AdminModeratorPayroll"
 import AdminLegalPages from "../components/admin/AdminLegalPages"
+import AdminEvents from "../components/admin/AdminEvents"
 
 type MenuItem = { key: string; label: string; icon: string }
 type MenuGroup = { group: string; icon: string; items: MenuItem[] }
@@ -65,6 +66,7 @@ const MENU: MenuEntry[] = [
   {
     group: "Marketing", icon: "📧",
     items: [
+      { key: "events", label: "Events", icon: "📅" },
       { key: "email-campaigns", label: "Email Campaigns", icon: "📧" },
     ],
   },
@@ -354,6 +356,7 @@ export default function AdminPage() {
           {tab === "payments" && <AdminPayments />}
           {tab === "custom-payments" && <AdminCustomPayments />}
           {tab === "email-campaigns" && <AdminEmailCampaigns />}
+          {tab === "events" && <AdminEvents />}
           {tab === "activity" && <AdminActivity />}
           {tab === "orders" && <AdminOrders />}
           {tab === "moderator-payroll" && <AdminModeratorPayroll />}
