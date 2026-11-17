@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { useLocation } from "wouter"
-import { Activity, ArrowDownRight, ArrowUpRight, BadgeCheck, Check, Clipboard, ExternalLink, LogOut, MousePointer2, RefreshCw, UserRoundPlus, UsersRound } from "lucide-react"
+import { Activity, ArrowDownRight, ArrowUpRight, BadgeCheck, Check, Clipboard, ExternalLink, Heart, LogOut, MousePointer2, RefreshCw, UserRoundPlus, UsersRound } from "lucide-react"
 import { clearStoredPartnerAuth, getStoredPartnerAuth, partnerFetch } from "../lib/affiliate-auth"
 import "./partner-portal.css"
 
@@ -67,8 +67,8 @@ export default function PartnerDashboardPage() {
       <div className="pp-shell">
         <header className="pp-topbar">
           <div className="pp-brand">
-            <span className="pp-mark"><Activity size={17} /></span>
-            <span><span className="pp-brand-name">Rich Dating Network</span><span className="pp-brand-sub">Partner office</span></span>
+            <span className="pp-mark"><Heart size={17} fill="currentColor" /></span>
+            <span><strong className="pp-brand-name">Rich <em>Dating</em> Network</strong><span className="pp-brand-sub">Partner office</span></span>
           </div>
           <div className="pp-top-actions">
             <span className="pp-pill"><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4c8b6a" }} /> Partner account</span>
@@ -137,9 +137,9 @@ export default function PartnerDashboardPage() {
             </section>
             <section className="pp-card" style={{ marginTop: 18 }}>
               <div className="pp-card-head"><div><h2 className="pp-card-title">Partner network</h2><div className="pp-card-caption">Partners you’ve introduced to the network.</div></div><span className="pp-pill" data-testid="text-downline-count">{data.downline.length} partners</span></div>
-              {data.downline.length ? <div className="pp-table-wrap"><table className="pp-table" data-testid="table-partner-network"><thead><tr><th>Partner</th><th>Username</th><th>Joined</th><th>Status</th></tr></thead><tbody>{data.downline.map(item => <tr key={item.id} data-testid={`row-downline-${item.id}`}><td><span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}><span style={{ width: 28, height: 28, borderRadius: 9, display: "grid", placeItems: "center", background: "#f5e8e8", color: "#8f1d30", fontWeight: 800, fontSize: 9 }}>{initials(item.displayName)}</span><strong style={{ color: "var(--pp-ink)" }}>{item.displayName}</strong></span></td><td className="pp-mono">{item.username}</td><td>{displayDate(item.createdAt)}</td><td><span className={item.active ? "pp-status" : "pp-pill"}>{item.active ? "Active" : "Paused"}</span></td></tr>)}</tbody></table></div> : <Empty icon={<UsersRound size={19} />} title="Your network starts here" text="Introduced partners will appear here when they join your network." testId="empty-downline" /> }
+              {data.downline.length ? <div className="pp-table-wrap"><table className="pp-table" data-testid="table-partner-network"><thead><tr><th>Partner</th><th>Username</th><th>Joined</th><th>Status</th></tr></thead><tbody>{data.downline.map(item => <tr key={item.id} data-testid={`row-downline-${item.id}`}><td><span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}><span style={{ width: 28, height: 28, borderRadius: 9, display: "grid", placeItems: "center", background: "var(--pp-blush)", color: "var(--pp-red-dark)", fontWeight: 800, fontSize: 9 }}>{initials(item.displayName)}</span><strong style={{ color: "var(--pp-ink)" }}>{item.displayName}</strong></span></td><td className="pp-mono">{item.username}</td><td>{displayDate(item.createdAt)}</td><td><span className={item.active ? "pp-status" : "pp-pill"}>{item.active ? "Active" : "Paused"}</span></td></tr>)}</tbody></table></div> : <Empty icon={<UsersRound size={19} />} title="Your network starts here" text="Introduced partners will appear here when they join your network." testId="empty-downline" /> }
             </section>
-            <footer style={{ textAlign: "center", color: "#a09498", fontSize: 10, marginTop: 28 }}>Partner reporting contains no member profile information.</footer>
+            <footer style={{ textAlign: "center", color: "var(--pp-muted)", fontSize: 10, marginTop: 28 }}>Partner reporting contains no member profile information.</footer>
           </>
         ) : null}
       </div>

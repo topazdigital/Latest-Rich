@@ -9,3 +9,4 @@
 - [Partner account model](partner-account-model.md) — partners get admin-issued usernames/passwords without email; dating-member registration remains separate
 - [Premium entitlement recovery](premium-entitlements.md) — resolve active paid tier access from completed order history when the user row lacks a reliable priority
 - [Discover feed fallback](discover-feed-fallback.md) — preserve a suggestions fallback for unfiltered discovery and keep gender and age constraints
+- [Worldwide homepage SEO](worldwide-homepage-seo.md) — keep shared homepage copy and default metadata global; use separate location pages for local search

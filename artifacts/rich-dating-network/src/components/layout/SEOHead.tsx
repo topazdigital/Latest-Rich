@@ -97,7 +97,7 @@ const COUNTRY_SEO: Record<string, {
   DEFAULT: {
     siteTitle: 'Rich Dating Network',
     keywords: ['rich dating', 'wealthy singles', 'luxury dating', 'millionaire dating', 'elite dating', 'affluent singles', 'sugar daddy', 'sugar mummy', 'successful singles', 'rich men', 'wealthy women', 'premium dating site'],
-    description: 'Rich Dating Network — the exclusive luxury dating platform connecting wealthy, successful singles worldwide. Verified profiles, real connections.',
+    description: 'Rich Dating Network connects wealthy, successful singles worldwide. Create a free profile, discover members by location, and choose connections that suit you.',
     ageGroups: ['wealthy singles over 40', 'rich older men', 'affluent mature women'],
   },
 }
@@ -134,9 +134,7 @@ function buildTitle(path: string, countryCode: string, city: string): string {
   const loc = city || countryName
 
   if (path === '/') {
-    return c
-      ? `${siteTitle} | Find Rich Singles in ${loc || countryName}`
-      : 'Rich Dating Network | Meet Wealthy Singles in Kenya & Worldwide'
+    return 'Rich Dating Network | Find Rich Singles Worldwide'
   }
   if (path === '/discover') return `Discover Wealthy Singles${loc ? ` in ${loc}` : ' Worldwide'} | Rich Dating Network`
   if (path === '/meet') return `Meet Affluent Singles${loc ? ` in ${loc}` : ''} | Rich Dating Network`
@@ -164,7 +162,7 @@ function buildTitle(path: string, countryCode: string, city: string): string {
 
 function buildDescription(path: string, countryCode: string, city: string): string {
   if (path === '/') {
-    return 'Meet singles in Kenya and worldwide. Create a free profile, browse by location, and choose the relationship goals that matter to you.'
+    return 'Rich Dating Network connects wealthy, successful singles worldwide. Create a free profile, discover members by location, and choose connections that suit you.'
   }
   if (path === '/members') {
     return 'Browse dating profiles worldwide by location and preferences. Create a free profile, explore members, and choose who to contact. Verification is optional.'
@@ -218,10 +216,14 @@ export default function SEOHead() {
 
   useEffect(() => {
     const routePage = getRouteSeoPage(location)
-    const title = routePage?.title || buildTitle(location, countryCode, userCity)
+    // Keep the public homepage consistent for search crawlers. Geo-specific
+    // SEO belongs on the indexable country and city landing pages.
+    const seoCountryCode = location === "/" ? "DEFAULT" : countryCode
+    const seoCity = location === "/" ? "" : userCity
+    const title = routePage?.title || buildTitle(location, seoCountryCode, seoCity)
     document.title = title
 
-    const description = routePage?.description || buildDescription(location, countryCode, userCity)
+    const description = routePage?.description || buildDescription(location, seoCountryCode, seoCity)
     const legalSlug = location === "/terms" ? "terms" : location === "/privacy" ? "privacy" : null
     const legalNoIndex = !!legalSlug && legalIndexState?.slug === legalSlug && legalIndexState.noIndex
     const indexable = isIndexablePath(location) && !legalNoIndex
@@ -229,8 +231,8 @@ export default function SEOHead() {
     upsertMeta('description', description)
     upsertMeta('robots', indexable ? 'index, follow, max-image-preview:large' : 'noindex, nofollow')
     upsertMeta('author', 'Rich Dating Network')
-    upsertMeta('geo.region', countryCode !== 'DEFAULT' ? countryCode : '')
-    if (userCity) upsertMeta('geo.placename', userCity)
+    upsertMeta('geo.region', seoCountryCode !== 'DEFAULT' ? seoCountryCode : '')
+    upsertMeta('geo.placename', seoCity)
 
     // Open Graph
     upsertMeta('og:title', title, true)
@@ -239,7 +241,7 @@ export default function SEOHead() {
     upsertMeta('og:site_name', 'Rich Dating Network', true)
     upsertMeta('og:image', 'https://richdatingnetwork.com/opengraph.jpg', true)
     upsertMeta('og:url', `https://richdatingnetwork.com${location}`, true)
-    if (userCity) upsertMeta('og:locale', countryCode !== 'DEFAULT' ? `en_${countryCode}` : 'en_US', true)
+    upsertMeta('og:locale', seoCity && seoCountryCode !== 'DEFAULT' ? `en_${seoCountryCode}` : 'en_US', true)
 
     // Twitter Card
     upsertMeta('twitter:card', 'summary_large_image')

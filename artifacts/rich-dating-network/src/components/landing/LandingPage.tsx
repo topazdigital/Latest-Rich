@@ -15,14 +15,14 @@ const FEATURES = [
   { icon: MessageCircle, title: 'In-App Messaging', desc: 'Get to know members through the platform before deciding whether to meet.' },
   { icon: Star, title: 'Your Preferences', desc: 'Set your interests and relationship goals, then browse profiles at your own pace.' },
   { icon: Crown, title: 'Optional Premium Features', desc: 'Paid plans and credits can unlock additional features; review their terms before purchase.' },
-  { icon: Heart, title: 'Local and Global Discovery', desc: 'Search in Kenya or keep your options open to people around the world.' },
+  { icon: Heart, title: 'Worldwide Discovery', desc: 'Browse nearby profiles or explore people in cities and countries around the world.' },
 ]
 
 const HIGHLIGHTS = [
-  { n: 'Kenya', l: 'local discovery' },
-  { n: 'Worldwide', l: 'profile browsing' },
+  { n: 'Worldwide', l: 'location-based discovery' },
   { n: 'Free', l: 'registration' },
-  { n: 'M-Pesa', l: 'eligible purchases' },
+  { n: 'Optional', l: 'profile verification' },
+  { n: 'In-App', l: 'member messaging' },
 ]
 
 // Quick mini registration form embedded in hero
@@ -246,7 +246,7 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-bold text-white mb-4 leading-[1.1]">
-              Meet Wealthy Singles in Kenya and Worldwide
+              Meet Wealthy Singles Worldwide
             </h1>
 
             <p className="text-base text-white/80 max-w-lg mb-6 leading-relaxed">
@@ -256,7 +256,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/70 mb-6">
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Free registration</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Optional profile verification</span>
-              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Kenya and worldwide</span>
+              <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> Available worldwide</span>
               <span className="flex items-center gap-1.5"><Check size={14} className="text-green-300" /> In-app messaging</span>
             </div>
 
@@ -370,23 +370,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Kenya-focused guidance that also supports safer conversions */}
+      {/* Worldwide safety and discovery guidance */}
       <section className="py-10 px-4 bg-gray-50 border-y border-gray-100">
         <div className="max-w-5xl mx-auto">
           <div className="max-w-3xl">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Dating in Kenya with clear expectations</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">Explore connections around the world</h2>
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              Browse profiles in Nairobi or another location, review the details each person shares, and decide who to contact.
+              Browse profiles in the places that interest you, review the details each person shares, and decide who to contact.
               A verification badge shows that a member completed the platform’s verification step; it does not prove wealth,
               intentions, or guarantee a match.
             </p>
             <p className="text-sm text-gray-600 leading-relaxed mb-4">
-              Registration is free. M-Pesa may be available for eligible paid features in Kenya; check the amount and terms
-              before confirming a purchase. Never share your M-Pesa PIN or one-time codes, and meet in a public place if you
-              decide to meet offline.
+              Registration is free. Review the payment options, amount, and terms shown at checkout before buying optional
+              features. Never share payment PINs or one-time codes, and meet in a public place if you decide to meet offline.
             </p>
-            <Link href="/rich-men-nairobi" className="text-sm font-semibold text-brand-600 hover:underline">
-              Explore profiles of men in Nairobi
+            <Link href="/locations" className="text-sm font-semibold text-brand-600 hover:underline">
+              Explore locations
             </Link>
           </div>
         </div>
@@ -404,7 +403,7 @@ export default function LandingPage() {
                 preferences that reflect the relationship you want.
               </p>
               <p className="text-sm text-gray-500 leading-relaxed">
-                You can focus on people in Kenya or explore profiles internationally. Take time to get to know someone
+                You can focus on people near you or explore profiles around the world. Take time to get to know someone
                 and make your own decisions about whether a connection is right for you.
               </p>
             </div>
@@ -412,7 +411,7 @@ export default function LandingPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-3">Why Members Choose Us</h2>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Optional profile verification</strong> — a badge indicates completion of the platform’s verification step</span></li>
-                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>M-Pesa in Kenya</strong> — available for eligible paid purchases; payment options and terms are shown at checkout</span></li>
+                <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Clear payment options</strong> — available methods, amounts, and terms are shown at checkout</span></li>
                 <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Local and global discovery</strong> — browse by location and explore connections worldwide</span></li>
                 <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Free registration</strong> — paid plans and credits are optional</span></li>
                 <li className="flex items-start gap-2"><span className="text-brand-500 font-bold mt-0.5">✓</span> <span><strong>Review privacy controls</strong> — choose what profile information you share with other members</span></li>

@@ -248,5 +248,5 @@ export default function AdminPartners() {
 }
 
 function Credential({ label, value, testId }: { label: string; value: string; testId: string }) {
-  return <div style={{ border: "1px solid var(--pp-line)", background: "#faf5f4", borderRadius: 10, padding: "11px 13px" }} data-testid={testId}><div className="pp-eyebrow" style={{ fontSize: 8, marginBottom: 6 }}>{label}</div><div className="pp-mono" style={{ fontSize: 12, overflowWrap: "anywhere", color: "#3a3034" }}>{value}</div></div>
+  return <div style={{ border: "1px solid var(--pp-line)", background: "var(--pp-canvas)", borderRadius: 10, padding: "11px 13px" }} data-testid={testId}><div className="pp-eyebrow" style={{ fontSize: 8, marginBottom: 6 }}>{label}</div><div className="pp-mono" style={{ fontSize: 12, overflowWrap: "anywhere", color: "var(--pp-ink)" }}>{value}</div></div>
 }

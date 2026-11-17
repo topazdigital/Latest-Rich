@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react"
 import { Link } from "wouter"
-import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, Sparkles, UserRound } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Heart, KeyRound, LockKeyhole, ShieldCheck, UserRound } from "lucide-react"
 import { clearStoredPartnerAuth, getStoredPartnerAuth, setStoredPartnerAuth } from "../lib/affiliate-auth"
 import { clearStoredAuth } from "../lib/auth"
 import "./partner-portal.css"
@@ -40,8 +40,8 @@ export default function PartnerLoginPage() {
     <main className="partner-portal pp-login-page pp-partner" data-testid="page-partner-login">
       <aside className="pp-login-aside">
         <Link href="/" className="pp-brand" data-testid="link-network-home">
-          <span className="pp-mark"><Sparkles size={17} /></span>
-          <span><span className="pp-brand-name">Rich Dating Network</span><span className="pp-brand-sub">Partner office</span></span>
+          <span className="pp-mark"><Heart size={17} fill="currentColor" /></span>
+          <span><strong className="pp-brand-name">Rich <em>Dating</em> Network</strong><span className="pp-brand-sub">Partner office</span></span>
         </Link>
         <div>
           <span className="pp-login-kicker"><ShieldCheck size={13} /> Private partner access</span>
@@ -58,8 +58,8 @@ export default function PartnerLoginPage() {
       <section className="pp-login-content">
         <div className="pp-login-form">
           <div className="pp-brand" style={{ marginBottom: 42 }}>
-            <span className="pp-mark"><Sparkles size={17} /></span>
-            <span><span className="pp-brand-name">Rich Dating Network</span><span className="pp-brand-sub">Partner office</span></span>
+            <span className="pp-mark"><Heart size={17} fill="currentColor" /></span>
+            <span><strong className="pp-brand-name">Rich <em>Dating</em> Network</strong><span className="pp-brand-sub">Partner office</span></span>
           </div>
           <div className="pp-eyebrow">Partner sign in</div>
           <h2 className="pp-title">Welcome back.</h2>
@@ -93,7 +93,7 @@ export default function PartnerLoginPage() {
             </button>
           </form>
           <p className="pp-form-note"><ShieldCheck size={14} /> Partner access is separate from member accounts. Need help? Contact the administrator who issued your credentials.</p>
-          <div style={{ borderTop: "1px solid var(--pp-line)", marginTop: 30, paddingTop: 18, display: "flex", justifyContent: "space-between", gap: 12, color: "#9a8e92", fontSize: 10 }}>
+          <div style={{ borderTop: "1px solid var(--pp-line)", marginTop: 30, paddingTop: 18, display: "flex", justifyContent: "space-between", gap: 12, color: "var(--pp-muted)", fontSize: 10 }}>
             <span>Secure partner workspace</span><Link href="/login" style={{ color: "var(--pp-red-dark)", fontWeight: 800 }} data-testid="link-member-sign-in">Member sign in</Link>
           </div>
         </div>
